@@ -1,7 +1,7 @@
-import fse from 'fs-extra';
+import fse = require('fs-extra');
 import { globby } from 'globby';
-import matter from 'gray-matter';
-import path from 'node:path';
+import matter = require('gray-matter');
+import path = require('path');
 
 type RepoSpec = {
   repo: string;           // "peers-app/peers-sdk"

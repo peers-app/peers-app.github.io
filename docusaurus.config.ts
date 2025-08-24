@@ -20,7 +20,7 @@ const config: Config = {
           sidebarPath: require.resolve('./sidebars.ts'),
           editUrl: undefined            // we'll use per-page custom_edit_url instead
         },
-        theme: { customCss: [] }
+        theme: {}
       }
     ]
   ],
