@@ -1,0 +1,70 @@
+name: Build & Deploy (TS Hub)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout hub
+        uses: actions/checkout@v4
+
+      - name: Checkout peers-sdk
+        uses: actions/checkout@v4
+        with:
+          repository: peers-app/peers-sdk
+          path: _sources/peers-sdk
+
+      - name: Checkout peers-ui
+        uses: actions/checkout@v4
+        with:
+          repository: peers-app/peers-ui
+          path: _sources/peers-ui
+
+      - name: Checkout peers-host
+        uses: actions/checkout@v4
+        with:
+          repository: peers-app/peers-host
+          path: _sources/peers-host
+
+      - name: Checkout peers-electron
+        uses: actions/checkout@v4
+        with:
+          repository: peers-app/peers-electron
+          path: _sources/peers-electron
+
+      - name: Checkout peers-react-native
+        uses: actions/checkout@v4
+        with:
+          repository: peers-app/peers-react-native
+          path: _sources/peers-react-native
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Aggregate docs (TS)
+        run: npm run aggregate
+
+      - name: Build site
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          publish_branch: gh-pages
