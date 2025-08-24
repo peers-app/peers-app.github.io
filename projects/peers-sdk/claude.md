@@ -22,6 +22,7 @@ Here’s a summary of our discussions on Dependency Injection (DI) and a guide f
 
 Step 1: Define a basic container
 
+```typescript
 type Constructor<T = any> = new (...args: any[]) => T;
 
 class Container {
@@ -49,21 +50,25 @@ class Container {
 }
 
 export const container = new Container();
+```
 
 
 ⸻
 
 Step 2: Create decorators
 
+```typescript
 export function Injectable(...deps: any[]) {
   return function <T extends Constructor>(target: T) {
     (target as any).inject = deps;
     container.register(target, target);
   };
 }
+```
 
 Usage:
 
+```typescript
 @Injectable()
 class Logger {
   log(msg: string) {
@@ -78,14 +83,17 @@ class Service {
     this.logger.log("Service did something");
   }
 }
+```
 
 
 ⸻
 
 Step 3: Resolve and use
 
+```typescript
 const service = container.resolve(Service);
 service.doSomething();
+```
 
 
 ⸻
