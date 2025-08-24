@@ -8,17 +8,26 @@ A Docusaurus-based documentation hub that aggregates documentation from all Peer
 # Install dependencies
 npm install
 
-# Setup test sources (for local development)
-npm run test:setup-sources
+# Sync docs from local peer repos and start dev server
+npm run docs
 
-# Aggregate documentation
-npm run aggregate
+# Or step by step:
+npm run sync      # Copy docs from ../peers-* repositories  
+npm run aggregate # Process and inject front-matter
+npm start         # Start development server
+```
 
-# Start development server
-npm start
+## 📋 Prerequisites
 
-# Build for production
-npm run build
+Make sure you have the peer repositories cloned at the same level:
+```
+parent-directory/
+├── peers-app.github.io/     # This repo
+├── peers-sdk/               # Required
+├── peers-ui/                # Required  
+├── peers-host/              # Required
+├── peers-electron/          # Required
+└── peers-react-native/      # Required
 ```
 
 ## 📁 Project Structure
@@ -36,13 +45,13 @@ peers-app.github.io/
 
 ## 🔧 How It Works
 
-1. **GitHub Actions** automatically triggers on pushes to main
-2. **Aggregation script** checks out all source repositories
-3. **Documentation files** are copied and processed:
+1. **Local sync** copies docs from peer repos in `../` directories
+2. **Aggregation script** processes documentation files:
    - `peers-sdk`: Uses dedicated `/docs` folder
    - Other repos: Uses root-level markdown files
-4. **Front-matter injection** adds `custom_edit_url` to each page
-5. **Docusaurus build** generates static site
+3. **Front-matter injection** adds `custom_edit_url` to each page
+4. **Manual commit** pushes processed docs to this repo
+5. **GitHub Actions** automatically builds and deploys on push
 6. **GitHub Pages** serves the final site
 
 ## 🧪 Testing
@@ -82,31 +91,32 @@ npm run setup-test
 2. Add checkout step in `.github/workflows/deploy.yml`
 3. Update landing page in `src/pages/index.md`
 
-### Local Development with Real Sources
-
-To test with actual repository data instead of mock data:
+### Workflow for Updating Docs
 
 ```bash
-# Create _sources directory and clone repos manually
-mkdir -p _sources
-cd _sources
-git clone https://github.com/peers-app/peers-sdk.git
-git clone https://github.com/peers-app/peers-ui.git
-# ... clone other repos
+# Make changes in any peer repo (e.g., peers-sdk/docs/...)
 
-cd ..
-npm run aggregate
-npm start
+# Sync and test locally
+npm run docs
+
+# When ready, sync and build for commit
+npm run build:docs
+
+# Commit the updated projects/ directory
+git add projects/
+git commit -m "Update documentation from peer repos"
+git push
+
+# GitHub Actions will automatically deploy the updated site
 ```
 
-## 🎯 Production Deployment
+## 🎯 Production Deployment  
 
-The site automatically deploys to GitHub Pages when code is pushed to the `main` branch. 
+The site automatically deploys when you push changes to the `projects/` directory. The GitHub Action only triggers on relevant file changes, so you don't need authentication tokens.
 
-Manual deployment:
+**Local build for production:**
 ```bash
-npm run build
-npm run deploy
+npm run build:docs  # Sync, aggregate, and build
 ```
 
 ## 📝 Notes

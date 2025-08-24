@@ -1,8 +1,13 @@
-name: Build & Deploy (TS Hub)
+name: Deploy Docs Site
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'projects/**'
+      - 'src/**'
+      - 'docusaurus.config.ts'
+      - 'sidebars.ts'
   workflow_dispatch: {}
 
 permissions:
@@ -14,38 +19,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout hub
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Checkout peers-sdk
-        uses: actions/checkout@v4
-        with:
-          repository: peers-app/peers-sdk
-          path: _sources/peers-sdk
-
-      - name: Checkout peers-ui
-        uses: actions/checkout@v4
-        with:
-          repository: peers-app/peers-ui
-          path: _sources/peers-ui
-
-      - name: Checkout peers-host
-        uses: actions/checkout@v4
-        with:
-          repository: peers-app/peers-host
-          path: _sources/peers-host
-
-      - name: Checkout peers-electron
-        uses: actions/checkout@v4
-        with:
-          repository: peers-app/peers-electron
-          path: _sources/peers-electron
-
-      - name: Checkout peers-react-native
-        uses: actions/checkout@v4
-        with:
-          repository: peers-app/peers-react-native
-          path: _sources/peers-react-native
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -55,9 +30,6 @@ jobs:
 
       - name: Install deps
         run: npm ci
-
-      - name: Aggregate docs (TS)
-        run: npm run aggregate
 
       - name: Build site
         run: npm run build
