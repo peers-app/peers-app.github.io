@@ -25,9 +25,9 @@ async function setupTestSources() {
       }
     },
     {
-      name: 'peers-host',
+      name: 'peers-device',
       structure: {
-        'README.md': '# Peers Host\n\nHost service for peer management.',
+        'README.md': '# Peers Device\n\nDevice service for peer management.',
         'claude.md': '# Claude Integration\n\nNotes about Claude usage.',
         'peer-device-download-chunk.md': '# Device Download\n\nChunk download documentation.'
       }

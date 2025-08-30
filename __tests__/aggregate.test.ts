@@ -33,7 +33,7 @@ describe('Documentation Aggregation', () => {
     expect(await fse.pathExists(testOutputDir)).toBe(true);
 
     // Check that all expected repos are aggregated
-    const expectedRepos = ['peers-sdk', 'peers-ui', 'peers-host', 'peers-electron', 'peers-react-native'];
+    const expectedRepos = ['peers-sdk', 'peers-ui', 'peers-device', 'peers-electron', 'peers-react-native'];
     
     for (const repo of expectedRepos) {
       const repoPath = path.join(testOutputDir, repo);

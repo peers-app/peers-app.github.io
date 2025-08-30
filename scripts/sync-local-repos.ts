@@ -12,7 +12,7 @@ type RepoSpec = {
 const REPOS: RepoSpec[] = [
   { repo: 'peers-app/peers-sdk',        localSource: '../peers-sdk',        docsDir: 'docs', branch: 'main' },
   { repo: 'peers-app/peers-ui',         localSource: '../peers-ui',         docsDir: '.', branch: 'main' },
-  { repo: 'peers-app/peers-host',       localSource: '../peers-host',       docsDir: '.', branch: 'main' },
+  { repo: 'peers-app/peers-device',     localSource: '../peers-device',     docsDir: '.', branch: 'main' },
   { repo: 'peers-app/peers-electron',   localSource: '../peers-electron',   docsDir: '.', branch: 'main' },
   { repo: 'peers-app/peers-react-native', localSource: '../peers-react-native', docsDir: '.', branch: 'main' }
 ];
