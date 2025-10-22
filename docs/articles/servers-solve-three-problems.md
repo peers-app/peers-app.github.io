@@ -1,5 +1,10 @@
 # Servers Solve Three Problems
 
+### Notes
+- Another way to frame this is "Servers are tech debt"
+  - they solve the problem in an easy and straightforward way but also in a way that creates problems down the road
+  - it's time to start paying back that tech debt and that's what Peers is working to do
+
 1. Network Traversal
 	- The internet is a network of networks. Two arbitrary devices typically cannot connect directly because most are behind NAT (Network Address Translation) and don't have publicly accessible IP addresses. A server with a public IP address acts as a rendezvous point, enabling devices to discover and connect to each other.
 2. Authentication & Authorization
