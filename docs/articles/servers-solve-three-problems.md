@@ -12,7 +12,7 @@ Servers solve three hard problems in an easy and straightforward way but, as is 
 
 3. **Source of Truth**
 	- Once two or more devices are involved, correctly propagating data changes to all devices becomes a key problem. Servers solve this by acting as a single authoritative source for reading and writing data.
-	- This naturally extends to code and logic. By keeping data and logic on servers, all clients stay synchronized without explicit updates. This greatly simplifies - or in the case of web apps, eliminates - the complex process of distributing application updates. However, this approach requires clients to always be online and can create server bottlenecks as scale increases.
+	- This naturally extends to code and logic. By also keeping logic on servers, all clients stay synchronized without explicit updates. This greatly simplifies - or in the case of web apps, eliminates - the complex process of distributing application updates. However, this approach requires clients to always be online and can create server bottlenecks as scale increases.
 
 ```mermaid
 graph BT
@@ -44,18 +44,18 @@ graph BT
 While servers elegantly solve these three fundamental problems of network applications, they introduce their own challenges:
 
 1. **Single Point of Failure**
-	- If the server goes down (or any component it relies on), all connected devices lose access and usually stop working completely. This makes server-based systems naturally brittle and harder to scale reliably without significant infrastructure investment.  
+	- If the server (or any component it relies on) goes down, all connected devices lose access and usually stop working completely. This makes server-based systems naturally brittle and harder to scale reliably without significant infrastructure investment.  
     
 2. **Security Targets**
 	- Servers become centralized targets for attackers seeking to compromise identity data, user information, or application data. A single breach can expose all users.
 
 3. **Complexity & Cost Overhead**
 	- Applications require server infrastructure, ongoing maintenance, monitoring, and scaling. This adds operational complexity and recurring costs that must be managed throughout the application's lifetime.
-    - For many applications this overhead makes them infeasible just from a cost perspective. **How many useful applications don't exist because it simply costs too much to operate them?**
+    - For many applications this overhead makes them infeasible just from a cost perspective.
 
 4. **Always-Online Requirement**
 	- Clients must maintain internet connectivity to access data and functionality. Offline capabilities become difficult to implement and maintain consistency.
-    - Even if all devices and the server are on the same local network, many applications stop working when the internet connection goes down. This is because they're designed to communicate through cloud infrastructure or require external authentication services - highlighting how deeply the server-centric model depends on constant connectivity.
+    - Even if all devices and the server are on the same local network, many applications stop working when the internet connection goes down. This is because they're designed to communicate through cloud infrastructure or require external authentication services, highlighting how deeply the server-centric model depends on continuous, uninterrupted internet connectivity.
 
 
 5. **Privacy & Control**
@@ -65,20 +65,23 @@ While servers elegantly solve these three fundamental problems of network applic
 
 While the server-based solution solves the three fundamental problems in a straightforward way, the tradeoffs are significant. Organizations constantly pour resources into managing infrastructure, securing centralized data, and ensuring uptime - all to address problems created by the server-centric approach itself.
 
-More importantly, this overhead creates a barrier to entry that prevents countless useful applications from ever being built. **How many valuable applications don't exist simply because the cost and complexity of server infrastructure makes them infeasible?** With Peers, building and deploying a networked application becomes as easy and inexpensive as building a traditional standalone application - no servers to provision, no infrastructure to maintain, no recurring operational costs.
+More importantly, this overhead creates a barrier to entry that prevents countless useful applications from ever being built. **How many valuable applications don't exist simply because the cost and complexity of server infrastructure makes them infeasible?** 
 
-This makes it worthwhile to revisit the three fundamental problems and explore alternative solutions.
+This makes it worthwhile to revisit the three fundamental problems and explore alternative solutions. After having done so, we've selected an approach to each one of these problems which prioritizes decentralized, local-first, applications.  We call the resulting framework and runtime Peers.  
+
+With Peers, building and deploying a networked application becomes as easy and inexpensive as building a traditional standalone application - no servers to provision, no infrastructure to maintain, no recurring operational costs.
 
 1. **Network Traversal**
-	- Local connectivity isn't actually a problem - devices can easily discover each other when they're on the same subnet. For connections across networks, we still need devices with global IP addresses to assist with NAT traversal, but these can be very simple, stateless relay servers without any special or sensitive data or logic.
+	- Local connectivity isn't actually a problem - devices can easily discover each other when they're on the same subnet. 
+    - For connections across networks, WebRTC is an existing, secure, proven technology for establishing direct connections between devices.  Unfortunately this still requires a signaling server. The good news is there are free-to-use signaling servers offered by Google and Twilio as well as many open-source options. These are very simple and stateless servers without any special logic or sensitive data.
 
 2. **Authentication & Authorization**
-	- Instead of relying on a central authority, devices can use public-private key cryptography. This is objectively more secure since secrets never need to be shared or stored on a central server. Each user owns and retains complete control of their private key. Identity verification happens through cryptographic signatures.
+	- Instead of relying on a central authority, devices can use public-private key cryptography. This is objectively more secure since secrets (passwords) never need to be shared or stored on a central server. Each user owns and retains complete control of their private key. Identity verification happens through cryptographic signatures.
 
 3. **Source of Truth for Data**
 	- This is the trickiest problem and the most difficult to fully solve in a peer-to-peer architecture. However, a specialized database layer that tracks and syncs changes using last-write-wins per field solves this in a generalized way that works for the vast majority of use cases. Each device maintains its own copy of the data and synchronizes changes with peers.  Syncing is transitive so each device only has to sync with one other "fully-synced" device to itself be completely up-to-date. 
 
-By rethinking these problems, we can build applications that avoid the centralized tradeoffs while still providing reliable connectivity, security, and data consistency.
+By rethinking these problems, we can build applications that avoid the centralized tradeoffs while still providing reliable connectivity, security, and data consistency. 
 
 ```mermaid
 graph TB
