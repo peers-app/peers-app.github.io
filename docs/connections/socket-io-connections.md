@@ -1,6 +1,12 @@
 # Socket.io Connections
 
-### Normal connections
+Socket.io connections serve as the **bootstrap layer** for the Peers network. Once established, they can be used to signal and upgrade to WebRTC connections for better NAT traversal and direct peer-to-peer communication.
+
+See [WebRTC Signaling](./webrtc-signaling.md) for how Socket.io connections bootstrap WebRTC.
+
+---
+
+## Connection Model
 
 The direction of the connection determines the client and server
 - The peer initiating the connection is the client
@@ -119,28 +125,28 @@ This means that groups that rely completely on local networks can initially add 
 
 When a group operates this way and also requires that all communicates are signed and boxed, they will be operating in a very secure way, even if those communications are going across publicly viewable channels (e.g. twitter posts).
 
-# WebRTC Connections
+---
 
-WebRTC connections are harder to work with because they require a signaling channel  but they are well suited for Peer connections using asymmetric key.
+## Trust Model
 
-This is because all data sent through the signaling channel (which can be completely insecure) can be signed and boxed.  So by the time the connection is established both sides have already verified that the peer on the other side owns the keys they are using.  MITM attacks aren't feasible in this environment.
+Trust in Peers is based on cryptographic key verification, not transport security:
 
-This, again, requires that both parties already know and trust the public keys are the correct ones for the user's id.  So key registry(s) or other trusted sources for keys are required.
+**Key Registry Sources:**
+1. **Public key registries** (peers.app) - Trusted third-party
+2. **Peer groups** - Group membership implies key trust
+3. **Manual verification** - In-person key exchange
+4. **Previous connections** - Cached verified keys
 
-# Trust
+**Connection Security:**
+- **HTTPS Socket.io**: Bootstrap trust via TLS + signed handshake
+- **HTTP/Local Socket.io**: Sign and box all data (requires known keys)
+- **WebRTC**: Built-in encryption + cryptographic handshake
 
-In all cases trust has to be placed somewhere
-- In the case of socket.io connections
-  - we're either using a public domain, in which case we're trusting that (for unknown peers)
-  - or we're trusting a third-party source of userId-publicKey mapping
-    - key registries
-    - peer groups
-    - manually input (in-person)
-  - or we're blindly trusting the user/device on the other end of the connection
-    - there are scenarios where this might be appropriate but these users and connections need to be well isolated from their trusted counterparts.
+See [WebRTC Signaling](./webrtc-signaling.md) for details on WebRTC security model.
 
-- In the case of WebRTC connections
+---
 
+## See Also
 
-- Trusting the security of the connection
-- Trusting the source of the key
+- [Connection Architecture](./architecture.md) - Complete layer architecture
+- [WebRTC Signaling](./webrtc-signaling.md) - WebRTC via `sendDeviceMessage`

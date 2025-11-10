@@ -396,23 +396,24 @@ flowchart TD
     Remove --> End
 ```
 
-### WebRTC (Partial)
+### WebRTC (In Progress)
 
-**Current State**: Basic implementation exists but not integrated
+**Current State**: Core infrastructure ready, signaling protocol defined via `sendDeviceMessage`
 
 **Existing Work**:
 - `peers-electron/src/server/connections/wrap-wrtc.ts`: ISocket wrapper for SimplePeer
-- `peers-electron/src/server/connections/peer-tx.ts`: Data transmission with compression
-- `peers-services/src/socket-server.ts`: Signaling relay (commented out)
+- `peers-electron/src/server/connections/webrtc.ts`: SimplePeer peer creation helpers
+- `peers-device/src/connection-manager/connection-manager.ts`: `sendDeviceMessage` RPC for signaling
+- Multi-hop message routing with TTL-based flooding
 
 **What's Missing**:
-- ❌ Complete connection state tracking
-- ❌ SimplePeer event handling (connect, close, error)
-- ❌ Signaling protocol implementation
-- ❌ Integration with ConnectionManager
-- ❌ Offer/Answer exchange
-- ❌ ICE candidate relay
-- ❌ Connection scanner (parallel to Socket.io scanner)
+- ❌ WebRTC signaling message handlers (offer/answer/ICE)
+- ❌ WebRTC connection lifecycle management
+- ❌ Complete SimplePeer event handling (connect, close, error)
+- ❌ Integration with ConnectionManager for automatic upgrades
+- ❌ Connection preference logic (Socket.io vs WebRTC)
+
+**Next Steps**: See [WebRTC Signaling](./webrtc-signaling.md) for implementation details
 
 ---
 
@@ -482,7 +483,6 @@ The handshake protocol provides cryptographic identity verification regardless o
 
 ## See Also
 
-- [Socket.io Connections](./socket-io-connections.md) - Detailed Socket.io security analysis
+- [WebRTC Signaling](./webrtc-signaling.md) - Decentralized signaling via `sendDeviceMessage`
+- [Socket.io Connections](./socket-io-connections.md) - Bootstrap connection security
 - [WebRTC Testing](./webrtc-testing.md) - Testing WebRTC in Electron
-- [WebRTC Implementation Proposal](./webrtc-proposal.md) - Plan for completing WebRTC support
-- [Peer Device Group Architecture](../peer-device-group-architecture.md) - Higher-level architecture overview
