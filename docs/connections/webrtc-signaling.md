@@ -290,7 +290,7 @@ async handleWebRTCOffer(message: IDeviceMessage) {
   // When connected, wrap and add to ConnectionManager
   peer.on('connect', () => {
     const connection = wrapWrtc(peer, this.localDevice, this.getTrustLevel);
-    connection.doHandshake('webrtc://peer');
+    connection.doHandshake('wrtc://peer');
     this.connectionManager.addConnection(connection);
   });
 }
