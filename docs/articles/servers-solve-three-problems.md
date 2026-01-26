@@ -15,6 +15,7 @@ Servers solve three hard problems in an easy and straightforward way but, as is 
 	- This naturally extends to code and logic. By also keeping logic on servers, all clients stay synchronized without explicit updates. This greatly simplifies - or in the case of web apps, eliminates - the complex process of distributing application updates. However, this approach requires clients to always be online and can create server bottlenecks as scale increases.
 
 ```mermaid
+%%{init: {"flowchart": {"useMaxWidth": true}}}%%
 graph BT
     subgraph "Server / Cloud Infra"
         S["Logic & Compute"]
@@ -44,20 +45,19 @@ graph BT
 While servers elegantly solve these three fundamental problems of network applications, they introduce their own challenges:
 
 1. **Single Point of Failure**
-	- If the server (or any component it relies on) goes down, all connected devices lose access and usually stop working completely. This makes server-based systems naturally brittle and harder to scale reliably without significant infrastructure investment.  
+	- If the server (or any component it relies on) goes down, all connected devices lose access and usually stop working completely. This makes server-based systems naturally brittle and harder to scale reliably without significant infrastructure investment.
     
 2. **Security Targets**
 	- Servers become centralized targets for attackers seeking to compromise identity data, user information, or application data. A single breach can expose all users.
-
+	
 3. **Complexity & Cost Overhead**
 	- Applications require server infrastructure, ongoing maintenance, monitoring, and scaling. This adds operational complexity and recurring costs that must be managed throughout the application's lifetime.
     - For many applications this overhead makes them infeasible just from a cost perspective.
-
+	
 4. **Always-Online Requirement**
 	- Clients must maintain internet connectivity to access data and functionality. Offline capabilities become difficult to implement and maintain consistency.
     - Even if all devices and the server are on the same local network, many applications stop working when the internet connection goes down. This is because they're designed to communicate through cloud infrastructure or require external authentication services, highlighting how deeply the server-centric model depends on continuous, uninterrupted internet connectivity.
-
-
+    
 5. **Privacy & Control**
 	- Users must trust server operators with their data and identity. This centralized control limits user autonomy and creates potential for misuse or surveillance.
 
@@ -76,7 +76,8 @@ With Peers, building and deploying a networked application becomes as easy and i
     - For connections across networks, WebRTC is an existing, secure, proven technology for establishing direct connections between devices.  Unfortunately this still requires a signaling server. The good news is there are free-to-use signaling servers offered by Google and Twilio as well as many open-source options. These are very simple and stateless servers without any special logic or sensitive data.
 
 2. **Authentication & Authorization**
-	- Instead of relying on a central authority, devices can use public-private key cryptography. This is objectively more secure since secrets (passwords) never need to be shared or stored on a central server. Each user owns and retains complete control of their private key. Identity verification happens through cryptographic signatures.
+	- Instead of relying on a central authority, devices will use public-private key cryptography.
+	- Modern security on the web is amazingly good but Peers is _technically_ more secure since secrets (passwords) never need to be exchanged. Each user owns and retains complete control of their private key. Identity verification happens through cryptographic signatures.
 
 3. **Source of Truth for Data**
 	- This is the trickiest problem and the most difficult to fully solve in a peer-to-peer architecture. However, a specialized database layer that tracks and syncs changes using last-write-wins per field solves this in a generalized way that works for the vast majority of use cases. Each device maintains its own copy of the data and synchronizes changes with peers.  Syncing is transitive so each device only has to sync with one other "fully-synced" device to itself be completely up-to-date. 
@@ -84,6 +85,7 @@ With Peers, building and deploying a networked application becomes as easy and i
 By rethinking these problems, we can build applications that avoid the centralized tradeoffs while still providing reliable connectivity, security, and data consistency. 
 
 ```mermaid
+%%{init: {"flowchart": {"useMaxWidth": true}}}%%
 graph TB
     subgraph "Server / Cloud Infra"
         S["Relays"]
@@ -134,6 +136,7 @@ This diagram may look more complicated than the server-based architecture, but t
 Here's a simplified view that shows the architecture at the device level:
 
 ```mermaid
+%%{init: {"flowchart": {"useMaxWidth": true}}}%%
 graph TB
     subgraph "Server / Cloud Infra"
         S["Relays"]
@@ -163,16 +166,16 @@ The peer-to-peer approach eliminates many server-related problems, but it introd
 
 1. **Key Management Responsibility**
 	- Users must securely manage their private keys. If a key is lost, access to identity and encrypted data is lost. If a key is compromised, security is breached. This shifts responsibility from a service provider to the individual user, who may not be accustomed to this level of security management.
-
+	
 2. **Data Backup Responsibility**
 	- With no central server storing data, users are responsible for their own backups. If all devices with a copy of the data are lost or damaged, the data is gone. Users accustomed to "the cloud" automatically backing up their information need to adopt new habits and use backup strategies.
-
+	
 3. **Device Availability for Sync**
 	- For data changes to propagate across the network, at least two devices must be online simultaneously to sync. While syncing is transitive (a device only needs to sync with one fully-synced peer), this still means data won't reach all devices instantly if they're never online at the same time. This can lead to temporary inconsistencies or delays in data availability.
-
+	
 4. **Increased Client Complexity**
 	- Each device runs the full application stack including database, sync logic, and cryptography. This increases the computational requirements and storage needs on client devices compared to thin clients that rely on servers for heavy lifting.
-
+	
 5. **Peer Discovery**
 	- Users need a way to discover and connect with each other by sharing public keys. While this can be done in person (via QR codes, for example), connecting over the internet requires some form of directory or registry - like a phone book for public keys. This isn't necessarily a problem and can even be a benefit, as users have control over whether they want to be discoverable and can choose from multiple discovery mechanisms. However, it does require a solution where the traditional server model provides built-in user directories.
 
@@ -184,16 +187,16 @@ While the core Peers architecture is fully decentralized and self-contained, Pee
 
 1. **Automated Backups**
 	- Peers Services can automatically back up your data to encrypted cloud storage. You maintain control of your encryption keys, but the backup process is handled seamlessly in the background, similar to traditional cloud services.
-
+	
 2. **Sync Buffer**
 	- A sync buffer stores recent changes (e.g., the last two weeks) that peers can read and write even when other devices are offline. This reduces the synchronization timing requirements and ensures that changes propagate more reliably across devices that aren't online simultaneously.
-
+	
 3. **Cloud Peer VMs**
 	- Users can provision a cloud-based peer node - a virtual machine that acts as an always-on device in your peer network. You own and control this peer, but Peers Services manages the infrastructure. This ensures at least one device is always available for syncing and provides a reliable presence for your data and compute.
-
+	
 4. **Managed Key Services**
-	- For users who prefer traditional username/password authentication, Peers Services can manage your private keys behind conventional login flows. Your keys are encrypted and stored securely, allowing you to access your identity across devices without manually managing key files. This trades some security sovereignty for familiar user experience.
-
+	- For users who prefer traditional username/password authentication, Peers Services can manage your private keys behind conventional login flows. Your keys are encrypted and stored securely, allowing you to access your identity across devices without managing your cryptographic keys. This trades some security sovereignty for a familiar user experience.
+	
 5. **Public Key Registry**
 	- Peers Services provides an optional public key directory that makes it easy for users to discover and connect with each other over the internet. Users can register their public keys with human-readable identifiers (like usernames or handles), making peer discovery as simple as traditional social platforms - while maintaining the decentralized, cryptographic security of the peer-to-peer model. Users retain full control over their discoverability settings.
 
