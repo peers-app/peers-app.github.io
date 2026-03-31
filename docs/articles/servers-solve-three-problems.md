@@ -204,26 +204,6 @@ While the core Peers architecture is fully decentralized and self-contained, Pee
 
 ## Summary and Conclusion
 
-Peers reimagines networked applications by addressing the fundamental tradeoffs of server-centric architecture:
-
-**Problems Solved:**
-- Eliminates single points of failure and centralized security targets
-- Removes infrastructure complexity and ongoing operational costs
-- Provides offline-first capabilities with local data access, logic and compute
-- Returns privacy and control to users through decentralization and identity ownership
-
-**New Challenges:**
-- Users must manage their own private keys
-- Data backup becomes a user responsibility
-- Devices need to be online simultaneously for synchronization
-- Client devices handle more computational complexity and significant storage requirements
-
-**Tools to Overcome:**
-- Optional Peers Services provide automated backups and managed keys
-- Sync buffers reduce timing constraints for device availability
-- Cloud Peer VMs offer always-on nodes without infrastructure management
-- Transitive syncing minimizes coordination requirements between devices
-
 By treating servers as technical debt that can be paid down, Peers demonstrates that the three fundamental problems - network traversal, authentication, and data consistency - can be solved without the centralized tradeoffs we've accepted for decades. The result is a new foundation for building applications where users maintain control, privacy is built-in by default, and resilience doesn't require massive infrastructure investment.
 
-The choice between server-based and peer-to-peer architectures isn't about which is universally better - it's about which tradeoffs align with your values and use case. Peers provides the tools to make decentralization practical, with optional services to ease the transition for those who need them. 
+The choice between server-based and peer-to-peer architectures isn't about which is universally better - it's about which tradeoffs align with your values and use case. Peers provides the tools to make decentralization practical, with optional services to ease the transition for those who want them. 
