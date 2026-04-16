@@ -5,21 +5,23 @@ const config: Config = {
   title: 'Peers App Docs',
   url: 'https://peers-app.github.io',
   baseUrl: '/',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
   organizationName: 'peers-app', // GitHub org
   projectName: 'peers-app.github.io', // repo
   deploymentBranch: 'gh-pages',
+  onBrokenLinks: 'warn',
 
   presets: [
     [
       'classic',
       {
         docs: {
-          path: 'projects',             // we build aggregated docs into /projects
-          routeBasePath: '/',           // docs at site root
+          path: 'docs',
+          routeBasePath: '/',
           sidebarPath: require.resolve('./sidebars.ts'),
-          editUrl: undefined            // we'll use per-page custom_edit_url instead
+          editUrl: undefined
         },
+        blog: false,
         theme: {}
       }
     ]

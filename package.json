@@ -2,32 +2,19 @@
   "name": "peers-app-docs-hub",
   "private": true,
   "scripts": {
-    "sync": "npx ts-node scripts/sync-local-repos.ts",
-    "aggregate": "npx ts-node scripts/aggregate.ts",
     "build": "docusaurus build",
     "start": "docusaurus start",
-    "deploy": "docusaurus deploy",
-    "docs": "npm run sync && npm run aggregate && npm start",
-    "build:docs": "npm run sync && npm run aggregate && npm run fix-mdx && npm run build",
-    "fix-mdx": "npx ts-node scripts/fix-mdx-code-blocks.ts",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "setup-test": "npm run test:setup-sources && npm run aggregate",
-    "test:setup-sources": "npx ts-node scripts/setup-test-sources.ts"
+    "serve": "docusaurus serve",
+    "deploy": "docusaurus deploy"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.5.2",
-    "@docusaurus/preset-classic": "^3.5.2",
-    "fs-extra": "^11.2.0",
-    "globby": "^14.0.2",
-    "gray-matter": "^4.0.3"
+    "@docusaurus/core": "3.5.2",
+    "@docusaurus/preset-classic": "3.5.2"
   },
   "devDependencies": {
-    "@types/fs-extra": "^11.0.4",
-    "@types/jest": "^29.5.14",
-    "jest": "^29.7.0",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.7.1",
     "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "webpack": "5.105.4"
   }
 }
