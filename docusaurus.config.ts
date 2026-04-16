@@ -11,6 +11,10 @@ const config: Config = {
   deploymentBranch: 'gh-pages',
   onBrokenLinks: 'warn',
 
+  markdown: {
+    mermaid: true
+  },
+
   themes: ['@docusaurus/theme-mermaid'],
 
   presets: [
@@ -45,6 +49,12 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula
+    },
+    mermaid: {
+      theme: {
+        light: 'neutral',
+        dark: 'dark'
+      }
     }
   }
 };
