@@ -11,6 +11,8 @@ const config: Config = {
   deploymentBranch: 'gh-pages',
   onBrokenLinks: 'warn',
 
+  themes: ['@docusaurus/theme-mermaid'],
+
   presets: [
     [
       'classic',
@@ -28,6 +30,11 @@ const config: Config = {
   ],
 
   themeConfig: {
+    colorMode: {
+      defaultMode: 'dark',
+      disableSwitch: false,
+      respectPrefersColorScheme: false
+    },
     navbar: {
       title: 'Peers App',
       items: [

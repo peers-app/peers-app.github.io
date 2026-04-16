@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@docusaurus/core": "3.5.2",
-    "@docusaurus/preset-classic": "3.5.2"
+    "@docusaurus/preset-classic": "3.5.2",
+    "@docusaurus/theme-mermaid": "3.5.2"
   },
   "devDependencies": {
     "typescript": "^5.5.4"
