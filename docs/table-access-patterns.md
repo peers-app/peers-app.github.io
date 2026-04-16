@@ -332,7 +332,6 @@ All 25+ table function files in `peers-sdk/src/data/` now support optional `data
 - ✅ `Files(dataContext?)` - File storage and management
 - ✅ `Packages(dataContext?)` - Package management
 - ✅ `WorkflowRuns(dataContext?)` - Workflow execution
-- ✅ `PeerEvents(dataContext?)` - Event handling
 - ✅ `Embeddings(dataContext?)` - Vector embeddings
 - ✅ `KnowledgeFrames(dataContext?)` - Knowledge management
 - ✅ And 10+ more supporting table functions
