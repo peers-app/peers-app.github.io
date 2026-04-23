@@ -1,0 +1,2 @@
+# Match Biome LF expectations on all platforms (esp. if Windows jobs are added later).
+* text=auto eol=lf

@@ -1,62 +1,62 @@
-import type { Config } from '@docusaurus/types';
-import { themes as prismThemes } from 'prism-react-renderer';
+import type { Config } from "@docusaurus/types";
+import { themes as prismThemes } from "prism-react-renderer";
 
 const config: Config = {
-  title: 'Peers App Docs',
-  url: 'https://peers-app.github.io',
-  baseUrl: '/',
-  favicon: 'img/favicon.svg',
-  organizationName: 'peers-app', // GitHub org
-  projectName: 'peers-app.github.io', // repo
-  deploymentBranch: 'gh-pages',
-  onBrokenLinks: 'warn',
+  title: "Peers App Docs",
+  url: "https://peers-app.github.io",
+  baseUrl: "/",
+  favicon: "img/favicon.svg",
+  organizationName: "peers-app", // GitHub org
+  projectName: "peers-app.github.io", // repo
+  deploymentBranch: "gh-pages",
+  onBrokenLinks: "warn",
 
   markdown: {
-    mermaid: true
+    mermaid: true,
   },
 
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: ["@docusaurus/theme-mermaid"],
 
   presets: [
     [
-      'classic',
+      "classic",
       {
         docs: {
-          path: 'docs',
-          routeBasePath: '/',
-          sidebarPath: require.resolve('./sidebars.ts'),
-          editUrl: undefined
+          path: "docs",
+          routeBasePath: "/",
+          sidebarPath: require.resolve("./sidebars.ts"),
+          editUrl: undefined,
         },
         blog: false,
-        theme: {}
-      }
-    ]
+        theme: {},
+      },
+    ],
   ],
 
   themeConfig: {
     colorMode: {
-      defaultMode: 'dark',
+      defaultMode: "dark",
       disableSwitch: false,
-      respectPrefersColorScheme: false
+      respectPrefersColorScheme: false,
     },
     navbar: {
-      title: 'Peers App',
+      title: "Peers App",
       items: [
-        { to: '/', label: 'Docs', position: 'left' },
-        { href: 'https://github.com/peers-app', label: 'GitHub', position: 'right' }
-      ]
+        { to: "/", label: "Docs", position: "left" },
+        { href: "https://github.com/peers-app", label: "GitHub", position: "right" },
+      ],
     },
     prism: {
       theme: prismThemes.github,
-      darkTheme: prismThemes.dracula
+      darkTheme: prismThemes.dracula,
     },
     mermaid: {
       theme: {
-        light: 'neutral',
-        dark: 'dark'
-      }
-    }
-  }
+        light: "neutral",
+        dark: "dark",
+      },
+    },
+  },
 };
 
 export default config;

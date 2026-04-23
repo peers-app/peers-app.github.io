@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 # docusaurus
 _sources
 build
+
+# Local AI / editor (not for CI or published docs)
+.claude/
