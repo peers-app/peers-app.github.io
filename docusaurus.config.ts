@@ -63,11 +63,6 @@ const config: Config = {
           position: "right",
         },
         {
-          href: "https://peers.app/privacy",
-          label: "Privacy",
-          position: "right",
-        },
-        {
           href: "https://peers.app/?app",
           label: "Open app",
           position: "right",
@@ -84,7 +79,6 @@ const config: Config = {
   <span class="peers-footer-row__copy">&copy; ${new Date().getFullYear()} Peers. All rights reserved.</span>
   <nav class="peers-footer-row__nav" aria-label="Footer">
     <a href="https://peers.app/landing">Home</a>
-    <a href="https://peers.app/privacy">Privacy</a>
     <a href="https://peers.app/download">Download</a>
     <a href="https://peers.app/?app">Open app</a>
     <a href="https://github.com/peers-app" target="_blank" rel="noopener noreferrer">GitHub</a>
