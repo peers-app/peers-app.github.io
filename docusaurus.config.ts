@@ -29,8 +29,7 @@ const config: Config = {
         },
         blog: {
           blogTitle: "Peers Blog",
-          blogDescription:
-            "Thoughts on local-first, peer-to-peer, and decentralized software",
+          blogDescription: "Thoughts on local-first, peer-to-peer, and decentralized software",
           routeBasePath: "blog",
           showReadingTime: true,
         },
