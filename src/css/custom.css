@@ -101,6 +101,15 @@ html {
   z-index: 1;
 }
 
+.navbar-sidebar__backdrop {
+  z-index: 2;
+}
+
+.navbar-sidebar {
+  background-color: var(--peers-bg);
+  z-index: 3;
+}
+
 .navbar__title {
   color: #fff;
 }
