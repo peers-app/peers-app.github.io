@@ -74,44 +74,16 @@ const config: Config = {
       ],
     },
     footer: {
-      style: "dark",
-      links: [
-        {
-          title: "Product",
-          items: [
-            {
-              label: "Home",
-              href: "https://peers.app/landing",
-            },
-            {
-              label: "Download",
-              href: "https://peers.app/download",
-            },
-            {
-              label: "Privacy",
-              href: "https://peers.app/privacy",
-            },
-            {
-              label: "Open app",
-              href: "https://peers.app/?app",
-            },
-          ],
-        },
-        {
-          title: "Developers",
-          items: [
-            {
-              label: "Documentation",
-              to: "/",
-            },
-            {
-              label: "GitHub",
-              href: "https://github.com/peers-app",
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} Peers.`,
+      copyright: `<div class="peers-footer-row">
+  <span class="peers-footer-row__copy">&copy; ${new Date().getFullYear()} Peers. All rights reserved.</span>
+  <nav class="peers-footer-row__nav" aria-label="Footer">
+    <a href="https://peers.app/landing">Home</a>
+    <a href="https://peers.app/privacy">Privacy</a>
+    <a href="https://peers.app/download">Download</a>
+    <a href="https://peers.app/?app">Open app</a>
+    <a href="https://github.com/peers-app" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </nav>
+</div>`,
     },
     prism: {
       theme: prismThemes.github,

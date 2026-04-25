@@ -77,10 +77,28 @@ html {
   background-color: var(--peers-bg);
 }
 
+/* Glassy bar on a pseudo so `.navbar` does not use `backdrop-filter` — that
+   would create a containing block and break `position: fixed` for the
+   mobile `.navbar-sidebar` (sidebar trapped behind the main column). */
 .navbar {
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.navbar::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: var(--ifm-navbar-background-color);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.navbar__inner {
+  position: relative;
+  z-index: 1;
 }
 
 .navbar__title {
@@ -111,6 +129,53 @@ html {
 
 .footer {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  /* Match landing.html `.site-footer.py-4` — avoid Infima’s tall default block */
+  --ifm-footer-padding-vertical: 1.5rem;
+}
+
+/* Single compact row, aligned with peers.app landing `site-footer` */
+.peers-footer-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  width: 100%;
+  text-align: center;
+  color: #6c757d;
+}
+
+@media (min-width: 768px) {
+  .peers-footer-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    text-align: start;
+  }
+}
+
+.peers-footer-row__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .peers-footer-row__nav {
+    justify-content: flex-end;
+  }
+}
+
+.peers-footer-row a {
+  color: var(--peers-muted);
+  text-decoration: none;
+}
+
+.peers-footer-row a:hover {
+  color: #fff;
 }
 
 .footer__link-item:hover {
