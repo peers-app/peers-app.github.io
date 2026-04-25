@@ -12,3 +12,5 @@ Much of this site is **out of date** or was written as exploratory notes. Pages 
 :::
 
 Technical notes and architecture docs for the Peers app ecosystem. Use the sidebar to browse topics.
+
+**Try Peers:** [Open in your browser](https://peers.app/?app) · [Download desktop](https://peers.app/download)
