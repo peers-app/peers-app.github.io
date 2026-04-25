@@ -20,11 +20,6 @@ const sidebars: SidebarsConfig = {
         "connections/webrtc-testing",
       ],
     },
-    {
-      type: "category",
-      label: "Articles",
-      items: ["articles/servers-solve-three-problems"],
-    },
     "groups-mvp",
     "groups-and-members",
     "group-share",

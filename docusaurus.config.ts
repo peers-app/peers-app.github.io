@@ -27,7 +27,13 @@ const config: Config = {
           sidebarPath: require.resolve("./sidebars.ts"),
           editUrl: undefined,
         },
-        blog: false,
+        blog: {
+          blogTitle: "Peers Blog",
+          blogDescription:
+            "Thoughts on local-first, peer-to-peer, and decentralized software",
+          routeBasePath: "blog",
+          showReadingTime: true,
+        },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
@@ -51,6 +57,7 @@ const config: Config = {
       },
       items: [
         { to: "/", label: "Docs", position: "left" },
+        { to: "/blog", label: "Blog", position: "left" },
         {
           href: "https://peers.app/download",
           label: "Download",
