@@ -5,7 +5,7 @@ const config: Config = {
   title: "Peers Docs",
   url: "https://peers-app.github.io",
   baseUrl: "/",
-  favicon: "img/favicon.svg",
+  favicon: "img/favicon.ico",
   organizationName: "peers-app", // GitHub org
   projectName: "peers-app.github.io", // repo
   deploymentBranch: "gh-pages",
