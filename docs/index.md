@@ -1,6 +1,7 @@
 ---
 slug: /
 title: Home
+sidebar_position: 1
 ---
 
 # Peers App documentation
