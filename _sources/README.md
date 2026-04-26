@@ -1,0 +1,1 @@
+Most of this was captured over time as the architecture and development of Peers evolved over time.  A lot of it is still a good reference point but there are certainly inaccuracies and outdated portions as well.  
