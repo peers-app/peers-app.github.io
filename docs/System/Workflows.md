@@ -77,7 +77,7 @@ Optional: `onError` — markdown instruction to run if this step fails.
 
 ### 1. User sends a message (most common)
 
-`message-processor.ts` subscribes to new local message inserts. When a user message arrives it determines which assistant(s) should reply (via mentions, thread context, or the primary assistant fallback) and creates a `WorkflowRun` with a single instruction: call that assistant's runner tool. The workflow processor picks it up from there.
+The message processor (`initializeMessageProcessor()` in the `peers-device` package) subscribes to new local message inserts. When a user message arrives it determines which assistant(s) should reply (via mentions, thread context, or the primary assistant fallback) and creates a `WorkflowRun` with a single instruction: call that assistant's runner tool. The workflow processor picks it up from there.
 
 ### 2. Explicit `runWorkflow()`
 
@@ -85,11 +85,13 @@ The SDK exports `runWorkflow()` which creates a run from a `Workflow` template. 
 
 ### 3. Direct tool call (`runToolDirectly()`)
 
-`tool-call-processor.ts` provides `runToolDirectly()` for invoking a single tool as a one-off workflow run. It pre-creates the `WorkflowRun` before the synthetic message so that `message-processor` skips it (no double-processing). Completion is detected via a cross-context subscription.
+The `peers-device` package exports `runToolDirectly()` for invoking a single tool as a one-off workflow run. It pre-creates the `WorkflowRun` before the synthetic message so that the message processor skips it (no double-processing). Completion is detected via a cross-context subscription.
 
 ## Execution engine
 
-The workflow processor (`peers-electron/src/server/workflow-processor.ts`) is the local execution engine. It is initialized at startup via `initializeWorkflowProcessor()` and has two trigger paths:
+The workflow processor lives in the `peers-device` package (`workflow-processor.ts`). It is the local execution engine. The Electron shell calls `initializeWorkflowProcessor()` at startup (after injecting platform helpers such as `setUserHomeDirectory` and `setSimilarToolsFn`). Decryption for secret persistent variables is wired via `setDecryptData()` during app initialisation; tools read those values only through `IWorkflowRunContext.getVariable`, not via a separate public API.
+
+The processor has two trigger paths:
 
 1. **Change subscription** — reacts to local `WorkflowRuns` inserts/updates.
 2. **60-second polling interval** — catches any runs that weren't triggered by the subscription.
@@ -121,7 +123,9 @@ After each step:
 
 ### Variables and args
 
-The run's `vars` object is a shared scratch-pad. `gatherArgs()` maps tool input schema field names to var values. Special implicit vars:
+The run's `vars` object is a shared scratch-pad. `gatherArgs()` maps tool input schema field names to var values. **Persistent variables** (including secrets stored encrypted in the local DB) are exposed to tools only through the workflow context's `getVariable(name, toolId?)` callback, which resolves and decrypts values for the run's group scope.
+
+Special implicit vars:
 
 - `workflowRunId` — the current run ID
 - `assistantId` — the run's `defaultAssistantId`
@@ -150,16 +154,16 @@ Variables can also be **references** (e.g. `{ instructionVariableType: "referenc
 User message
      │
      ▼
-message-processor ──► WorkflowRuns.insert()
+peers-device: message-processor ──► WorkflowRuns.insert()
                             │
      ┌──────────────────────┘
-     │          ┌──────────────────────────┐
-     ▼          │  workflow-processor       │
-  change sub ──►│  tryProcessingWorkflowRun│
-  60s poll ────►│  processNextInstruction   │
-                │     ├─ directCallToolId   │──► tool-loader ──► tool execution
-                │     └─ markdown           │──► resolve assistant ──► re-enter
-                └──────────────────────────┘
+     │          ┌──────────────────────────────────┐
+     ▼          │  peers-device: workflow-processor │
+  change sub ──►│  tryProcessingWorkflowRun         │
+  60s poll ────►│  processNextInstruction           │
+                │     ├─ directCallToolId           │──► tool-loader ──► tool execution
+                │     └─ markdown                   │──► resolve assistant ──► re-enter
+                └──────────────────────────────────┘
                             │
                             ▼
                    WorkflowLogs (per-step logs)
