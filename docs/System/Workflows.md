@@ -128,6 +128,7 @@ The run's `vars` object is a shared scratch-pad. `gatherArgs()` maps tool input 
 Special implicit vars:
 
 - `workflowRunId` — the current run ID
+- `dataContextId` — the active data context for the run
 - `assistantId` — the run's `defaultAssistantId`
 - `messageContent` — the current instruction's `markdown`
 
