@@ -13,12 +13,18 @@ A first **V1 implementation** lives in **`@peers-app/peers-sdk`** under `src/con
 
 | Piece | Role |
 | --- | --- |
-| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare one or more contracts per package, assign `ITableDefinition`-like tables and tool-shaped instances, optional `alsoImplements`, and `consumes` dependencies. |
+| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare one or more contracts per package via `pkg.contract(contractId, version, devTag?)`, assign `ITableDefinition`-like tables and tool-shaped instances, optional `alsoImplements`, and `consumes` dependencies. Pass **`"dev"`** as the third argument when the contract shape is still allowed to change between registrations. |
 | **Shape extraction** | Builds pure-data contract shapes (using existing `IField[]` via `schemaToFields` where a Zod schema is present). |
-| **Validation** | Checks that a provider’s shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables), validates **frozen vs beta** immutability rules, and validates **`alsoImplements`** against stored contract definitions. |
+| **Validation** | Checks that a provider’s shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables), validates **stable vs in-development** (`devTag`) immutability rules, and validates **`alsoImplements`** against stored contract definitions. |
 | **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, swap providers, unregister, and **`checkConsumerDependencies`** for install-time-style checks. |
 
 The module is implemented under **`peers-sdk/src/contracts/`** with a barrel file **`index.ts`**. It is **not yet re-exported** from the published `@peers-app/peers-sdk` root (`dist/index.js`); until that lands, monorepo code can import from the source path your TypeScript config already maps for peers-sdk (for example `…/peers-sdk/src/contracts` or a path alias you use for dogfooding).
+
+### Stable vs in-development contracts
+
+Each contract version is keyed only by **`contractId` + `version`** in the registry (`contractKey`). Optional **`devTag: "dev"`** on `IContractDefinition` means the shape is **not frozen yet**: registrations may replace the stored definition with a different tables/tools/observables shape. Omit **`devTag`** for a **stable** contract: its shape must match on every subsequent registration for that key.
+
+Lifecycle is one-way: you can move from **dev** to **stable** by registering without **`devTag`**. After a stable definition exists for that contract version, the registry **rejects** new registrations that use **`devTag`**.
 
 ## What is intentionally out of scope (for now)
 
