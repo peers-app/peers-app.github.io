@@ -26,6 +26,34 @@ Each contract version is keyed only by **`contractId` + `version`** in the regis
 
 Lifecycle is one-way: you can move from **dev** to **stable** by registering without **`devTag`**. After a stable definition exists for that contract version, the registry **rejects** new registrations that use **`devTag`**.
 
+## Tools in contracts
+
+Tools are a core part of a contract's public interface — they are effectively **API calls between packages**. When you declare tools on a contract via `ContractBuilder.tools(...)`, `extractToolShape` reads `ITool.inputSchema.fields` and `ITool.outputSchema.fields` to produce an `IContractTool` with `inputFields` and `outputFields`.
+
+**Always derive `IField[]` from Zod using `schemaToFields()`** rather than writing field arrays by hand. This ensures:
+
+1. The TypeScript types (inferred from Zod) match the contract-facing metadata exactly.
+2. No silent drift between what the `toolFn` accepts and what the contract advertises to consumers.
+3. A single place to update when adding or changing a field.
+
+```typescript
+const inputSchema = z.object({
+  name: z.string().describe("Item name"),
+});
+
+const myTool: ITool = {
+  // ...
+  inputSchema: {
+    type: IOSchemaType.complex,
+    fields: schemaToFields(inputSchema), // derived, not hand-written
+  },
+};
+```
+
+Contract validation (`validateProviderSatisfiesContract`) checks field-level compatibility — field names, types, optionality, and array flags — between a provider's tools and the contract it claims to implement via `alsoImplements`. If the `IField[]` on your `ITool` doesn't match the target contract's tool signature, registration will fail.
+
+See **[System: Tools](../System/Tools)** for the full tool authoring guide.
+
 ## What is intentionally out of scope (for now)
 
 - Persisting contract definitions or provider choice in SQLite / sync.
@@ -37,4 +65,5 @@ Those steps are follow-on work once the in-memory behavior and tests are trusted
 ## Related topics
 
 - **[Getting started](./getting-started)** — where this Packages section fits in the doc set.
+- **[System: Tools](../System/Tools)** — tool authoring, `schemaToFields`, and how tool schemas flow into contracts.
 - **[System: Tables](../System/Tables)** — field-level shapes today use `IField` / Zod-derived metadata.
