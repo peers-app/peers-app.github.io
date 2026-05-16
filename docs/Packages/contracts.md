@@ -13,7 +13,7 @@ A first **V1 implementation** lives in **`@peers-app/peers-sdk`** under `src/con
 
 | Piece | Role |
 | --- | --- |
-| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare one or more contracts per package via `pkg.contract(contractId, version, devTag?)`, assign `ITableDefinition`-like tables and tool-shaped instances, optional `alsoImplements`, and `consumes` dependencies. Pass **`"dev"`** as the third argument when the contract shape is still allowed to change between registrations. |
+| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, devTag?)` (omit contracts for UI-only packages with no persisted tables or contract-scoped tools). Assign `ITableDefinition`-like tables and tool-shaped instances on each `ContractBuilder`, optional `alsoImplements`, and `consumes` dependencies. Pass **`"dev"`** as the third argument when the contract shape is still allowed to change between registrations. |
 | **Shape extraction** | Builds pure-data contract shapes (using existing `IField[]` via `schemaToFields` where a Zod schema is present). |
 | **Validation** | Checks that a provider’s shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables), validates **stable vs in-development** (`devTag`) immutability rules, and validates **`alsoImplements`** against stored contract definitions. |
 | **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, swap providers, unregister, and **`checkConsumerDependencies`** for install-time-style checks. |
