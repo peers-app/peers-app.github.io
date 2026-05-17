@@ -5,26 +5,46 @@ title: Package contracts
 
 # Package contracts
 
-**Package contracts** are a planned way for packages to depend on **stable, versioned interfaces** (tables, tools, observables) instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
+**Package contracts** define **stable, versioned interfaces** (tables, tools, observables) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
-A first **V1 implementation** lives in **`@peers-app/peers-sdk`** under `src/contracts/`. It is **standalone**: it does not hook into package install, the database, or the UI yet. It exists so the model can be exercised with unit and integration tests before the rest of the codebase migrates.
+The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Packages use `definePackage()` to declare contracts, and the `PackageLoader` and `installContractPackage` functions handle registration at install time.
 
-## What ships today (V1)
+## Core components
 
 | Piece | Role |
 | --- | --- |
-| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, devTag?)` (omit contracts for UI-only packages with no persisted tables or contract-scoped tools). Assign `ITableDefinition`-like tables and tool-shaped instances on each `ContractBuilder`, optional `alsoImplements`, and `consumes` dependencies. Pass **`"dev"`** as the third argument when the contract shape is still allowed to change between registrations. |
-| **Shape extraction** | Builds pure-data contract shapes (using existing `IField[]` via `schemaToFields` where a Zod schema is present). |
-| **Validation** | Checks that a provider’s shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables), validates **stable vs in-development** (`devTag`) immutability rules, and validates **`alsoImplements`** against stored contract definitions. |
-| **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, swap providers, unregister, and **`checkConsumerDependencies`** for install-time-style checks. |
+| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, `alsoImplements` declarations, and `consumes` dependencies on each `ContractBuilder`. |
+| **Shape extraction** | Builds pure-data contract shapes from `IField[]` (derived from Zod schemas via `schemaToFields`). |
+| **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
+| **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, swap providers, unregister, finalize contracts, and check consumer dependencies. |
 
-The module is implemented under **`peers-sdk/src/contracts/`** with a barrel file **`index.ts`**. It is **not yet re-exported** from the published `@peers-app/peers-sdk` root (`dist/index.js`); until that lands, monorepo code can import from the source path your TypeScript config already maps for peers-sdk (for example `…/peers-sdk/src/contracts` or a path alias you use for dogfooding).
+## Contract lifecycle and promotion
 
-### Stable vs in-development contracts
+Contract maturity is **coupled to the package lifecycle**. Developers do not set `devTag` in code — the platform manages it:
 
-Each contract version is keyed only by **`contractId` + `version`** in the registry (`contractKey`). Optional **`devTag: "dev"`** on `IContractDefinition` means the shape is **not frozen yet**: registrations may replace the stored definition with a different tables/tools/observables shape. Omit **`devTag`** for a **stable** contract: its shape must match on every subsequent registration for that key.
+- **Dev package versions**: new contracts are registered with `devTag: "dev"` (shape can change freely). Previously-frozen contracts are preserved as stable.
+- **Beta package versions**: same as dev — contracts can still evolve during testing.
+- **Stable package versions**: all remaining dev contracts are **finalized** (devTag removed, shape frozen). This happens automatically when a package version is promoted to stable.
 
-Lifecycle is one-way: you can move from **dev** to **stable** by registering without **`devTag`**. After a stable definition exists for that contract version, the registry **rejects** new registrations that use **`devTag`**.
+The lifecycle is one-way: once a contract version is frozen (stable), it **cannot** be re-registered as dev. The registry rejects such attempts.
+
+### Evolving stable contracts with `alsoImplements`
+
+When you need to extend a frozen contract, **increment the version number** and use `alsoImplements` to declare backward compatibility:
+
+```typescript
+const main = pkg.contract(contractId, 2, "My App");
+// Add new optional fields, tools, etc.
+main.alsoImplements(contractId, 1); // v2 satisfies v1
+```
+
+The system validates that v2 is a structural superset of v1 — all v1 tables, tools, and observables must exist in v2 with compatible shapes. Consumers of v1 continue to work with any provider of v2.
+
+`alsoImplements` supports single versions or inclusive ranges:
+
+```typescript
+main.alsoImplements(contractId, { from: 1, to: 3 }); // v4 satisfies v1, v2, and v3
+```
 
 ## Tools in contracts
 
@@ -54,16 +74,9 @@ Contract validation (`validateProviderSatisfiesContract`) checks field-level com
 
 See **[System: Tools](../System/Tools)** for the full tool authoring guide.
 
-## What is intentionally out of scope (for now)
-
-- Persisting contract definitions or provider choice in SQLite / sync.
-- Replacing today’s `IPeersPackage` object export with `definePackage` in `peers-core` or other packages.
-- Typed consumer proxies (`peers.contract(id, version)`) and codegen from a richer type IR than `IField[]`.
-
-Those steps are follow-on work once the in-memory behavior and tests are trusted in production-like scenarios.
-
 ## Related topics
 
-- **[Getting started](./getting-started)** — where this Packages section fits in the doc set.
+- **[Getting started](./getting-started)** — package system overview and lifecycle.
+- **[Package lifecycle design](../Roadmap/package-lifecycle)** — full design for the three-phase dev/beta/stable lifecycle.
 - **[System: Tools](../System/Tools)** — tool authoring, `schemaToFields`, and how tool schemas flow into contracts.
 - **[System: Tables](../System/Tables)** — field-level shapes today use `IField` / Zod-derived metadata.
