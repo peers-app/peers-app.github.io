@@ -5,7 +5,7 @@ title: Getting started
 
 # Packages
 
-Peers **packages** are how the app loads extensible behavior: **tables** and **tools** (and related metadata) on the server/runtime side, **routes** for URL mapping in the browser, and **UI bundles** for React screens. The desktop app and PWA install package versions from bundled assets or synced updates, then activate a version per data context (personal space or group).
+Peers **packages** are how the app loads extensible behavior: **tables** and **tools** (and related metadata) on the server/runtime side, **routes** for URL mapping in the browser, and **UI bundles** for React screens. The desktop app and PWA install package versions from bundled assets or synced updates, then each **device** chooses which version to run within a group (or personal space), using group-level defaults on `IPackage` when the device has no override.
 
 At a high level, a package contributes:
 
@@ -15,23 +15,11 @@ At a high level, a package contributes:
 
 ## Package lifecycle
 
-Packages follow a **three-phase lifecycle**: `dev` → `beta` → `stable`.
+Packages follow a **three-phase lifecycle**: `dev` → `beta` → `stable`. Disk updates create **dev** versions; promotion to beta or stable is explicit in the **Versions** UI. Dev records sync to the group but **never auto-activate on other devices** unless those devices opt in.
 
-| Phase | How it's created | Who sees it |
-|-------|-----------------|-------------|
-| **dev** | Automatically when code is loaded from disk | Only the local device — never auto-activates on other devices |
-| **beta** | Promoted via the UI or `promote-package-version` tool | Devices following `stable+beta` |
-| **stable** | Promoted via the UI or `promote-package-version` tool | All devices (default follow policy) |
+When you **activate** a different version on this device, routes and UI bundles reload without a full page refresh.
 
-Key points:
-
-- **Disk updates always create dev versions.** The `versionTag` is determined by the platform, not set in code.
-- **Dev versions are device-local.** They sync to the group but never auto-activate on other devices unless a device explicitly opts in.
-- **Promotion is explicit.** Use the promote button in the package versions UI, or call the `promote-package-version` tool from a CI pipeline or AI assistant.
-- **Writers can create dev versions.** Only Admins can promote to beta or stable.
-- **Contracts are finalized on stable promotion.** When a package version is promoted to stable, all its dev contracts are frozen (immutable).
-
-See [Package lifecycle design](../Roadmap/package-lifecycle) for the full design rationale and implementation details.
+See **[Package lifecycle](./package-lifecycle)** for development workflow, per-device pin/follow settings, and releasing to the group. See [Package lifecycle design](../Roadmap/package-lifecycle) for design rationale and remaining roadmap work.
 
 ## Defining a package
 
@@ -65,7 +53,8 @@ Note: `versionTag` and contract `devTag` are **not** set in code. The platform a
 
 ## Related topics
 
+- **[Package lifecycle](./package-lifecycle)** — develop, release, and run versions (dev / beta / stable).
 - **[Package contracts](./contracts)** — versioned interfaces between packages (`definePackage`, validation, registry).
-- **[Package lifecycle design](../Roadmap/package-lifecycle)** — full design for the three-phase dev/beta/stable lifecycle.
+- **[Package lifecycle design](../Roadmap/package-lifecycle)** — design doc and shipped vs planned work.
 - **[System: Tables](../System/Tables)** — how Peers models data with tables and reactivity.
 - **[System: Workflows](../System/Workflows)** — how tools run in workflow runs (often used together with package tools).

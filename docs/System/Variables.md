@@ -16,7 +16,7 @@ Implementation lives in `@peers-app/peers-sdk` (`persistent-vars.ts`). Device-le
 | `deviceVar(name, opts?)` | `device` | Current device, user’s **personal** database | Machine-local preferences, not synced to other devices |
 | `userVar(name, opts?)` | `user` | User’s **personal** database, synced across that user’s devices | Account-wide settings |
 | `groupVar(name, opts?)` | `group` | **Group** database for the active group context | Shared settings for everyone in the group |
-| `groupDeviceVar(name, opts?)` | `groupDevice` | Personal DB, name disambiguated per group | Per-group value on this device only (not synced to other devices) |
+| `groupDeviceVar(name, opts?)` | `groupDevice` | Personal DB, name disambiguated per group | Per-group value on this device only (not synced to other devices). Example: package version prefs (`packagePrefs_${packageId}`) — see [Package lifecycle](../Packages/package-lifecycle). |
 | `groupUserVar(name, opts?)` | `groupUser` | Personal DB, name disambiguated per group | Per-group, per-user value synced across your devices |
 
 Optional `opts` include `defaultValue`, `userContext`, `dataContext`, and `isSecret` (see below).

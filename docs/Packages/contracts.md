@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 title: Package contracts
 ---
 
@@ -24,7 +24,7 @@ Contract maturity is **coupled to the package lifecycle**. Developers do not set
 
 - **Dev package versions**: new contracts are registered with `devTag: "dev"` (shape can change freely). Previously-frozen contracts are preserved as stable.
 - **Beta package versions**: same as dev — contracts can still evolve during testing.
-- **Stable package versions**: all remaining dev contracts are **finalized** (devTag removed, shape frozen). This happens automatically when a package version is promoted to stable.
+- **Stable package versions**: remaining dev contracts are **designed to be finalized** (devTag removed, shape frozen) when a package version is promoted to stable. Full automatic finalization on promote is still on the roadmap; see [Package lifecycle design](../Roadmap/package-lifecycle).
 
 The lifecycle is one-way: once a contract version is frozen (stable), it **cannot** be re-registered as dev. The registry rejects such attempts.
 
@@ -76,7 +76,8 @@ See **[System: Tools](../System/Tools)** for the full tool authoring guide.
 
 ## Related topics
 
-- **[Getting started](./getting-started)** — package system overview and lifecycle.
-- **[Package lifecycle design](../Roadmap/package-lifecycle)** — full design for the three-phase dev/beta/stable lifecycle.
+- **[Getting started](./getting-started)** — package system overview.
+- **[Package lifecycle](./package-lifecycle)** — develop, release, and run package versions.
+- **[Package lifecycle design](../Roadmap/package-lifecycle)** — design rationale and shipped vs planned work.
 - **[System: Tools](../System/Tools)** — tool authoring, `schemaToFields`, and how tool schemas flow into contracts.
 - **[System: Tables](../System/Tables)** — field-level shapes today use `IField` / Zod-derived metadata.

@@ -5,16 +5,33 @@ title: "Package lifecycle"
 
 # Package lifecycle: unified three-phase development process
 
-**Status:** Design — not yet implemented
+**Status:** Partially implemented
 
-## Problem
+**How to use the lifecycle today:** [Package lifecycle](../Packages/package-lifecycle) (user-facing guide).
 
-The package system has been migrating from a legacy `IPeersPackage` export model to a `definePackage()` + contracts model. The migration is incomplete, creating several problems:
+## Shipped vs planned
 
-1. **Broken app discovery.** `appNavs` defined in `definePackage()` are never propagated to the `IPackage` database record the UI reads, so apps like Tasks don't appear in the launcher.
-2. **Competing tag conventions.** `versionTag` in `definePackage()`, `devTag` on contracts, `followVersionTags` on packages, and a hardcoded `"beta"` in the installer all disagree about what tag a version should have.
-3. **No isolation for dev versions.** Local disk changes immediately propagate to other devices in the group.
-4. **Admin-only package creation.** Non-admins cannot create even local, device-only dev versions.
+| Area | Status |
+|------|--------|
+| Device-local version prefs (`packagePrefs` `groupDeviceVar`) | Shipped |
+| `resolveDevicePackageVersion` (pinned guard, tag match, auto-upgrade, install on upgrade) | Shipped |
+| Dev versions never auto-activate on other devices | Shipped |
+| UI: effective active version, pin, follow range/tags (Package Info / Versions) | Shipped |
+| Routes/UI bundle reload when device prefs change | Shipped |
+| `PackageVersions` sync triggers re-resolve | Shipped |
+| Promotion UI (dev → beta → stable), `history` on PV records | Shipped |
+| `promote-package-version` / `set-active-package-version` tools | Planned |
+| Contract finalization on stable promotion | Planned |
+| Full removal of `versionTag` / `devTag` from all package sources | Partial / ongoing |
+
+## Background (original motivation)
+
+The package system migrated from a legacy `IPeersPackage` export model to `definePackage()` + contracts. Early gaps included:
+
+1. **App discovery** — `appNavs` from `definePackage()` not reaching the UI (e.g. Tasks missing from launcher). Addressed via PV-backed `appNavs` and loader enrichment.
+2. **Competing tag conventions** — tags set in code vs installer vs follow policy. Platform-assigned `versionTag` on promotion is the target model.
+3. **No isolation for dev versions** — local disk changes affected other devices. Addressed with device prefs and resolver policy (dev excluded from default follow).
+4. **Admin-only dev creation** — Writers can create dev versions per permission design (verify in your group’s policy).
 
 ## Design
 
@@ -186,6 +203,7 @@ Personal space (no group context) bypasses role checks entirely — users can do
 
 ## Related
 
+- [Package lifecycle](../Packages/package-lifecycle) — how to develop, release, and run versions
 - [Package contracts](../Packages/contracts) — versioned interfaces, `definePackage`, validation, registry
 - [Getting started](../Packages/getting-started) — package system overview
 - [Tools](../System/Tools) — tool authoring, `schemaToFields`, tool schemas in contracts
