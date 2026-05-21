@@ -16,6 +16,10 @@ Peers is available now but under active development. APIs and behavior may chang
 
 **Try Peers:** [Open in your browser](https://peers.app/?app) · [Download desktop](https://peers.app/download)
 
+## Getting started
+
+New to building on Peers? Start with the **[Packages — Getting Started](/Packages/getting-started)** guide, which covers how packages work, what they contribute (tables, tools, routes, UI), and how to build and install one.
+
 ## Resources
 
 - [@peers-app/peers-sdk](https://www.npmjs.com/package/@peers-app/peers-sdk) — Core SDK for building Peers packages
