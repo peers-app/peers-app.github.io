@@ -4,14 +4,21 @@ title: Home
 sidebar_position: 1
 ---
 
-# Peers App documentation
+# Peers Documentation
 
-:::caution Work in progress
+Peers is a local-first platform where your data lives on your devices, syncs peer-to-peer, and is end-to-end encrypted — no servers in the middle. You own your data and your identity. Browse the sidebar for architecture docs, package guides, and system internals.
 
-Much of this site is **out of date** or was written as exploratory notes. Pages may not match the current codebase or product direction. We are revising and reorganizing documentation over time—treat what you read here as a **rough draft**, not a contract.
+:::info Alpha
+
+Peers is available now but under active development. APIs and behavior may change between releases.
 
 :::
 
-Technical notes and architecture docs for the Peers app ecosystem. Use the sidebar to browse topics.
-
 **Try Peers:** [Open in your browser](https://peers.app/?app) · [Download desktop](https://peers.app/download)
+
+## Resources
+
+- [@peers-app/peers-sdk](https://www.npmjs.com/package/@peers-app/peers-sdk) — Core SDK for building Peers packages
+- [@peers-app/peers-ui](https://www.npmjs.com/package/@peers-app/peers-ui) — React components and hooks for Peers UIs
+- [peers-package-template](https://github.com/peers-app/peers-package-template) — Starter template for new packages
+- [GitHub](https://github.com/peers-app) — All repositories
