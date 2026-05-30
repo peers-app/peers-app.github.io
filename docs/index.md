@@ -20,6 +20,8 @@ Peers is available now but under active development. APIs and behavior may chang
 
 New to building on Peers? Start with the **[Packages — Getting Started](/Packages/getting-started)** guide, which covers how packages work, what they contribute (tables, tools, routes, UI), and how to build and install one.
 
+Already have Peers installed? The **[CLI](/System/CLI)** lets you interact with the app from your terminal — chat with assistants, query your database, run tools, and more. It also makes Peers fully accessible to AI coding assistants and automation scripts.
+
 ## Resources
 
 - [@peers-app/peers-sdk](https://www.npmjs.com/package/@peers-app/peers-sdk) — Core SDK for building Peers packages
