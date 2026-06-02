@@ -126,10 +126,22 @@ Personal space (no group context) bypasses role checks entirely — users can do
 
 ### Special case: peers-core
 
-`peers-core` ships bundled with the Electron app and PWA. The `syncPeersCoreBundle()` startup routine creates versions from the bundled files:
+`peers-core` ships bundled with the Electron app and PWA. At startup, the bundled tarball is seeded into the personal context using `seedPackageInContext()`:
 
 - **Development (unpackaged):** Creates `"dev"` versions, matching the general rule.
-- **Production (packaged app):** The bundled peers-core is tagged at build/release time — `"stable"` for GA releases, `"beta"` for beta releases. This is the one case where the tag is determined at build time rather than by developer action or UI promotion.
+- **Production (packaged app):** The bundled peers-core is tagged `"stable"` for GA releases, `"beta"` for beta releases. This is the one case where the tag is determined at build time rather than by developer action or UI promotion.
+
+After initial seeding, remote updates are checked via the package's `updateUrl` (admin-only, after a 60-second delay). Downloaded versions carry a `packageAuthorSignature` verified against the package's `publishPublicKey` (TOFU). Signed versions propagate automatically across groups via `PackageVersions.dataChanged` watchers.
+
+### Publishing packages
+
+Packages are published using the `publish-package` system tool (desktop only):
+
+```bash
+peers tools run publish-package '{"name":"peers-core"}'
+```
+
+This produces a signed `.peers-pkg.tar.gz` tarball and a `latest-<tag>.json` pointer file in the package's `dist/publish/` directory. Upload these files to the package's `updateUrl` host (e.g. S3) for remote distribution. The tool does not upload — artifact hosting is a separate concern.
 
 ## Implementation phases
 
