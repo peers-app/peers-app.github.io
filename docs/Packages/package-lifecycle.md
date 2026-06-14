@@ -31,19 +31,24 @@ Two layers work together:
 
 | Layer | Where it lives | Purpose |
 |-------|----------------|---------|
-| **Group defaults** | `IPackage` record (synced) | `activePackageVersionId`, `versionFollowRange`, `followVersionTags` — recommended version and follow policy for **new** devices |
-| **Device preferences** | `groupDeviceVar` per package (`packagePrefs_${packageId}`) | Which version **this device** runs, pin state, and per-device follow overrides |
+| **Group settings** | `IPackage` record (synced) | `activePackageVersionId`, `versionFollowRange`, `followVersionTags` for devices that follow the group |
+| **Device preferences** | `groupDeviceVar` per package (`packagePrefs_${packageId}`) | Local active version, pin state, and optional per-device follow overrides |
 
-When a device has no package prefs yet, it falls back to the group defaults on `IPackage`. After you activate or pin a version on this device, that choice is stored in device prefs and used for resolution, UI badges, and bundle loading.
+By default, a device follows the group settings. Turning on **Override on this device** in Package Info makes the auto-update range and release channel local to that device.
 
-Activating a **non-dev** version in the Versions tab also updates the group default `activePackageVersionId` so other devices can discover it as the recommended stable/beta release. Activating a **dev** version updates only this device.
+Activation scope depends on the version and override state:
+
+- Activating a **non-dev** version with device override **off** updates the group active version.
+- Activating a **non-dev** version with device override **on** updates only this device.
+- Activating a **dev** version updates only this device, even when override is off.
+- Automatic non-dev upgrades advance the group active version only when the device is following group settings and the current user is a group Admin or higher. Otherwise the upgrade remains local to the device.
 
 ## Day-to-day development
 
 1. **Edit your package on disk** (local path in Package settings).
 2. **Reload or restart** the app (or use your usual dev workflow). The installer creates or updates a **dev** package version from the bundle on disk.
 3. **Dev versions sync** to the group as `PackageVersions` records, but **other devices do not auto-switch** to dev.
-4. Open **Packages → your package → Versions** to see versions, hashes, and tags. Use **Activate** to run a specific version on **this device**, or **Pin** to stop auto-updates on the active version.
+4. Open **Packages → your package → Versions** to see versions, hashes, and tags. Use **Activate** on a dev version to run it on **this device** without changing the group active version.
 
 Routes and UI bundles reload when you change the active version on this device (no full page refresh required).
 
@@ -51,7 +56,7 @@ Routes and UI bundles reload when you change the active version on this device (
 
 1. In **Versions**, use **Promote** on a dev version: **dev → beta** or **dev → stable** (or **beta → stable**).
 2. Promotion updates the version’s `versionTag` and appends to the version’s signed `history` audit trail.
-3. Promoting to **stable** typically sets the group’s recommended `activePackageVersionId` when you activate that release; devices that follow stable will pick it up on their next resolve/sync according to their follow policy.
+3. Activating a promoted beta or stable release with device override off sets the group `activePackageVersionId`; devices following the group pick it up on their next resolve/sync according to their follow policy.
 
 **Today:** promotion and activation are done in the **package Versions UI**.
 
@@ -63,17 +68,19 @@ Routes and UI bundles reload when you change the active version on this device (
 |--------|----------------|
 | Create / update dev versions (disk reload) | Writer |
 | Promote to beta or stable | Admin |
-| Activate or pin on a device | Per product rules (often Admin for group default; device prefs for local choice) |
+| Activate beta/stable for the group | Admin |
+| Activate dev or use device override | Local device choice |
+| Pin a device | Local device choice |
 
 Personal space (no group) bypasses group role checks for your own packages.
 
-## Per-device settings (Package Info)
+## Package Info Settings
 
-On the package **Info** tab, settings apply to **this device** unless noted:
+On the package **Info** tab, **Auto-update range** and **Following** edit group settings by default. Enable **Override on this device** to make those controls local to the current device.
 
-- **Auto-update range** — pinned (no auto-updates), patch, minor, or latest. Overrides the group `versionFollowRange` when set.
-- **Follow version tags** — e.g. `stable`, `stable,beta`, or `*`. Overrides group `followVersionTags` when set. Empty means use the group default.
-- **Active version** — shown from device prefs with fallback to the group default.
+- **Auto-update range** - pinned (no auto-updates), patch, minor, or latest.
+- **Following** - `stable` or `stable,beta`.
+- **Override on this device** - when enabled, auto-upgrades and manual beta/stable activations affect only this device.
 
 Pinned devices keep their active version even when new stable or beta versions sync in.
 
