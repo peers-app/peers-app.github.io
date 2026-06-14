@@ -143,6 +143,8 @@ peers tools run publish-package '{"name":"peers-core"}'
 
 This produces a signed `.peers-pkg.tar.gz` tarball and a `latest-<tag>.json` pointer file in the package's `dist/publish/` directory. Upload these files to the package's `updateUrl` host (e.g. S3) for remote distribution. The tool does not upload — artifact hosting is a separate concern.
 
+If `publishPublicKey` is not set on the package record, the tool derives it from the Ed25519 public key implied by the personal `packageSigningKey_<packageId>` secret persistent variable, then backfills the package record when publish succeeds.
+
 ## Implementation phases
 
 ### Phase 1: Fix the immediate bug (Tasks not showing)
