@@ -145,6 +145,12 @@ This produces a signed `.peers-pkg.tar.gz` tarball and a `latest-<tag>.json` poi
 
 If `publishPublicKey` is not set on the package record, the tool derives it from the Ed25519 public key implied by the personal `packageSigningKey_<packageId>` secret persistent variable, then backfills the package record when publish succeeds.
 
+#### peers-core: published automatically during full-release
+
+`peers-core` is published to S3 as the **last step of `full-release.js`**, with no running Peers app required. The release calls `scripts/publish-peers-core.mjs --version-tag stable --skip-build`, which signs the freshly built bundles in-process using the pure peers-sdk signing functions, verifies the artifact against `peersCorePublishPublicKey`, and uploads the tarball + pointer to S3.
+
+Standalone signing reads the signing key from `PEERS_CORE_SIGNING_KEY` (in the environment or `peers-electron/.env`, alongside the AWS credentials). The key's public key must match `peersCorePublishPublicKey` or the script aborts (devices would otherwise reject the tarball under TOFU). If `PEERS_CORE_SIGNING_KEY` is not set, the script falls back to invoking the `publish-package` tool over RPC, which does require the Peers app to be running.
+
 ## Implementation phases
 
 ### Phase 1: Fix the immediate bug (Tasks not showing)
