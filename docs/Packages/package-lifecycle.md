@@ -78,6 +78,7 @@ Personal space (no group) bypasses group role checks for your own packages.
 
 On the package **Info** tab, **Auto-update range** and **Following** edit group settings by default. Enable **Override on this device** to make those controls local to the current device.
 
+- **Update URL** — base URL where admin devices check for new signed releases (`<updateUrl>/latest-<tag>.json`). Edit on the Info tab and save with **Save Changes**. See [Package lifecycle design](../Roadmap/package-lifecycle) for publishing and upload details.
 - **Auto-update range** - pinned (no auto-updates), patch, minor, or latest.
 - **Following** - `stable` or `stable,beta`.
 - **Override on this device** - when enabled, auto-upgrades and manual beta/stable activations affect only this device.
