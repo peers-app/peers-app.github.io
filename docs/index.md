@@ -6,11 +6,13 @@ sidebar_position: 1
 
 # Peers Documentation
 
-Peers is a local-first platform where your data lives on your devices, syncs peer-to-peer, and is end-to-end encrypted — no servers in the middle. You own your data and your identity. Browse the sidebar for architecture docs, package guides, and system internals.
+Peers is a local-first platform where your data lives on your devices, syncs peer-to-peer, and is end-to-end encrypted - no servers in the middle. You own your data and your identity. Browse the sidebar for architecture docs, package guides, and system internals.
 
 :::info Alpha
 
 Peers is available now but under active development. APIs and behavior may change between releases.
+
+There is a decent amount of AI slop in these docs so keep that in mind.  This is a nights-and-weekends project right now so we're doing what we can with the limited time.  Once things stabilize the docs will get much more human attention.  
 
 :::
 
