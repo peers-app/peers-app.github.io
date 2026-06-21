@@ -126,12 +126,17 @@ Personal space (no group context) bypasses role checks entirely — users can do
 
 ### Special case: peers-core
 
-`peers-core` ships bundled with the Electron app and PWA. At startup, the bundled tarball is seeded into the personal context using `seedPackageInContext()`:
+`peers-core` must always be present, so both the Electron app and PWA bundle a copy and also know its S3 `updateUrl`. Install is handled by a single orchestrator, `ensurePeersCore()` (`peers-sdk/src/package-installer/peers-core-installer.ts`), which applies a layered strategy and is a no-op when the context already has a peers-core version:
 
-- **Development (unpackaged):** Creates `"dev"` versions, matching the general rule.
-- **Production (packaged app):** The bundled peers-core is tagged `"stable"` for GA releases, `"beta"` for beta releases. This is the one case where the tag is determined at build time rather than by developer action or UI promotion.
+1. **Copy from another context** that already has peers-core (used for new groups — see below).
+2. **Remote install** from the S3 `updateUrl` (`checkAndInstallPackageRemoteVersion`, after creating the `Packages` record).
+3. **Bundled fallback** — seed the copy shipped with the app via `seedPackageInContext()` (used when offline).
 
-After initial seeding, remote updates are checked via the package's `updateUrl` (admin-only, after a 60-second delay). Downloaded versions carry a `packageAuthorSignature` verified against the package's `publishPublicKey` (TOFU). Signed versions propagate automatically across groups via `PackageVersions.dataChanged` watchers.
+**New users (personal context):** at startup `ensurePeersCore` installs from the S3 `updateUrl` first and falls back to the bundled copy when offline, so a new user always gets the latest stable peers-core immediately. In **dev (unpackaged) Electron** the bundled `"dev"` copy is preferred first to preserve the local dev loop. In a **packaged** app the bundled copy is tagged `"stable"` for GA releases / `"beta"` for beta releases (the one case where the tag is set at build time).
+
+**New groups:** group creation (both the Group Switcher and the Groups screen) calls the `seedBundledPeersCore` RPC, which runs `ensurePeersCore` with `copyFromContexts` set to the personal context plus the user's other groups. peers-core is copied from the first context that already has it, falling back to the remote `updateUrl`, then the bundle. Copying is preferred because the bundle already exists locally and avoids a network round-trip.
+
+After install, remote updates continue to be checked via the package's `updateUrl` (admin-only, after a 60-second delay). Downloaded versions carry a `packageAuthorSignature` verified against the package's `publishPublicKey` (TOFU). Signed versions propagate automatically across groups via `PackageVersions.dataChanged` watchers.
 
 ### Publishing packages
 
@@ -145,11 +150,19 @@ This produces a signed `.peers-pkg.tar.gz` tarball and a `latest-<tag>.json` poi
 
 If `publishPublicKey` is not set on the package record, the tool derives it from the Ed25519 public key implied by the personal `packageSigningKey_<packageId>` secret persistent variable, then backfills the package record when publish succeeds.
 
+#### CORS is required for PWA clients
+
+The remote update check is a plain `fetch()` against `<updateUrl>/latest-<tag>.json` (and the tarball). In the **PWA** (running in a browser at `peers.app`) this is a cross-origin request, so the host serving the `updateUrl` must return `Access-Control-Allow-Origin` headers — otherwise the browser blocks the response and the check fails with `TypeError: Failed to fetch`. **Electron is unaffected** (Node's fetch does not enforce CORS), so a self-hosted package can appear to work in the desktop app while silently failing for PWA users.
+
+If you self-host a package's `updateUrl`, configure CORS on that host to allow `GET`/`HEAD` from the PWA origin (or `*` for public artifacts). Distribution is primarily peer-to-peer, so this only affects browser-based remote update checks against your own host.
+
 #### peers-core: published automatically during full-release
 
 `peers-core` is published to S3 as the **last step of `full-release.js`**, with no running Peers app required. The release calls `scripts/publish-peers-core.mjs --version-tag stable --skip-build`, which signs the freshly built bundles in-process using the pure peers-sdk signing functions, verifies the artifact against `peersCorePublishPublicKey`, and uploads the tarball + pointer to S3.
 
 Standalone signing reads the signing key from `PEERS_CORE_SIGNING_KEY` (in the environment or `peers-electron/.env`, alongside the AWS credentials). The key's public key must match `peersCorePublishPublicKey` or the script aborts (devices would otherwise reject the tarball under TOFU). If `PEERS_CORE_SIGNING_KEY` is not set, the script falls back to invoking the `publish-package` tool over RPC, which does require the Peers app to be running.
+
+The publish script also ensures the S3 bucket has a CORS policy (allowing `GET`/`HEAD` from any origin) on every upload so PWA clients can fetch the pointer and tarball. Run `node scripts/publish-peers-core.mjs --setup-cors` to (re)apply the policy without publishing. Applying CORS requires `s3:PutBucketCors`; if the publishing credentials lack it, the script warns (non-fatal) and prints the manual `aws s3api put-bucket-cors` command.
 
 ## Implementation phases
 
