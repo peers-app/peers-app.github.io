@@ -127,6 +127,31 @@ export const AppScreenUI: IPeersUI = {
 
 Build the UI bundle with a dedicated webpack config (entry: `src/uis.ts`, output: `dist/uis.bundle.js`). The template includes a working `webpack.uis.config.js`. React, `@peers-app/peers-sdk`, `@peers-app/peers-ui`, and `zod` must be listed as **externals** since the runtime provides them as globals.
 
+## Global overlays
+
+Screens render inside the active tab and unmount when you switch tabs. When a package needs UI that stays visible **across all tabs and apps** — a floating widget, a persistent indicator, a heads-up panel — it can register a **global overlay** instead.
+
+`registerGlobalOverlay(id, Component)` (from `@peers-app/peers-ui`) adds a component to a registry that the root layout host renders above every layout, alongside the command palette. Register it from your `src/uis.ts` so it runs once when the UI bundle first loads:
+
+```typescript
+import { registerGlobalOverlay } from "@peers-app/peers-ui";
+import { MyOverlay } from "./ui/my-overlay";
+
+declare const exportUIs: (uis: IPeersPackageUIs) => void;
+exportUIs(uis);
+
+if (typeof window !== "undefined") {
+  registerGlobalOverlay("my-package-overlay", MyOverlay);
+}
+```
+
+Key points:
+
+- **The overlay owns its own visibility.** The host always mounts a registered overlay; the component decides when to render (return `null` to hide). This is how it can appear only under certain conditions — for example, the Tasks app's timer overlay appears only on desktop, while a timer is running, and when you are not on the Tasks tab.
+- **`id` is stable and de-duplicated.** Re-registering with the same `id` replaces the prior entry; `unregisterGlobalOverlay(id)` removes it.
+- **Loading is lazy.** Because overlays register from the UI bundle, they become available the first time the package's UI is loaded (i.e. the first time one of its screens is opened).
+- **Position above content, below modals.** Overlays typically use `position: fixed`. Keep their `z-index` below the command palette (`1050`) so modal navigation stays on top.
+
 ## Route matching
 
 When `UIRouter` receives a navigation request, it selects a route through the following steps:
