@@ -5,7 +5,7 @@ title: Package contracts
 
 # Package contracts
 
-**Package contracts** define **stable, versioned interfaces** (tables, tools, observables) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
+**Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
 The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Packages use `definePackage()` to declare contracts, and the `PackageLoader` and `installContractPackage` functions handle registration at install time.
 
@@ -13,10 +13,11 @@ The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` an
 
 | Piece | Role |
 | --- | --- |
-| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, `alsoImplements` declarations, and `consumes` dependencies on each `ContractBuilder`. |
+| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, events, `alsoImplements` declarations, and `consumes` dependencies on each `ContractBuilder`. |
 | **Shape extraction** | Builds pure-data contract shapes from `IField[]` (derived from Zod schemas via `schemaToFields`). |
-| **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
+| **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables, and event payloads), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
 | **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, swap providers, unregister, finalize contracts, and check consumer dependencies. |
+| **Contract proxies** | `createContractConsumer`, `createContractProvider`, and `createContractProviderSession` turn the same contract into transport-independent calls, observable mirrors, and subscriptions. |
 
 ## Contract lifecycle and promotion
 
@@ -38,7 +39,7 @@ const main = pkg.contract(contractId, 2, "My App");
 main.alsoImplements(contractId, 1); // v2 satisfies v1
 ```
 
-The system validates that v2 is a structural superset of v1 — all v1 tables, tools, and observables must exist in v2 with compatible shapes. Consumers of v1 continue to work with any provider of v2.
+The system validates that v2 is a structural superset of v1 — all v1 tables, tools, observables, and events must exist in v2 with compatible shapes. Consumers of v1 continue to work with any provider of v2.
 
 `alsoImplements` supports single versions or inclusive ranges:
 
@@ -73,6 +74,68 @@ const myTool: ITool = {
 Contract validation (`validateProviderSatisfiesContract`) checks field-level compatibility — field names, types, optionality, and array flags — between a provider's tools and the contract it claims to implement via `alsoImplements`. If the `IField[]` on your `ITool` doesn't match the target contract's tool signature, registration will fail.
 
 See **[System: Tools](../System/Tools)** for the full tool authoring guide.
+
+## Consuming a contract through a proxy
+
+`createContractConsumer(definition, transport, { dataContextId? })` returns a live proxy with:
+
+- `tables[name].method(...args)` for asynchronous table calls;
+- `tools[name](...args)` for tool calls;
+- `observables[name]()` for synchronous mirrored reads and `observables[name](value)` for writes;
+- `events[name].subscribe(handler)` and `tables[name].dataChanged.subscribe(handler)` for provider pushes;
+- `loadingPromise`, which waits for observable snapshots and queued writes;
+- `dispose()`, which releases every subscription and transport listener owned by that consumer.
+
+For in-process wiring, pair the consumer with a stateful provider session:
+
+```typescript
+const [consumerTransport, providerTransport] = inProcessTransportPair();
+const session = createContractProviderSession(resolution, providerTransport, {
+  permissionCheck,
+});
+const consumer = createContractConsumer(definition, consumerTransport, {
+  dataContextId,
+});
+
+try {
+  await consumer.loadingPromise;
+  const rows = await consumer.tables.Items.list({}, { pageSize: 20 });
+} finally {
+  consumer.dispose();
+  session.dispose();
+}
+```
+
+Always dispose both sides. Consumer disposal is idempotent, unsubscribes generic events, table events, and observable streams, and removes only that consumer's notify handler. New remote calls and subscriptions reject after disposal. Cached observable reads remain available, but writes throw.
+
+### Table-call boundary
+
+Contract table proxies accept the standard serializable data operations:
+
+`get`, `list`, `count`, `findOne`, `save`, `insert`, `update`, and `delete`.
+
+Custom remotely callable methods must use `@ProxyClientTableMethodCalls()`. The provider uses that marker and calls the method's `__original` implementation when a client proxy exists. Internal/private helpers, prototype and event properties, cursors, and document helpers are rejected.
+
+Table property reads and synchronous return values are not transparent across the proxy boundary: supported method calls return promises.
+
+### Observables and events
+
+Contract observables are always mirrored so consumers can read them synchronously. Await `consumer.loadingPromise` before the first read. Writable values update optimistically and send ordered, fire-and-forget `set` calls; awaiting the current `loadingPromise` waits for those writes. A failed set is logged and the next provider push reconciles the mirror.
+
+Writability is enforced twice:
+
+- a consumer write to an observable declared `writable: false` throws before changing the mirror or sending traffic;
+- the provider accepts `set` only when `IContractResolution.observableWritability[name]` is explicitly `true`.
+
+Events and table `dataChanged` differ from observables: they are subscription-gated. The provider attaches to the live source only while at least one consumer subscription exists and detaches after the last unsubscribe.
+
+## Permission and transport limits
+
+The current cross-device permission function, `sameUserContractPermissionCheck`, is a conspicuous placeholder: it permits calls only when the verified remote user ID equals the local user ID. Cross-user access is denied. Do not treat it as a complete authorization model; per-contract/member/device policy and user approval still need design work.
+
+The production device `contractCall` handler is live on verified connections but passive until a consumer emits a call. The current production proof supports request/response access to the built-in System Logs table. Device-connection subscriptions and reverse `contractNotify` routing are not wired yet.
+
+`connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: a future connection-wide provider router must multiplex contract/version/data-context calls. The socket.io adapter is tested groundwork but is not yet wired between the Electron UI and server.
 
 ## Related topics
 
