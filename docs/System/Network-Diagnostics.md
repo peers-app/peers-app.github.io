@@ -9,21 +9,24 @@ The desktop Network Viewer shows active device connections, shared-group sync st
 type, latency, throughput, and remote network information. Open **Network** in the desktop
 app and select **View Details** beside a connection.
 
-## Reading logs from your PWA
+## Reading remote logs
 
-When the selected device belongs to the same user, its details include **Remote Console
-Logs**. This reads the PWA's local logs directly over its current device connection; the
-logs are not copied into the desktop database.
+Every directly connected device includes **Remote Console Logs** in its details. This
+reads that device's local logs over its current connection; the logs are not copied into
+the requesting desktop database. The remote provider permits the request only when the
+verified caller has exact `TrustLevel.Self` in the provider's personal context. `Self`
+is full remote contract access, not a read-only diagnostics permission.
 
-1. Enter a process such as `pwa`.
+1. Leave Process empty for all processes, or enter `pwa` or `electron`.
 2. Optionally select a level, time range, and message words.
 3. Select **Load logs** or **Refresh**.
 4. Use **Export JSON** to preserve a bounded diagnostic trace.
 
-The query is read-only, has row and timeout limits, and is allowed only across a direct
-same-user connection. Logs from another user's device cannot be read through this panel.
-The result is a bounded newest-first page; when it says additional matching rows were
-omitted, narrow the time, level, process, or message filter.
+The panel issues only a bounded read, has row and timeout limits, and requires a direct
+connection. Cross-account attempts are sent to the provider so its current Self grant is
+authoritative; permission denials are shown unchanged. The result is a bounded newest-first
+page. When it says additional matching rows were omitted, narrow the time, level, process,
+or message filter. Console log retention is currently approximately 24 hours.
 
 For browser signaling and ICE lifecycle messages, filter to `BrowserWebRTC`. Do not share
 an exported trace without reviewing application-provided log context for private data.
@@ -67,5 +70,36 @@ using an authorized remote diagnostic.
 - An open data channel followed by a handshake error indicates a Peers connection
   handshake problem.
 
-Use timestamps, device IDs, group IDs, and the connectivity run ID to correlate the PWA
+Use timestamps, device IDs, group IDs, and the WebRTC connection ID to correlate the PWA
 trace with the desktop Network Viewer.
+
+### Family Hub receiver and answer checkpoints
+
+For the temporary Family Hub diagnostics, query the target device with Process
+`electron` and Message words `[WebRTC-Diagnostic]`. A successful receiver/answer path
+contains these stages for one connection ID:
+
+1. `routed-offer-received`
+2. `sidecar-connect-queued` and `sidecar-signal-queued`
+3. `go-connect-received` and `go-signal-received`
+4. `go-offer-applying` and `go-offer-applied`
+5. `go-answer-created`, `go-signal-emitting`, and `go-signal-emitted`
+6. `sidecar-signal-received`
+7. `signal-route-result` with `routeResult=200`
+8. Later `status-transition` checkpoints, or a timeout followed by `connection-cleanup`
+
+The first missing stage identifies the broken boundary. `sidecar-unavailable` now
+corresponds to a retriable 503 instead of a false 200. An answer route result of `TTL0`,
+`non-200`, or `rejected` isolates the independent return route.
+
+These checkpoints contain only connection, device, data-context, role, signal-type,
+readiness, status, and response-classification fields. They never include SDP, ICE
+candidates, TURN credentials, auth tokens, public keys, device-message payloads, or full
+route responses.
+
+The temporary Electron checkpoints are isolated in
+`peers-electron/src/server/connections/wrtc-trace.ts` and its calls from
+`webrtc-sidecar.ts`. The matching Go checkpoints are isolated in
+`peers-webrtc/diagnostics.go` and calls from `main.go` and `connection.go`. Remove those
+helpers and call sites after the Family Hub diagnosis; keep the authenticated-readiness
+503 and awaited answer-route handling.
