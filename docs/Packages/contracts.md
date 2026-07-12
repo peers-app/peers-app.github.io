@@ -17,7 +17,8 @@ The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` an
 | **Shape extraction** | Builds pure-data contract shapes from `IField[]` (derived from Zod schemas via `schemaToFields`). |
 | **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables, and event payloads), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
 | **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, swap providers, unregister, finalize contracts, and check consumer dependencies. |
-| **Contract proxies** | `createContractConsumer`, `createContractProvider`, and `createContractProviderSession` turn the same contract into transport-independent calls, observable mirrors, and subscriptions. |
+| **Contract proxies** | `createContractConsumer`, `createContractProvider`, `createContractProviderEndpoint`, and `createContractProviderSession` turn the same contract into transport-independent calls, observable mirrors, and subscriptions. |
+| **Provider router** | `createContractProviderRouter` owns one connection's request channel, authorizes before resolution, multiplexes contracts and data contexts, and disposes cached provider endpoints. |
 
 ## Contract lifecycle and promotion
 
@@ -108,6 +109,20 @@ try {
 
 Always dispose both sides. Consumer disposal is idempotent, unsubscribes generic events, table events, and observable streams, and removes only that consumer's notify handler. New remote calls and subscriptions reject after disposal. Cached observable reads remain available, but writes throw.
 
+### Device connections
+
+Verified device connections use one provider router per connection. A consumer wraps its `Connection` with `connectionContractTransport`; the remote `ConnectionManager` routes all `contractCall` requests through the router. The router:
+
+- invokes a trusted host authorization/data-context hook before any contract resolver;
+- derives caller context only from trusted connection/session state and ignores extra wire arguments;
+- normalizes omitted personal context and an explicitly named personal context to the same route;
+- lazily caches stateful provider endpoints by contract id, version, and authorized data context;
+- sends event, table `dataChanged`, and observable notifications back on `contractNotify` over the same duplex connection;
+- tracks subscription ownership so unsubscribe is idempotent and does not need a second authorization decision;
+- disposes every endpoint and live provider subscription when the connection closes.
+
+No separate notify RPC registration is required. The consumer's existing notify listener receives reverse traffic through the symmetric transport. Multiple consumers may share a connection and keep independent subscription IDs and listeners.
+
 ### Table-call boundary
 
 Contract table proxies accept the standard serializable data operations:
@@ -133,9 +148,11 @@ Events and table `dataChanged` differ from observables: they are subscription-ga
 
 The current cross-device permission function, `sameUserContractPermissionCheck`, is a conspicuous placeholder: it permits calls only when the verified remote user ID equals the local user ID. Cross-user access is denied. Do not treat it as a complete authorization model; per-contract/member/device policy and user approval still need design work.
 
-The production device `contractCall` handler is live on verified connections but passive until a consumer emits a call. The current production proof supports request/response access to the built-in System Logs table. Device-connection subscriptions and reverse `contractNotify` routing are not wired yet.
+The production device router is live on verified connections but passive until a consumer emits a call. Same-user consumers can use request/response members and remote subscriptions. An omitted data context selects the provider user's personal context; an explicit `dataContextId` remains supported after the same-user check. This is compatibility behavior, not a complete context-membership policy.
 
-`connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: a future connection-wide provider router must multiplex contract/version/data-context calls. The socket.io adapter is tested groundwork but is not yet wired between the Electron UI and server.
+`connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
+
+Still deferred are production Socket.IO contract wiring between the Electron UI and server, installed-package provider resolver registration, precise generic `createContractConsumer<T>()` typing, granular permissions and data-context membership policy, payload quotas/codecs, and QuickJS provider isolation. The endpoint resolver seam allows later sandbox-backed providers without replacing the router.
 
 ## Related topics
 
