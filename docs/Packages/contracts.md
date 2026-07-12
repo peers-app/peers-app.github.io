@@ -115,11 +115,13 @@ Verified device connections use one provider router per connection. A consumer w
 
 - invokes a trusted host authorization/data-context hook before any contract resolver;
 - derives caller context only from trusted connection/session state and ignores extra wire arguments;
+- verifies that connection keys match a valid self-signed `Users` record known in the provider's personal or shared-group data;
+- requires the caller to have exact `TrustLevel.Self` in the provider's personal data context;
 - normalizes omitted personal context and an explicitly named personal context to the same route;
 - lazily caches stateful provider endpoints by contract id, version, and authorized data context;
 - sends event, table `dataChanged`, and observable notifications back on `contractNotify` over the same duplex connection;
 - tracks subscription ownership so unsubscribe is idempotent and does not need a second authorization decision;
-- disposes every endpoint and live provider subscription when the connection closes.
+- disposes every endpoint and live provider subscription when the connection closes or the caller's personal trust assignment changes.
 
 No separate notify RPC registration is required. The consumer's existing notify listener receives reverse traffic through the symmetric transport. Multiple consumers may share a connection and keep independent subscription IDs and listeners.
 
@@ -146,9 +148,28 @@ Events and table `dataChanged` differ from observables: they are subscription-ga
 
 ## Permission and transport limits
 
-The current cross-device permission function, `sameUserContractPermissionCheck`, is a conspicuous placeholder: it permits calls only when the verified remote user ID equals the local user ID. Cross-user access is denied. Do not treat it as a complete authorization model; per-contract/member/device policy and user approval still need design work.
+The production cross-device policy is an identity-equivalent **Self** grant. Authorization
+uses the provider's personal `UserTrustLevels` table, not a trust row supplied by the caller
+or a shared group. The provider's own account is implicitly Self. A different account must
+have an explicit personal-context row whose value is exactly `TrustLevel.Self`; `Trusted`
+and every lower level are denied.
 
-The production device router is live on verified connections but passive until a consumer emits a call. Same-user consumers can use request/response members and remote subscriptions. An omitted data context selects the provider user's personal context; an explicit `dataContextId` remains supported after the same-user check. This is compatibility behavior, not a complete context-membership policy.
+User ID alone is insufficient. The verified connection's signing and box keys must match a
+valid self-signed `Users` record in data already known to the provider. Missing identities,
+unsigned discovery stubs, malformed signatures, and key mismatches fail closed. A known
+user's key mismatch is also rejected during the connection trust handshake even when the
+device itself is new.
+
+**Self grants full remote contract access.** After authorization, an omitted data context
+selects the provider user's personal context and an explicit `dataContextId` retains its
+existing behavior. Therefore Self can reach every contract and data context available to
+the provider process; it is not limited to the context containing the trust row. Assign it
+only to an identity that should have the same control as the local user. Lowering the trust
+level resets every provider route for that connection, disposes live subscriptions, and
+causes subsequent calls to re-evaluate and fail.
+
+`sameUserContractPermissionCheck` remains exported only as a deprecated compatibility
+helper for isolated providers. Production connection routing does not use it.
 
 `connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
 
