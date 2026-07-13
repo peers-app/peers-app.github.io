@@ -51,11 +51,32 @@ Useful identity checks include `Groups`, `GroupMembers`, `Users`, `Devices`, and
 `UserTrustLevels`. Verify that the group has its public keys and signature, active members
 have signed user records, and each target device maps to the expected user.
 
-These commands query only the desktop app to which the CLI is connected. A local
-`DeviceSyncTracking` checkpoint records changes that local app has applied from another
-device; it is not proof that the other device has pulled the local app's latest records.
-Confirming a remote device's actual database contents requires running the query there or
-using an authorized remote diagnostic.
+Without `--device`, these commands query only the desktop app to which the CLI is connected.
+A local `DeviceSyncTracking` checkpoint records changes that local app has applied from
+another device; it is not proof that the other device has pulled the local app's latest
+records.
+
+For a directly connected device, query the target's actual database through the headless
+Electron bridge:
+
+```bash
+peers devices
+peers devices status <deviceId>
+peers db query "SELECT * FROM PersistentVars WHERE name LIKE 'groupSecretKey_%'" \
+  --device <deviceId> --json
+peers logs --device <deviceId> --since 30 --json
+```
+
+`--device` requires a device ID; malformed remote targeting fails instead of querying the
+local desktop. Remote database output marks truncation in the human summary, or writes a
+warning to stderr when `--json` keeps stdout row-oriented. Remote log follow mode reports
+polling errors and stops after three consecutive failures; a successful poll resets the
+counter.
+
+The target authorizes every call from the verified connection identity and requires exact
+`TrustLevel.Self` in its personal context. Remote SQL is restricted to one bounded read-only
+statement and can return at most 500 rows or 1 MB. These calls do not expose shell, filesystem,
+UI, or process-lifecycle control.
 
 ## Interpreting a WebRTC attempt
 

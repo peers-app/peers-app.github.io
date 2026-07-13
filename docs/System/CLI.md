@@ -4,7 +4,7 @@ sidebar_position: 0
 
 # CLI
 
-The Peers CLI (`peers`) lets you interact with the Peers app entirely from the terminal. You can chat with assistants, query your database, run tools, tail logs, and control the UI — all without opening the app window.
+The Peers CLI (`peers`) lets you interact with the Peers app entirely from the terminal. You can chat with assistants, query databases, run tools, tail logs, inspect directly connected devices, and control the UI — all without opening the app window.
 
 The CLI communicates with the running Peers desktop app over a local WebSocket connection. If the app isn't running, the CLI starts it automatically.
 
@@ -35,6 +35,9 @@ peers tools list
 
 # Check app status
 peers app status
+
+# List directly connected devices
+peers devices
 ```
 
 ## Commands
@@ -66,10 +69,14 @@ REPL commands:
 
 ### `peers db` — Database
 
-Query the local SQLite database directly. Read-only access (SELECT and PRAGMA only).
+Query the local SQLite database, or a directly connected device's database, with read-only
+`SELECT` and approved introspection `PRAGMA` statements.
 
 :::note
 Database access must be enabled in the app: **Help → Enable CLI Database Access**
+
+Remote queries also require a verified direct connection. The target device independently
+authorizes the connected user with exact `TrustLevel.Self`; the CLI cannot bypass that check.
 :::
 
 ```bash
@@ -90,6 +97,9 @@ peers db query "PRAGMA table_info(Users)"
 
 # Output as JSON for piping
 peers db tables --json | jq
+
+# Query a directly connected device
+peers db query "SELECT * FROM PersistentVars" --device <deviceId> --json
 ```
 
 **Options:**
@@ -99,6 +109,30 @@ peers db tables --json | jq
 | `-n, --limit <count>` | Maximum rows to return (default: 20) |
 | `--json` | Output as JSON (one object per line) |
 | `-c, --context <id>` | Data context: a groupId, or `personal` (default) |
+| `--device <id>` | Query a directly connected device instead of the local desktop |
+
+Remote results are capped at 500 rows and 1 MB. The result indicates when that provider-side
+limit truncated the response. Human output marks the row or table summary as truncated.
+With `--json`, stdout remains row-oriented JSON and the truncation warning is written to
+stderr.
+
+### `peers devices` — Direct connections
+
+List the local desktop's verified and unverified direct device connections:
+
+```bash
+peers devices
+peers devices --json
+```
+
+Inspect the portable administration capabilities and enforced limits advertised by one target:
+
+```bash
+peers devices status <deviceId>
+```
+
+Only direct connections are listed. A device that is merely known through synchronized records
+or an indirect network path is not available to `--device`.
 
 ### `peers tools` — Tools
 
@@ -116,6 +150,10 @@ peers tools run "new-task" '{"title": "Buy groceries", "status": "Queued"}'
 
 # Run a tool in a group context
 peers tools run "add-to-shopping-list" '{"item": "milk"}' -c <groupId>
+
+# Inspect and run tools on a directly connected device
+peers tools list --device <deviceId>
+peers tools run "new-task" '{"title": "Remote task"}' --device <deviceId>
 ```
 
 Tool lookup supports exact ID, exact name, and fuzzy text search. If a fuzzy search matches multiple tools, you'll be prompted to use a more specific name or the tool ID.
@@ -128,6 +166,7 @@ Tool lookup supports exact ID, exact name, and fuzzy text search. If a fuzzy sea
 | `-c, --context <id>` | Data context: a groupId, or `personal` (default) |
 | `-a, --assistant <id>` | Assistant ID to use as context for the tool run |
 | `-n, --limit <count>` | Max tools to list (default: 100) |
+| `--device <id>` | Query or run tools on a directly connected device |
 
 ### `peers logs` — Logs
 
@@ -157,6 +196,10 @@ peers logs -p main
 
 # Output as JSON for processing
 peers logs --json | jq
+
+# Read or follow a directly connected device's logs
+peers logs --device <deviceId>
+peers logs --device <deviceId> -f
 ```
 
 **Options:**
@@ -174,6 +217,13 @@ peers logs --json | jq
 | `-n, --limit <count>` | Maximum logs to show (default: 50) |
 | `--full` | Show full context objects and stack traces |
 | `--json` | Output as JSON (one object per line) |
+| `-c, --context <id>` | Data context on the target; personal by default |
+| `--device <id>` | Query a directly connected device |
+
+Follow mode polls serially and reports polling failures on stderr. A successful poll resets
+the failure count; three consecutive failures stop the command with a nonzero exit instead
+of leaving a disconnected or unauthorized session running silently. In `--json` mode,
+stdout remains newline-delimited log records.
 
 ### `peers app` — App control
 
@@ -254,15 +304,19 @@ By default, the CLI operates on your personal data. To work with a group's data,
 peers -c <groupId> "What are our shared tasks?"
 peers db Tasks -c <groupId>
 peers tools run "add-to-shopping-list" '{"item": "milk"}' -c <groupId>
+peers db query "SELECT * FROM GroupMembers" -c <groupId> --device <deviceId>
 ```
 
-The context flag works with all subcommands.
+For remote database, tool, and log operations, the context is resolved on the target device.
+Options that take values require an explicit value. In particular, a trailing `--device`
+or `--device` followed by another flag is an error and never falls back to local execution.
 
 ## AI agent integration
 
 The CLI makes Peers fully accessible to AI coding assistants and automation scripts. An AI agent can:
 
 - Query data with `peers db query "..."` and get structured JSON with `--json`
+- Discover direct targets with `peers devices` and add `--device <deviceId>` to remote operations
 - Run tools with `peers tools run` to create tasks, set timers, or trigger workflows
 - Chat with the built-in assistant via `peers "..."`
 - Inspect and interact with the UI via `peers ui`
@@ -270,7 +324,13 @@ The CLI makes Peers fully accessible to AI coding assistants and automation scri
 
 ## Architecture
 
-The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. All data operations go through the same RPC layer the app's renderer uses, so the CLI has the same capabilities as the UI.
+The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. Local operations use the desktop RPC layer. Remote operations use that desktop as a headless bridge to a versioned System Device Operations or System Logs contract over an existing verified device connection.
+
+The remote contract surface is deliberately portable: status, bounded read-only SQL, tool
+listing/lookup/execution, and logs. It does not expose arbitrary shell, filesystem, UI,
+process-lifecycle, or unrestricted table access. Every target call is authorized from the
+connection-authenticated identity and requires exact `TrustLevel.Self` in the target's personal
+context.
 
 Configuration is stored at `~/peers/cli-config.json`.
 
