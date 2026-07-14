@@ -24,6 +24,23 @@ only inside that exact context and requires both the box and signature keys to m
 or conflicting identities fail before a device handler runs; stale personal records cannot
 override the identity recorded in the declared shared group.
 
+## Display names
+
+The signed connection handshake can include optional user and device display-name hints.
+Each hint is limited to 128 characters. They are presentation metadata, not identity:
+device and user IDs plus the signing keys remain authoritative.
+
+The user hint fills the brief gap before the owner's signed `Users` row reaches a group.
+That signed row remains canonical and owner profile changes are copied from the owner's
+personal context into each group. The device hint is stored as `reportedName` on the
+existing `Devices` row and synchronizes with the group.
+
+A device record's `name` is the local user's label, while `reportedName` is the latest
+label advertised by the device owner. Interfaces prefer `name` and fall back to
+`reportedName`, so another user's handshake cannot replace a local label. Updated hints
+arrive on the next connection handshake; they are intentionally not included in the more
+frequently exchanged network information.
+
 ## Diagnosing group connectivity
 
 The desktop Network Viewer shows direct connections and shared-group routes. Owners can

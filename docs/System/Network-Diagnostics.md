@@ -51,6 +51,12 @@ Useful identity checks include `Groups`, `GroupMembers`, `Users`, `Devices`, and
 `UserTrustLevels`. Verify that the group has its public keys and signature, active members
 have signed user records, and each target device maps to the expected user.
 
+For device labels, `Devices.name` is a local label and takes precedence over
+`Devices.reportedName`, the bounded name last advertised by the device owner in a signed
+handshake. A missing `reportedName` can mean the devices have not reconnected since the
+name changed or one peer predates handshake display metadata; it does not indicate an
+identity or synchronization failure.
+
 Without `--device`, these commands query only the desktop app to which the CLI is connected.
 A local `DeviceSyncTracking` checkpoint records changes that local app has applied from
 another device; it is not proof that the other device has pulled the local app's latest
