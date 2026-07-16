@@ -36,6 +36,34 @@ or device package after that package changes. If remote behavior or warning text
 match the source, restart the PWA with `yarn dev --force` before drawing conclusions from
 the trace.
 
+## Fresh same-account devices
+
+Installing the PWA from a new origin or clearing its site data creates a new local database
+and device ID. Signing in restores the account identity and keys, but it does not restore
+the old installation's device record.
+
+Current clients bootstrap this case automatically. A personal-context device message
+includes signed source-device identity and uses the account box key when the target device
+is not yet in the local `Devices` table. The receiver accepts the new device only when its
+signed device ID, user ID, signing key, and box key exactly match the receiver's account.
+After validating the message, the receiver saves the new device observation and normal
+protocol discovery and sync continue. This does not admit unknown devices to shared-group
+or cross-user contexts.
+
+Two log messages identify older or unsuccessful bootstrap attempts:
+
+- `Could not establish a publicBoxKey ... sending as signed plain text` means the sender
+  had no recipient or group encryption key. A current client should not use this fallback
+  for an unknown target in its personal context.
+- `Sending device is not known in dataContext` during supported-protocol discovery means
+  the receiver could not validate a preexisting device row or a fresh signed same-account
+  identity.
+
+If either message repeats between same-account devices, confirm both devices run a build
+with fresh-device bootstrap, that both signed in to the same user ID and keys, and that an
+online mesh route exists between them. A single initial connection attempt should create
+the missing `Devices` row; manual database repair should not be necessary.
+
 ## Inspecting a shared-group database context
 
 The `peers db` CLI reads the personal data context by default. When investigating
