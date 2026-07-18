@@ -57,3 +57,6 @@ QR/link flow.
 Connecting exchanges public contact and device identity through the existing
 Peers network. Trust remains an explicit local choice. This flow is not account
 sign-in, account recovery, or a way to transfer a secret key.
+
+To sign in a new installation to your own account, use
+[Add another device](./Device-Pairing.md) instead.
