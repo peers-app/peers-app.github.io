@@ -71,9 +71,9 @@ This keeps contracts frozen once released while making backward-compatible evolu
 
 ### Content hash vs promotion signature
 
-`computePackageVersionHash` is computed from **code content only** (bundle file hashes). The same code promoted from dev to beta to stable has the same content hash throughout. Promoting a version is a metadata change, not a code change.
+`computePackageVersionHash` is computed from the **semver string plus bundle file hashes** (`versionTag` is excluded). Promoting the same code from dev to beta to stable keeps the same content hash; editing the semver recomputes it. Promoting a version is otherwise a metadata change, not a code change.
 
-The `signature` field on the `PackageVersions` record signs **contentHash + versionTag + identity fields**, so admins attest to "this exact code at this exact promotion level." Anyone can verify the signature to confirm an admin authorized the promotion.
+The `signature` field on the `PackageVersions` record signs **contentHash + versionTag + identity fields**, so admins attest to "this exact code at this exact promotion level." Anyone can verify the signature to confirm an admin authorized the promotion. The optional `packageAuthorSignature` covers the author-signable payload (including `version` and `versionTag`) and is refreshed on promote / semver edit when a package signing key is available.
 
 ### Audit trail
 

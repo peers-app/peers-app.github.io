@@ -41,6 +41,7 @@ Activation scope depends on the version and override state:
 - Activating a **non-dev** version with device override **off** updates the group active version.
 - Activating a **non-dev** version with device override **on** updates only this device.
 - Activating a **dev** version updates only this device, even when override is off.
+- Promoting the version this device is already running to a tag the group follows (default `stable`) advances the group active version under the same admin / override / not-pinned rules as Activate.
 - Automatic non-dev upgrades advance the group active version only when the device is following group settings and the current user is a group Admin or higher. Otherwise the upgrade remains local to the device.
 
 ## Day-to-day development
@@ -50,13 +51,15 @@ Activation scope depends on the version and override state:
 3. **Dev versions sync** to the group as `PackageVersions` records, but **other devices do not auto-switch** to dev.
 4. Open **Packages → your package → Versions** to see versions, hashes, and tags. Use **Activate** on a dev version to run it on **this device** without changing the group active version.
 
+App icons in the apps list come from `appNavs` on the **active PackageVersion** (copied from `definePackage` when bundles are installed). Startup sync always persists `appNavs` onto new versions, including when the group is currently on a stable build.
+
 Routes and UI bundles reload when you change the active version on this device (no full page refresh required).
 
 ## Releasing to the group
 
 1. In **Versions**, use **Promote** on a dev version: **dev → beta** or **dev → stable** (or **beta → stable**).
-2. Promotion updates the version’s `versionTag` and appends to the version’s signed `history` audit trail.
-3. Activating a promoted beta or stable release with device override off sets the group `activePackageVersionId`; devices following the group pick it up on their next resolve/sync according to their follow policy.
+2. Promotion updates the version’s `versionTag`, refreshes `packageAuthorSignature` when a package signing key is available (and clears a stale signature if not), and appends to the version’s signed `history` audit trail. Editing the semver on a version row does the same for the signature.
+3. If you promote the version this device is **already running**, and the new tag matches the group’s follow policy (default: `stable`; `beta` only when the group follows beta), the group `activePackageVersionId` advances automatically (admin, device follow override off, group not pinned) — same rules as **Activate**. Otherwise use **Activate** on the promoted beta/stable release; devices following the group pick it up on their next resolve/sync.
 
 **Today:** promotion and activation are done in the **package Versions UI**.
 
