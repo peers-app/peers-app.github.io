@@ -7,18 +7,65 @@ title: Package contracts
 
 **Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
-The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Packages use `definePackage()` to declare contracts, and the `PackageLoader` and `installContractPackage` functions handle registration at install time.
+The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Packages use `definePackage()` to declare contracts, and the `PackageLoader` and `installContractPackage` functions handle registration at install time — including registering each package’s provided contracts into that data context’s in-memory `ContractRegistry` and settling each package’s `consumes` handles afterward. Built-in **system contracts** (Logs, Device Operations, …) self-register via `registerSystemContract` and are installed into every loader registry at construction; adding another system contract is one self-registration call, with no loader changes.
 
 ## Core components
 
 | Piece | Role |
 | --- | --- |
-| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, events, `alsoImplements` declarations, and `consumes` dependencies on each `ContractBuilder`. |
+| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, events, and `alsoImplements` on each `ContractBuilder`. Declare dependencies with `pkg.consumes(...)` on `PackageBuilder`. |
 | **Shape extraction** | Builds pure-data contract shapes from `IField[]` (derived from Zod schemas via `schemaToFields`). |
 | **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables, and event payloads), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
-| **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, swap providers, unregister, finalize contracts, and check consumer dependencies. |
+| **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, select a provider for a `consumes` declaration (`providerPackageIds` / `fallbackToDefaultProvider`), swap providers, unregister, finalize contracts, and check consumer dependencies. Each data context’s `PackageLoader` owns one, seeds it with built-in **system contracts** at construction, and registers package providers when contract packages are installed. SQLite persistence of the registry is still a follow-up. |
 | **Contract proxies** | `createContractConsumer`, `createContractProvider`, `createContractProviderEndpoint`, and `createContractProviderSession` turn the same contract into transport-independent calls, observable mirrors, and subscriptions. |
 | **Provider router** | `createContractProviderRouter` owns one connection's request channel, authorizes before resolution, multiplexes contracts and data contexts, and disposes cached provider endpoints. |
+
+## Declaring a consumed contract
+
+Call `pkg.consumes(contractId, version, opts?)` on **`PackageBuilder`** (not on `ContractBuilder`). It returns a deferred handle immediately:
+
+```typescript
+const tasks = pkg.consumes(TASKS_CONTRACT_ID, 1, {
+  providerPackageIds: [preferredTasksPackageId],
+  fallbackToDefaultProvider: true,
+});
+
+// Later, outside definePackage — do not await inside the define callback:
+const consumer = await tasks.consumer;
+await consumer.tables.Tasks.list({}, { pageSize: 20 });
+```
+
+Pass a type argument to narrow the resolved proxy beyond the default `IContractConsumer`.
+Typed consumers only need to extend `IContractConsumerBase` and may omit empty
+`tools` / `events` / `observables` bags. Table members should use `ITableProxy<TTable>`
+(the remotely callable Table method surface + `dataChanged`) — not a literal `Table`
+instance. Built-in contracts may export a ready-made consumer type (hand-maintained for now):
+
+```typescript
+import { type ILogsConsumer, logsContractId } from "@peers-app/peers-sdk";
+
+const logs = pkg.consumes<ILogsConsumer>(logsContractId, 1, { optional: true });
+logs.consumer.then(async (consumer) => {
+  if (!consumer) return;
+  // Autocomplete: contractId, version, tables, loadingPromise, dispose — no empty bags
+  await consumer.tables.ConsoleLogs.list({ level: "error" });
+  await consumer.tables.ConsoleLogs.deleteOldLogs();
+});
+```
+
+- Required dependencies resolve to `T` (defaults to `IContractConsumer`).
+- `{ optional: true }` may resolve to `undefined` when no matching provider is available.
+- Options (`optional`, `providerPackageIds`, `fallbackToDefaultProvider`) are honored when the package-loader settles the handle after install.
+
+After `installContractPackage` registers the package’s provided contracts, `PackageLoader` settles each `consumes` handle: it selects a provider from the registry, looks up a live `ContractResolver`, builds an in-process consumer proxy, and resolves (or rejects) `handle.consumer`. System contracts such as Logs already ship with resolvers; a package-provided contract without a live resolver is treated as missing (optional → `undefined`, required → reject).
+
+```typescript
+// Outside definePackage — the promise settles after the package finishes installing:
+const consumer = await logs.consumer;
+if (consumer) {
+  await consumer.tables.ConsoleLogs.list({ level: "error" });
+}
+```
 
 ## Contract lifecycle and promotion
 
