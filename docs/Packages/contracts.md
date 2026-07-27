@@ -67,6 +67,15 @@ if (consumer) {
 }
 ```
 
+:::warning Resolvers run during package install
+Settling a `consumes` handle **awaits the provider's `ContractResolver`**, and package
+install happens inside `initializePeerDevice`. A resolver must therefore only await
+things that are already available at that point — `networkManagerPromise` and
+`connectionManagerPromise` both resolve before packages load. Awaiting a promise that
+is only resolved *after* package loading (such as `peersDeviceInitializedPromise`)
+deadlocks device initialization, and the app never leaves its loading screen.
+:::
+
 ## Contract lifecycle and promotion
 
 Contract maturity is **coupled to the package lifecycle**. Developers do not set `devTag` in code — the platform manages it:
@@ -156,6 +165,35 @@ try {
 
 Always dispose both sides. Consumer disposal is idempotent, unsubscribes generic events, table events, and observable streams, and removes only that consumer's notify handler. New remote calls and subscriptions reject after disposal. Cached observable reads remain available, but writes throw.
 
+### Local UI-to-host contracts
+
+Electron renderers and the PWA can use the same typed contract consumers:
+
+- Electron adapts its authenticated frontend Socket.IO connection with
+  `socketIoContractTransport`. The server creates one local-user provider router per socket
+  and disposes it on disconnect.
+- PWA installs an `inProcessTransportPair` and the same local-user provider router.
+- `registerHostContractTransport`, `waitForHostContractTransport`, and
+  `subscribeHostContractTransport` expose transport readiness and reconnect lifecycle to UI
+  modules. Consumers must be disposed and recreated when the transport changes.
+
+The local router registers its request listener before the user context is ready, then
+resolves that context lazily per call. It accepts only the user's personal context and
+known local group contexts. The authenticated local UI session is trusted as one authority
+today; this is not installed-package renderer isolation.
+
+Today the renderer talks to the host router directly: it waits for
+`registerHostContractTransport`, builds `createContractConsumer` proxies over that
+transport, and the host router resolves tools from the global `ContractResolver`
+registry. There is no package involvement in that path — `pkg.consumes()` settles only
+while `package.bundle.js` runs in the host, and its handle does not cross into separately
+built renderer bundles.
+
+The intended security model is narrower: UI elements should eventually call only their
+own package's contract code through a proxy, and that package code should forward to
+other contracts via its `consumes` handle. Direct renderer access to arbitrary system
+tools is a temporary seam, not the long-term boundary.
+
 ### Device connections
 
 Verified device connections use one provider router per connection. A consumer wraps its `Connection` with `connectionContractTransport`; the remote `ConnectionManager` routes all `contractCall` requests through the router. The router:
@@ -220,7 +258,10 @@ helper for isolated providers. Production connection routing does not use it.
 
 `connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
 
-Still deferred are production Socket.IO contract wiring between the Electron UI and server, installed-package provider resolver registration, precise generic `createContractConsumer<T>()` typing, granular permissions and data-context membership policy, payload quotas/codecs, and QuickJS provider isolation. The endpoint resolver seam allows later sandbox-backed providers without replacing the router.
+Still deferred are installed-package provider resolver registration, precise generic
+`createContractConsumer<T>()` typing, granular per-package UI permissions, payload
+quotas/codecs, and QuickJS provider isolation. The endpoint resolver seam allows later
+sandbox-backed providers without replacing the router.
 
 ## Related topics
 

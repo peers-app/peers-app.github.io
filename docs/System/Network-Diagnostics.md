@@ -5,15 +5,47 @@ title: Network diagnostics
 
 # Network diagnostics
 
-The desktop Network Viewer shows active device connections, shared-group sync state, path
-type, latency, throughput, and remote network information. Open **Network** in the desktop
-app and select **View Details** beside a connection.
+The Network Viewer works in both the Electron desktop app and the PWA. It shows active
+device connections, shared-group sync state, path type, latency, throughput, and remote
+network information. Open **Network** and select **View Details** beside a connection.
+
+## Network status indicator
+
+The right side of the tabs strip shows the local device's live network state:
+
+- **Offline** — no active device connections.
+- **Syncing** — at least one personal or group context is synchronizing.
+- **Synced** — connected with no active sync or recorded sync error.
+- **Error** — at least one context's latest sync attempt failed.
+- **Loading / unavailable** — the local diagnostics host is starting or reconnecting.
+
+Select the indicator to see connection, syncing-context, and error counts. **Open Network
+Viewer** opens the full diagnostics screen. On mobile, the same indicator appears beside
+the tabs menu.
+
+## Platform-specific diagnostics
+
+Portable connection, group, device, and sync diagnostics work in Electron and PWA.
+**Troubleshoot** and raw database download require Node/OS capabilities and therefore
+appear only in the Electron desktop app.
+
+## Synchronization
+
+Group details includes two synchronization actions:
+
+- **Sync now** notifies connected peers that the selected personal or group context may
+  have changes. It does not reset change tracking and needs no confirmation.
+- **Do full sync** resets local change tracking only for the selected context, then
+  normal synchronization rebuilds its state. The operation may transfer substantial data,
+  requires confirmation, and should be used only to repair suspected drift.
+
+Both actions are intentionally absent from the compact status popover.
 
 ## Reading remote logs
 
 Every directly connected device includes **Remote Console Logs** in its details. This
 reads that device's local logs over its current connection; the logs are not copied into
-the requesting desktop database. The remote provider permits the request only when the
+the requesting device's database. The remote provider permits the request only when the
 verified caller has exact `TrustLevel.Self` in the provider's personal context. `Self`
 is full remote contract access, not a read-only diagnostics permission.
 
