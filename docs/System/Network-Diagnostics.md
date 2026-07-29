@@ -26,9 +26,10 @@ status mark (and a connection count on desktop):
 - **Loading / unavailable** — spinner or question-mark icon while the local diagnostics
   host is starting or reconnecting.
 
-Select the indicator to see connection, syncing-context, and error counts. **Open Network
-Viewer** opens the full diagnostics screen. On mobile, the same indicator appears beside
-the tabs menu.
+Select the indicator to see connection, syncing-context, and error counts, plus a simplified
+list of connected devices (user, device, and shared group count) for a quick check. **Open
+Network Viewer** opens the full diagnostics screen. On mobile, the same indicator appears
+beside the tabs menu.
 
 ## Platform-specific diagnostics
 
