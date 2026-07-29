@@ -11,13 +11,20 @@ network information. Open **Network** and select **View Details** beside a conne
 
 ## Network status indicator
 
-The right side of the tabs strip shows the local device's live network state:
+The right side of the tabs strip shows the local device's live network state as a small
+status mark (and a connection count on desktop):
 
-- **Offline** — no active device connections.
-- **Syncing** — at least one personal or group context is synchronizing.
-- **Synced** — connected with no active sync or recorded sync error.
-- **Error** — at least one context's latest sync attempt failed.
-- **Loading / unavailable** — the local diagnostics host is starting or reconnecting.
+- **Offline** — cloud-slash icon; no active device connections.
+- **Syncing** — calm pulsing green dot for the first 2 seconds of continuous sync, then a
+  blue indeterminate circle while sync continues. Brief flaps back to synced stay on the
+  green pulse until status has been fully synced for a full second.
+- **Synced** — compact green check-circle (matched to the syncing-dot size); connected with
+  no active sync or recorded sync error. The checkmark appears only after synced is stable
+  for 1 second following sync activity.
+- **Error** — solid red dot; at least one context's latest sync attempt failed. Open the
+  popover for the error message.
+- **Loading / unavailable** — spinner or question-mark icon while the local diagnostics
+  host is starting or reconnecting.
 
 Select the indicator to see connection, syncing-context, and error counts. **Open Network
 Viewer** opens the full diagnostics screen. On mobile, the same indicator appears beside
