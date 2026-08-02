@@ -49,6 +49,30 @@ Group details includes two synchronization actions:
 
 Both actions are intentionally absent from the compact status popover.
 
+### Automatic record recovery
+
+Synchronization advances its device checkpoint after valid incoming changes are stored, even
+when one target record cannot be reconstructed or written. This optimistic behavior lets
+unrelated records continue syncing. The failed record is added to the local-only
+`SyncRecoveryQueue`, with one entry per table and record, a lifetime attempt count, and the
+10 most recent bounded error details.
+
+Recovery is requested after each normal sync with a remote device. It asks connected peers
+for the record's active changes (preferred devices first, with sequential fallback), then
+rematerializes through the normal table apply pipeline. Retries for the same entry/device
+use a short in-memory cooldown so a bad peer is skipped without starving other devices.
+A successful rematerialization clears the queue entry.
+
+To inspect pending recovery work, query the affected personal or group context:
+
+```bash
+peers db query "SELECT * FROM SyncRecoveryQueue" --json
+peers db query "SELECT * FROM SyncRecoveryQueue" --context <groupId> --json
+```
+
+An entry indicates that change history was retained but its target row is not yet known to
+match. It does not stop other records or devices from synchronizing.
+
 ## Reading remote logs
 
 Every directly connected device includes **Remote Console Logs** in its details. This
