@@ -21,14 +21,17 @@ status mark (and a connection count on desktop):
 - **Synced** — compact green check-circle (matched to the syncing-dot size); connected with
   no active sync or recorded sync error. The checkmark appears only after synced is stable
   for 1 second following sync activity.
+- **Partial group connectivity** — when the device is not fully offline but at least one
+  personal or shared sync context that has other known peers has no live connection, a
+  smaller cloud-slash overlaps the main mark at the lower right.
 - **Error** — solid red dot; at least one context's latest sync attempt failed. Open the
   popover for the error message.
 - **Loading / unavailable** — spinner or question-mark icon while the local diagnostics
   host is starting or reconnecting.
 
-Select the indicator to see connection, syncing-context, and error counts, plus a simplified
-list of connected devices (user, device, and shared group count) for a quick check. **Open
-Network Viewer** opens the full diagnostics screen. On mobile, the same indicator appears
+Select the indicator to see connection, syncing-context, error, and groups-offline counts, plus a
+simplified list of connected devices (user, device, and shared group count) for a quick check.
+**Open Network Viewer** opens the full diagnostics screen. On mobile, the same indicator appears
 beside the tabs menu.
 
 ## Platform-specific diagnostics
