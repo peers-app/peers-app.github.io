@@ -191,34 +191,3 @@ UI, or process-lifecycle control.
 
 Use timestamps, device IDs, group IDs, and the WebRTC connection ID to correlate the PWA
 trace with the desktop Network Viewer.
-
-### Family Hub receiver and answer checkpoints
-
-For the temporary Family Hub diagnostics, query the target device with Process
-`electron` and Message words `[WebRTC-Diagnostic]`. A successful receiver/answer path
-contains these stages for one connection ID:
-
-1. `routed-offer-received`
-2. `sidecar-connect-queued` and `sidecar-signal-queued`
-3. `go-connect-received` and `go-signal-received`
-4. `go-offer-applying` and `go-offer-applied`
-5. `go-answer-created`, `go-signal-emitting`, and `go-signal-emitted`
-6. `sidecar-signal-received`
-7. `signal-route-result` with `routeResult=200`
-8. Later `status-transition` checkpoints, or a timeout followed by `connection-cleanup`
-
-The first missing stage identifies the broken boundary. `sidecar-unavailable` now
-corresponds to a retriable 503 instead of a false 200. An answer route result of `TTL0`,
-`non-200`, or `rejected` isolates the independent return route.
-
-These checkpoints contain only connection, device, data-context, role, signal-type,
-readiness, status, and response-classification fields. They never include SDP, ICE
-candidates, TURN credentials, auth tokens, public keys, device-message payloads, or full
-route responses.
-
-The temporary Electron checkpoints are isolated in
-`peers-electron/src/server/connections/wrtc-trace.ts` and its calls from
-`webrtc-sidecar.ts`. The matching Go checkpoints are isolated in
-`peers-webrtc/diagnostics.go` and calls from `main.go` and `connection.go`. Remove those
-helpers and call sites after the Family Hub diagnosis; keep the authenticated-readiness
-503 and awaited answer-route handling.
