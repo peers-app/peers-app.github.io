@@ -23,17 +23,21 @@ status mark (and a connection count on desktop):
   for 1 second following sync activity.
 - **Partial group connectivity** — when the device is not fully offline but at least one
   personal or shared sync context that has other known peers has no live connection, a
-  smaller cloud-slash overlaps the main mark at the lower right.
+  yellow warning count at the lower right shows how many such groups are offline.
+- **Groups connected** — a small top-right count of sync contexts with a live connection.
+  Green when at least one group is connected; a red `0` when the device has active
+  connections but no group sync contexts are live; hidden when fully offline.
 - **Error** — solid red dot; at least one context's latest sync attempt failed. Open the
   popover for the error message. Brief disconnects that abort mid-sync with
-  `connection has been closed` are not counted as sync errors.
+  `connection has been closed` or retry timeouts (`Timeout after N retries waiting for …`)
+  are not counted as sync errors.
 - **Loading / unavailable** — spinner or question-mark icon while the local diagnostics
   host is starting or reconnecting.
 
-Select the indicator to see connection, syncing-context, error, and groups-offline counts, plus a
-simplified list of connected devices (user, device, and shared group count) for a quick check.
-**Open Network Viewer** opens the full diagnostics screen. On mobile, the same indicator appears
-beside the tabs menu.
+Select the indicator to see connection, syncing-context, error, groups-connected, and
+groups-offline counts, plus a simplified list of connected devices (user, device, and shared
+group count) for a quick check. **Open Network Viewer** opens the full diagnostics screen. On
+mobile, the same indicator appears beside the tabs menu.
 
 ## Platform-specific diagnostics
 
