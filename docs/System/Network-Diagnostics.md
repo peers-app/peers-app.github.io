@@ -25,7 +25,8 @@ status mark (and a connection count on desktop):
   personal or shared sync context that has other known peers has no live connection, a
   smaller cloud-slash overlaps the main mark at the lower right.
 - **Error** — solid red dot; at least one context's latest sync attempt failed. Open the
-  popover for the error message.
+  popover for the error message. Brief disconnects that abort mid-sync with
+  `connection has been closed` are not counted as sync errors.
 - **Loading / unavailable** — spinner or question-mark icon while the local diagnostics
   host is starting or reconnecting.
 
