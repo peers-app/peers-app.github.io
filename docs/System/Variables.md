@@ -27,10 +27,16 @@ Instances are **cached** by scope, logical name, user context, and data context.
 
 A `PersistentVar<T>` is an `Observable<T>` with two extra members:
 
-- **`loadingPromise`** — resolves when the row has been loaded from (or created in) the database and subscriptions are wired. Await this before calling `delete()` or assuming persistence has caught up.
+- **`loadingPromise`** — resolves when the initial database lookup has finished and subscriptions are wired. A missing row is allowed and is not created just by loading. Await this before calling `delete()` or assuming persistence has caught up.
 - **`delete()`** — removes the row and resets to the default value when a default was provided.
 
 Reading and writing use the observable call form: `myVar()` to read, `myVar(newValue)` to write. Writes debounce through to `PersistentVars` save logic.
+
+### Defaults and initial writes
+
+`defaultValue` is a non-authoritative in-memory fallback. Constructing or loading a pvar whose row does not exist does not persist the default by itself.
+
+The first observable-driven save for a locally absent pvar is a **weak insert**. It still synchronizes, but any established normal write from another device has higher conflict priority. This prevents a newly connected device from replacing an existing `userVar`, `groupVar`, or `groupUserVar` value with locally initialized state before synchronization catches up. Once the row exists locally, subsequent writes are normal updates and take normal conflict priority.
 
 ## Secrets
 
