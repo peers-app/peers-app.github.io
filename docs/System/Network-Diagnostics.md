@@ -15,9 +15,9 @@ The right side of the tabs strip shows the local device's live network state as 
 status mark (and a connection count on desktop):
 
 - **Offline** — cloud-slash icon; no active device connections.
-- **Syncing** — calm pulsing green dot for the first 2 seconds of continuous sync, then a
-  blue indeterminate circle while sync continues. Brief flaps back to synced stay on the
-  green pulse until status has been fully synced for a full second.
+- **Syncing** — calm opacity-pulsing green dot (fade, not grow) for the first 4 seconds of
+  continuous sync, then a blue indeterminate circle while sync continues. Brief flaps back
+  to synced stay on the green pulse until status has been fully synced for a full second.
 - **Synced** — compact green check-circle (matched to the syncing-dot size); connected with
   no active sync or recorded sync error. The checkmark appears only after synced is stable
   for 1 second following sync activity.
