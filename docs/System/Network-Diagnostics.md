@@ -22,8 +22,11 @@ status mark (and a connection count on desktop):
   no active sync or recorded sync error. The checkmark appears only after synced is stable
   for 1 second following sync activity.
 - **Partial group connectivity** — when the device is not fully offline but at least one
-  personal or shared sync context that has other known peers has no live connection, a
+  personal or shared sync context that has other known sync peers has no live connection, a
   yellow warning count at the lower right shows how many such groups are offline.
+  Personal peers are other devices of the same user (not every row in the personal
+  Devices registry). Shared peers are other devices in that group, or other group members
+  when no devices are known yet.
 - **Groups connected** — a small top-right count of sync contexts with a live connection.
   Green when at least one group is connected; a red `0` when the device has active
   connections but no group sync contexts are live; hidden when fully offline.
