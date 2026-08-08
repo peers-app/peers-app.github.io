@@ -65,6 +65,27 @@ Routes and UI bundles reload when you change the active version on this device (
 
 **Planned:** `promote-package-version` and `set-active-package-version` tools for CI and AI assistants (same behavior as the UI, single code path). See [Package lifecycle design](../Roadmap/package-lifecycle).
 
+## Signed publish artifacts (local)
+
+Use the system tool `publish-package` to build distributable files **on disk** after you have a signing key and built bundles:
+
+```bash
+peers tools run publish-package '{"name":"Groceries","versionTag":"beta"}'
+```
+
+This writes (by default under `<packageLocalPath>/dist/publish/`):
+
+- A signed `.peers-pkg.tar.gz` containing the three bundles plus metadata
+- A `latest-<tag>.json` pointer with version, hashes, and author signature
+
+**Verification expectations before you trust an artifact:**
+
+- Bundle file hashes in the pointer/payload match the files inside the tarball
+- `packageAuthorSignature` verifies against `Packages.publishPublicKey`
+- Semver in the pointer is what you intend to publish (remote auto-activation requires a **newer** semver than the installed follow candidate)
+
+**Upload / hosting is a separate step.** `publish-package` does not push to S3 or your `updateUrl`. Point `Packages.updateUrl` at a host only after you have uploaded the tarball and pointer yourself (or via your release tooling).
+
 ### Permissions
 
 | Action | Typical role |

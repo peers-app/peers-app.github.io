@@ -23,12 +23,29 @@ See **[Package lifecycle](./package-lifecycle)** for development workflow, per-d
 
 ## Creating a new package
 
-The fastest way to start a new package is from the [peers-package-template](https://github.com/peers-app/peers-package-template). Clone or copy it into your packages directory:
+The fastest way to start a new package is from the Peers app (Packages → create) or CLI, which clones the [peers-package-template](https://github.com/peers-app/peers-package-template), patches IDs, builds bundles, registers the `Packages` record, and provisions a per-package author signing key in your personal space.
+
+You can also scaffold on disk and import:
 
 ```bash
 cp -r peers-package-template ~/peers/packages/my-app
 cd ~/peers/packages/my-app
+# replace placeholders in src/consts.ts and peers.packageId, then:
+npm install && npm run build
+peers addOrUpdatePackage my-app --packageLocation ~/peers/packages/my-app
 ```
+
+### Importing an existing package directory
+
+If the target directory already exists and contains a valid `package.json` with `peers.packageId`, create/import **does not** re-clone the template. It:
+
+1. Validates the manifest package ID
+2. Creates or updates the `Packages` row (name, description, optional `remoteRepo`)
+3. Persists `packageLocalPath_<packageId>` for that data context
+4. Provisions a signing keypair **only when** `publishPublicKey` is missing (never silently rotates an established key; a readable secret that disagrees with `publishPublicKey` fails clearly)
+5. Installs the on-disk `dev` bundles
+
+This is the supported path for monorepo apps under `official-packages/` (for example Groceries).
 
 ### Project structure
 
@@ -106,7 +123,10 @@ import { definePackage } from "@peers-app/peers-sdk";
 import { version } from "../package.json";
 import { contractId, packageId, packageName } from "./consts";
 
-const packageDefinition = definePackage((pkg) => {
+/**
+ * Webpack (`library.type: "commonjs2"`) places this on `module.exports.packageDefinition`.
+ */
+export const packageDefinition = definePackage((pkg) => {
   pkg.packageId = packageId;
   pkg.version = version;
 
@@ -122,13 +142,22 @@ const packageDefinition = definePackage((pkg) => {
     navigationPath: "app",
   }];
 });
-
-(exports as any).packageDefinition = packageDefinition;
 ```
+
+Use a typed named export (`export const packageDefinition = …`). The loader reads `module.exports.packageDefinition` from the CommonJS bundle.
 
 `appNavs` declares the navigation items that appear in the Apps launcher. The `navigationPath` corresponds to the route path registered in `src/routes.ts`.
 
 Note: `versionTag` and contract `devTag` are **not** set in code. The platform assigns these based on the package's promotion state.
+
+### Author signing keys
+
+Each package has an Ed25519 **author** keypair used to sign non-dev publish artifacts:
+
+- **Public key** — stored on the `Packages.publishPublicKey` field (TOFU anchor for verifiers).
+- **Secret key** — stored as a secret user pvar named `packageSigningKey_<packageId>` in your personal data context. Do not commit it or paste it into chat/logs.
+
+Keys are created when a package is first registered (create or import) if `publishPublicKey` is empty. Re-importing the same directory reuses the established public key.
 
 ## Related topics
 
