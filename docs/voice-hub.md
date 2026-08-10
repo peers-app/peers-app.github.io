@@ -36,7 +36,14 @@ controls the tradeoff between missed activations and false activations: raise it
 conservative, or lower it if your microphone frequently misses the phrase. Each model starts at its
 own recommended real-device threshold; Hey Operator starts at `0.72`. While listening, Voice Hub
 displays the live microphone level, wake-model score, inference time, and skipped frame count
-beside the active threshold. Recording ends after about three-quarters of a second of silence.
+beside the active threshold. Recording ends after about three-quarters of a second of silence. The
+**Wake re-arm delay** starts after a turn and its completion tone finish. Its two-second default
+prevents the assistant's own tones, spoken response, or room echo from immediately starting another
+recording.
+
+Wake listening continuously runs local audio processing while the Voice Hub screen is open, so a
+steady CPU load is expected. Open Settings, disable wake listening, or leave Voice Hub to stop it.
+Opening Settings pauses microphone capture until you return to the main Voice Hub screen.
 
 ## Use voice input
 
@@ -88,6 +95,12 @@ first to verify microphone access. Speak the complete phrase, reduce the detecti
 small steps, or switch to another bundled phrase. The microphone percentage should rise when you
 speak; compare the displayed wake score with the threshold to distinguish input problems from model
 tuning.
+
+### Voice Hub activates again after a response
+
+Increase the **Wake re-arm delay** in small steps. Voice Hub resets wake-model history after each
+turn and does not resume wake inference until this delay expires, allowing local tones and spoken
+output to clear the room first.
 
 ### Transcription or OpenAI speech fails
 
