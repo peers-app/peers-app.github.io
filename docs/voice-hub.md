@@ -45,6 +45,38 @@ Wake listening continuously runs local audio processing while the Voice Hub scre
 steady CPU load is expected. Open Settings, disable wake listening, or leave Voice Hub to stop it.
 Opening Settings pauses microphone capture until you return to the main Voice Hub screen.
 
+Voice Hub uses a bundled Silero neural voice-activity model for wake gating and automatic
+end-of-speech detection. While desktop wake listening is idle, it slowly adapts a bounded room-noise
+estimate from high-confidence non-speech. Adaptation freezes during wake candidates, recording,
+processing, speech output, and the wake re-arm delay. It does not change the wake-model threshold or
+persist room conditions between sessions.
+
+## Tune your device
+
+Microphones and rooms differ, so acoustic values are stored on each device instead of syncing with
+your other Peers installations. A new device starts with conservative benchmark defaults. During
+upgrade, legacy device values bind to the first microphone identity the browser provides.
+
+Open **Settings** and select **Tune this device**. Say the selected wake phrase three times in your
+normal intentional activation voice—slightly raised over ordinary conversation, but not shouted.
+Then record two ordinary commands in a normal voice and leave trailing silence. There is no separate
+ambient recording or validation round; continuous room adaptation handles changing stationary
+noise. Settings change only after you select **Apply successful tuning**.
+
+The full wake flow is available on desktop. Browsers and the PWA tune speech endpointing only.
+Wake and endpoint tuning can succeed independently, so a partial result can be applied while the
+other dimension keeps its neural default. Changing the selected wake phrase makes wake tuning
+stale. Changing microphones keeps the old profile marked as stale and activates defaults for the
+new input. You can also use the advanced sliders for manual device-local changes or select **Reset
+this device** to return to benchmark defaults.
+
+Tuning audio is processed locally, kept only in memory, and discarded when the wizard closes. It is
+not transcribed, uploaded, or added to conversation history. Voice Hub stores only the resulting
+values, microphone/model identity, completion flags, date, and aggregate quality summary. The
+rolling room-noise estimate and neural recurrent state are never persisted. Three positive wake
+attempts are personal setup evidence, not a release-quality false-activation benchmark, and cannot
+lower the model's benchmark safety threshold.
+
 ## Use voice input
 
 Tap the microphone, speak, and either tap stop or pause for automatic endpoint detection. On the
@@ -66,9 +98,9 @@ Use **Cancel** to stop recording, an in-flight request, or speech playback.
 
 ## Providers and privacy
 
-Wake-word inference, energy-based voice activity detection, and browser speech synthesis run on
-the device. The wake classifiers and ONNX runtime are bundled with the package; they do not require
-an API key or a model download.
+Wake-word inference, Silero neural voice activity detection, adaptive room-noise analysis, and
+browser speech synthesis run on the device. The wake classifiers, VAD model, and ONNX runtime are
+bundled with the package; they do not require an API key or a model download.
 
 Recorded utterances are sent to OpenAI when you request transcription. Transcribed text and recent
 Voice Hub context are sent to OpenAI for response and action classification. When the bundled Voice
@@ -79,6 +111,7 @@ requests in the trusted local host, so the decrypted key is not returned to the 
 
 Conversation history is stored in a local-only package table. Existing history from the earlier
 built-in voice implementation is copied into that table the first time the updated package opens.
+Device tuning values are stored in a separate device-local persistent variable and do not sync.
 
 ## Troubleshooting
 
@@ -94,7 +127,20 @@ Wake listening works only in the desktop app while Voice Hub is open and enabled
 first to verify microphone access. Speak the complete phrase, reduce the detection threshold in
 small steps, or switch to another bundled phrase. The microphone percentage should rise when you
 speak; compare the displayed wake score with the threshold to distinguish input problems from model
-tuning.
+tuning. Run **Tune this device** after changing microphones or wake phrases.
+
+### Tuning reports a partial result
+
+Apply the successful dimension; the failed wake or endpoint dimension continues using its neural
+default. For another attempt, speak the wake phrase intentionally and slightly louder than ordinary
+conversation, then use a normal voice for commands.
+
+### Television or family speech affects detection
+
+The neural VAD distinguishes speech from non-speech, not your voice from another speaker. The wake
+classifier still checks the selected phrase, but competing speech and television remain harder than
+stationary appliance noise. A future personal verifier may be needed in rooms with persistent
+competing speech.
 
 ### Voice Hub activates again after a response
 
