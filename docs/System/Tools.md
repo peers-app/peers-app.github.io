@@ -30,6 +30,12 @@ Compare the current user's context role (**U**), the Assistant's level
 The model only receives tools the current user could approve (`T <= U`).
 Tool metadata in the Tools table remains broadly visible in the UI.
 
+Contract tools use the same levels. Level **0** tools do not need a caller
+identity. Higher levels resolve **U** in the provider's data context — not
+the process-wide user-context singleton — so a remote device call cannot
+hang waiting for a context that belongs to another device in the same
+process. Missing identity or a missing user context fails closed.
+
 ## Step-up approval
 
 Approvals are local-only records. They store the tool id, a sanitized
