@@ -1,99 +1,80 @@
 ---
-sidebar_position: 4
+sidebar_position: 7
+title: Tools and access
 ---
 
-# Tools
+# Tools and access
 
-**Tools** are callable functions that assistants and workflows invoke at runtime. Each tool has a schema describing its inputs and outputs, metadata for AI discovery, and a function that does the actual work.
+Tools are the actions Assistants and users can run: send a message, write a
+task, search workflows, query a device database, and so on. Each tool record
+has an integer `accessLevel` from **0–100**. Missing or unclassified tools
+default to **100 (Self)** so a new package tool cannot run until someone
+explicitly lowers it.
 
-## Anatomy of a tool
+Access levels are **authorization**, not sandboxing. Package top-level code
+still loads on the host. Manifest review and package sandboxing are a later
+project.
 
-A tool has two parts:
+## Policy
 
-| Type | Purpose |
-| --- | --- |
-| **`ITool`** | Metadata record: name, descriptions, input/output schemas (`IField[]`), and an ID. Stored in the `Tools` table and surfaced to assistants for reasoning. |
-| **`IToolInstance`** | Runtime pair of an `ITool` and its `toolFn` implementation. Optionally carries a Zod `inputSchema` for TypeScript type inference. |
+Compare the current user's context role (**U**), the Assistant's level
+(**A**), and the tool's level (**T**):
 
-## Defining tool schemas
+| Condition | Result |
+|---|---|
+| `T > U` | Hidden from the model and denied at execution |
+| `T <= A` | Runs automatically |
+| `A < T <= U` | Assistant may request it; user must approve |
+| Direct user call, `T <= U` | Runs (CLI, UI, Device Operations `runTool`) |
 
-Every tool needs an `inputSchema` and `outputSchema` on the `ITool` record. These are `IOSchema` objects containing an array of `IField[]` that describe each parameter's name, type, optionality, and description.
+The model only receives tools the current user could approve (`T <= U`).
+Tool metadata in the Tools table remains broadly visible in the UI.
 
-**Define your schema once as a Zod object, then use `schemaToFields()` to derive the `IField[]`.** This keeps a single source of truth and prevents drift between the TypeScript types and the contract-facing metadata.
+## Step-up approval
 
-```typescript
-import {
-  IOSchemaType,
-  type ITool,
-  type IToolInstance,
-  type IWorkflowRunContext,
-  schemaToFields,
-} from "@peers-app/peers-sdk";
-import { z } from "zod";
+Approvals are local-only records. They store the tool id, a sanitized
+argument preview, a hash of the frozen arguments, a nonce, an expiry, and a
+scope. They do not store secrets or raw logs.
 
-// 1. Define schemas once with Zod — descriptions flow into IField[]
-const inputSchema = z.object({
-  query: z.string().describe("Search query text"),
-  limit: z.number().optional().describe("Max results to return"),
-});
+Default approval is **one exact frozen call**. That grant is not stored on
+the thread — a later request for the same tool needs a new approval, or a
+reusable thread/context grant. A thread grant follows the thread root, so a
+later reply in the same conversation does not need another prompt. Optional
+scopes allow the same tool for the current thread or data context without
+raising the Assistant globally.
 
-type IInput = z.infer<typeof inputSchema>;
+Approve and reject are exposed only through the local host
+**System Tool Access Control** contract. Remote device connections cannot
+resolve that contract. Host tickets used to execute the frozen call
+(`hostApprovedApprovalId`, `directUserInvocation`) stay on that run and are
+not copied onto thread message vars. Models cannot raise authority by
+writing those keys — or `accessAssistantId` / `assistantId` — through
+`set-variable` or child workflow vars. A missing Assistant record fails
+closed (level 0), not open to Self.
 
-const outputSchema = z.object({
-  results: z.string().describe("Matching results"),
-});
+On approve, the host rechecks the user's role, consumes the nonce, and
+executes only the stored arguments in a new host-owned run. Replay of a
+used, denied, or expired nonce fails.
 
-// 2. Derive IField[] from Zod — no hand-written field arrays
-export const myTool: ITool = {
-  toolId: "your-25-char-peer-id-here",
-  name: "my-tool",
-  code: "",
-  usageDescription: "Short description for AI reasoning",
-  inputSchema: {
-    type: IOSchemaType.complex,
-    fields: schemaToFields(inputSchema),
-  },
-  outputSchema: {
-    type: IOSchemaType.complex,
-    fields: schemaToFields(outputSchema),
-  },
-};
+## Shipped classifications
 
-// 3. Register the instance with the same Zod schema
-export const myToolInstance: IToolInstance = {
-  tool: myTool,
-  inputSchema,
-  toolFn: async (args: IInput, _context: IWorkflowRunContext) => {
-    // implementation
-    return { results: "..." };
-  },
-};
-```
+Unlisted package tools stay at **100**. Mixed-operation tools use the highest
+required level until destructive operations are split.
 
-### Why `schemaToFields`?
+| Level | Examples |
+|---|---|
+| 0 | Hosted / voice / CLI runners, `throw-error`, `set-variable`, `new-id` |
+| 20 | `tool-search`, `search-workflows`, `app-version`, `list-timers`, device status / list / get, network diagnostics |
+| 40 | `send-message`, tasks, groceries, timer writes, notifications, `dispatch-voice-action` |
+| 60 | Network control (connect, disconnect, refresh, sync) |
+| 80 | `run-a-workflow`, filesystem path tools, `cd`, `queryDatabase`, device `runTool`, `deleteDevice`, `resetChangeTracking`, voice device-local operations |
+| 100 | Unclassified package tools |
 
-The `schemaToFields` utility (from `@peers-app/peers-sdk`) walks a Zod object schema and produces an `IField[]` array with the correct `FieldType`, optionality, array flags, descriptions, and defaults. It handles `ZodString`, `ZodNumber`, `ZodBoolean`, `ZodDate`, `ZodObject`, `ZodArray`, `ZodOptional`, `ZodNativeEnum`, and nested wrappers.
+Runner tools are infrastructure level **0**, but they still validate that the
+current user may invoke the **target Assistant**.
 
-Without it, you'd maintain two parallel declarations of the same schema — one Zod (for TypeScript), one `IField[]` (for the `ITool` record). These can drift silently, causing the contract to advertise a different API than the function actually accepts.
+## Configuration
 
-### Descriptions are important
-
-Use `.describe("...")` on every Zod field. These descriptions become the `IField.description` that assistants read when deciding how to call your tool. Clear, specific descriptions lead to better tool invocation by AI.
-
-## Tool IDs
-
-Tool IDs are 25-character alphanumeric peer IDs. Use `newid()` from `@peers-app/peers-sdk` to generate them. For well-known built-in tools, hardcoded IDs (e.g. `000peers0tool00toolsearch`) are acceptable.
-
-## Tools in contracts
-
-When a tool is part of a **package contract**, `extractToolShape` pulls the `IField[]` from `ITool.inputSchema` and `ITool.outputSchema` into the contract definition as `IContractTool`. The contract validation system (`validateProviderSatisfiesContract`) checks field-level compatibility between contract providers.
-
-Using `schemaToFields` ensures the fields that end up in the contract match exactly what the Zod schema (and therefore the `toolFn`) expects.
-
-See [Package contracts](../Packages/contracts) for more on contracts.
-
-## Related topics
-
-- **[System: Workflows](./Workflows)** — tools run inside workflow runs.
-- **[Package contracts](../Packages/contracts)** — how tools fit into versioned package interfaces.
-- **[System: Tables](./Tables)** — `schemaToFields` is also used for table definitions.
+The tool info screen has the same named presets and custom 0–100 editor as
+Assistants. Changing a tool's level takes effect on the next discovery and
+execution check; it does not rewrite historical workflow logs.
