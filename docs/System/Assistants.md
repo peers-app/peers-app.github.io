@@ -74,9 +74,10 @@ workflow is **not** paused. An inline card on the thread offers:
 
 - **Allow once** — execute this exact frozen call; it is not reused later in
   the thread
-- **Allow in thread** — same tool for the rest of this thread (the thread
-  root, including later replies)
-- **Allow in this context** — same tool in this data context
+- **Allow in thread (15 min)** — same tool at the thread root, including
+  later replies, for 15 minutes from approval
+- **Allow in this context (15 min)** — same tool in this data context for
+  15 minutes from approval
 - **Deny**
 
 Approval consumes a one-time nonce, rechecks the user's role and the stored

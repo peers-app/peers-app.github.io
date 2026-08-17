@@ -40,14 +40,16 @@ process. Missing identity or a missing user context fails closed.
 
 Approvals are local-only records. They store the tool id, a sanitized
 argument preview, a hash of the frozen arguments, a nonce, an expiry, and a
-scope. They do not store secrets or raw logs.
+scope. They do not store secrets or raw logs. Pending approvals expire after
+15 minutes. Reusable thread and context grants receive a fresh 15-minute
+window when approved.
 
 Default approval is **one exact frozen call**. That grant is not stored on
 the thread — a later request for the same tool needs a new approval, or a
 reusable thread/context grant. A thread grant follows the thread root, so a
 later reply in the same conversation does not need another prompt. Optional
 scopes allow the same tool for the current thread or data context without
-raising the Assistant globally.
+raising the Assistant globally during that 15-minute window.
 
 Approve and reject are exposed only through the local host
 **System Tool Access Control** contract. Remote device connections cannot
