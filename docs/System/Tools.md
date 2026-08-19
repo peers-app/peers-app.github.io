@@ -73,7 +73,7 @@ required level until destructive operations are split.
 |---|---|
 | 0 | Hosted / voice / CLI runners, `throw-error`, `set-variable`, `new-id` |
 | 20 | `tool-search`, `search-workflows`, `app-version`, `list-timers`, device status / list / get, network diagnostics |
-| 40 | `send-message`, tasks, groceries, timer writes, notifications, `dispatch-voice-action` |
+| 40 | `send-message`, tasks, groceries, timer writes, notifications, `dispatch-voice-action`, `query-database` |
 | 60 | Network control (connect, disconnect, refresh, sync) |
 | 80 | `run-a-workflow`, filesystem path tools, `cd`, `queryDatabase`, device `runTool`, `deleteDevice`, `resetChangeTracking`, voice device-local operations |
 | 100 | Unclassified package tools |
