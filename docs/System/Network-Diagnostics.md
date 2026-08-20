@@ -146,6 +146,11 @@ After validating the message, the receiver saves the new device observation and 
 protocol discovery and sync continue. This does not admit unknown devices to shared-group
 or cross-user contexts.
 
+Same-account devices also start shared-group sync from the personal `Groups` list, even
+when the new install's group database is still empty. That lets the first peer pull
+`GroupMembers` and the rest of the group context. Cross-user connections still require a
+local Writer+ membership (or equivalent `getUserRole`) before group sync starts.
+
 Two log messages identify older or unsuccessful bootstrap attempts:
 
 - `Could not establish a publicBoxKey ... sending as signed plain text` means the sender

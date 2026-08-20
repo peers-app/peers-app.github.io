@@ -24,6 +24,24 @@ only inside that exact context and requires both the box and signature keys to m
 or conflicting identities fail before a device handler runs; stale personal records cannot
 override the identity recorded in the declared shared group.
 
+## Joining a group
+
+A password invitation is complete only after both sides have enough seed data to start
+group-context messaging:
+
+- The approving admin writes a signed `GroupMembers` row and weak `Users`/`Devices` stubs
+  for the joiner in the group context.
+- The joiner receives the group record, Admin+ seed memberships, their own signed
+  membership, and the admin's identity. Personal `Groups` is added only when it is missing;
+  an existing personal row is left in place so a local disable or leave stays authoritative.
+- After import, the joiner opens a targeted connection to the approving admin in that group
+  context. Signaling encrypts to the admin's user box key, so the group secret is not
+  required for this first hop.
+
+The group encryption secret stays a personal persistent variable. It is not sent with the
+invitation. Whole-group ciphertext still requires matching group key material on Writer+
+devices; distributing that secret is a separate step from joining.
+
 ## Display names
 
 The signed connection handshake can include optional user and device display-name hints.
