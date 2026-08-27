@@ -23,6 +23,8 @@ See **[Package lifecycle](./package-lifecycle)** for development workflow, per-d
 
 ## Creating a new package
 
+Creating or cloning a package from the desktop app requires **git**, **Node.js**, and **npm** on your machine. Peers looks them up through your login shell so tools installed via nvm, Homebrew, or fnm work even when the app was opened from Finder or the Dock. If those tools are truly missing, the create dialog explains how to install Node.js from [nodejs.org](https://nodejs.org) and restart Peers.
+
 The fastest way to start a new package is from the Peers app
 (**Packages → Create**), which clones the
 [peers-package-template](https://github.com/peers-app/peers-package-template),
