@@ -86,6 +86,13 @@ Contract maturity is **coupled to the package lifecycle**. Developers do not set
 
 The lifecycle is one-way: once a contract version is frozen (stable), it **cannot** be re-registered as dev. The registry rejects such attempts.
 
+Isolated artifacts follow the same mutable-development rule without trusting
+artifact data for maturity. The host reads the active `PackageVersion.versionTag`
+when it installs an artifact: `dev` and `beta` definitions receive
+`devTag: "dev"`, while stable or untagged definitions are frozen. Reloading a
+changed dev/beta artifact restarts its worker and updates its contract shape;
+an already-frozen definition cannot be reopened as mutable.
+
 ### Evolving stable contracts with `alsoImplements`
 
 When you need to extend a frozen contract, **increment the version number** and use `alsoImplements` to declare backward compatibility:
@@ -259,9 +266,147 @@ helper for isolated providers. Production connection routing does not use it.
 `connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
 
 Still deferred are installed-package provider resolver registration, precise generic
-`createContractConsumer<T>()` typing, granular per-package UI permissions, payload
-quotas/codecs, and QuickJS provider isolation. The endpoint resolver seam allows later
-sandbox-backed providers without replacing the router.
+`createContractConsumer<T>()` typing, granular per-package UI permissions, and payload
+quotas/codecs.
+
+## Isolated contract packages (Electron)
+
+An opt-in **isolated package** artifact lets a headless contract-tool provider run
+outside the Electron host process. The host never evaluates provider source.
+
+- **Format.** The existing `package.bundle.js` slot starts with
+  `PEERS_ISOLATED_PACKAGE_V1` followed by a JSON envelope: package/version identity,
+  provided contracts, optional package-owned `manifest.tables`, declared
+  consumes, optional `appNavs`, and `providerSource`. Provided contracts can
+  expose selected tables with name-only references and expose package pvars as
+  typed observables. A recognized but malformed envelope
+  **fails closed** and never falls back to `new Function`. Older table-less
+  and tool-only artifacts remain valid. Earlier schema-bearing
+  `provides[].tables` entries are rejected rather than migrated.
+- **Host.** Electron registers an `IIsolatedPackageRuntime` factory before
+  `initializePeerDevice`. `PackageLoader` installs the manifest into the per-data-context
+  `ContractRegistry` and stores source for a supervised Node `worker_threads` + SES
+  worker. The worker starts lazily on the first tool call. Each data context
+  constructs its table container before the package loader so isolated
+  package-owned tables receive a host gateway. Local-dev isolated packages
+  prefer `dist/package.bundle.js` from the stored checkout path over a stale
+  Files bundle so a rebuild can introduce a new contract version. Beta and
+  stable versions always load their selected stored artifact; a local checkout
+  cannot override them. The artifact package ID and semantic version must match
+  the selected `PackageVersion` (with dev-only version correction for a rebuilt
+  local artifact).
+- **Tables.** Isolated packages declare every package-owned schema once at
+  `manifest.tables`.
+  Authors provide a package-local name, primary key, fields, and optional schema
+  version—never `tableId`, visibility, contract identity, or a physical name. The
+  logical name must be unique among that package's tables. The
+  host derives an internal 25-character table ID for `TableDefinitions` and stores
+  the table as `${logicalTableName}_${packageId}`. Guest code receives copied
+  records through `getOwnedTableRecord(tableName, recordId)` and
+  `saveOwnedTableRecord(tableName, record)` only during an authorized tool
+  invocation. The host binds package identity, route context, and authority;
+  guessed physical or system table names are not declarations. A provided
+  contract can expose a schema with `{ name }` in `provides[].tables`; the host
+  then serves standard table CRUD against the trusted provider package and
+  logical table name. Unreferenced tables remain private. Custom methods and
+  table `dataChanged` subscriptions are not exposed. These guarantees apply to
+  isolated packages; legacy
+  host-evaluated packages can still import tables directly.
+  The host validates the package's complete declaration batch before publishing
+  any new table binding.
+  All peers that sync a group must be upgraded before that group uses isolated
+  package tables: older hosts derive the physical name from `tableId`, while
+  current hosts intentionally use `${logicalTableName}_${packageId}`.
+- **Persistent variables.** Isolated provider code can call
+  `getOwnedPersistentVar(scope, name)` and
+  `setOwnedPersistentVar(scope, name, value)` during an authorized tool
+  invocation. The host derives `${packageId}_${name}` from the worker's trusted
+  identity before scope handling and deterministic ID generation. It uses the
+  existing pvar rows and canonical factories—there is no new persisted package
+  column. `device`, `user`, `group`, `groupDevice`, and
+  `groupUser` are supported; group-dependent scopes append the trusted route
+  context. Guest-supplied package, context, or authority fields cannot redirect
+  access. Shared/global pvars, secrets, and owned-pvar subscriptions are
+  deliberately deferred.
+- **Contract observables.** A provided contract may bind an observable to a
+  package-owned pvar by declaring its scope, logical pvar name,
+  JSON-compatible default, value type, and `writable` flag. Normal renderer/host
+  contract consumers can get, set when writable, and subscribe. Canonical pvar
+  changes—including changes applied by device sync—notify subscribers, as do
+  writes through either the contract or the provider's owned-pvar helper. The
+  pvar binding is host-only and never lets a consumer supply package or physical
+  storage identity. Isolated guest subscriptions remain deferred.
+- **Routing.** For package-registered contracts,
+  `createLocalUserContextContractProviderRouter` resolves an isolated or
+  resolver-backed endpoint only for the provider selected by that context's
+  `ContractRegistry`. Legacy unscoped resolvers remain available only when no
+  registry provider exists. Package-to-package tool, table, and observable
+  consumes go back through the trusted host. The caller must declare the exact
+  consume and its provider allowlist must accept the resolved package; guest
+  payloads cannot choose provider identity or authority. `alsoImplements` aliases
+  route older consumer versions to the validated compatible implementation
+  version.
+- **Boundary values.** Plain values, `Date`, and `Uint8Array` cross the worker
+  boundary with collision-safe tags and retain their Peers table/pvar types.
+  Functions, unsupported objects, non-finite numbers, cycles, oversized values,
+  and excessive nesting are rejected.
+- **Access.** Tool suggestions stay **Self** until an administrator approves them.
+  Direct user calls use the trusted local `DataContext` access level. Persistent
+  approval storage/UI is a later tools-system milestone; the first smoke path runs
+  in the personal context.
+- **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
+  are unchanged. Isolated packages do not yet expose events, custom table
+  methods, table `dataChanged`, isolated-guest subscriptions, owned-pvar
+  subscriptions, or global pvar grants. Electron is currently the only isolated
+  execution host. PWA safely skips valid isolated provider artifacts instead of
+  failing device startup; those providers and their contract tools remain
+  unavailable there. PWA browser Workers are a follow-up that can reuse the same
+  SDK factory seam. Malformed artifacts and package-ID mismatches still fail
+  closed on every host. When a package changes between legacy and isolated
+  execution on a supporting host, the replacement becomes active only after it
+  is ready; a failed replacement leaves the prior provider active. A device
+  without isolation support may temporarily run
+  the newest older eligible legacy version and records that choice only in its
+  existing device-local package preference; when isolation support becomes
+  available, it retries and restores the originally selected version.
+
+This is not a production security claim. An SES escape still reaches Worker ambient
+APIs; `Worker.terminate()` remains the availability path. See
+[`peers-isolate/README.md`](https://github.com/peers-app/peers-isolate) for the
+runtime surface.
+
+### Observing lazy worker startup
+
+The standalone `official-packages/isolation-smoke` package provides contract v4
+with one `observeWorker` tool, a package-private `IsolationSmokeState` table and
+`invocationCount` device pvar, plus a public `IsolationSmokeSharedState` table
+and writable `sharedInvocationCount` pvar-backed observable. Contract v3/v2
+remain tool-only fallbacks. The private table's physical name is
+`IsolationSmokeState_00mt4wmj0h50697f5l3zz6mka`; the pvar's physical name is
+`00mt4wmj0h50697f5l3zz6mka_invocationCount`. The screen tries the personal
+data context first (then the selected group) and falls back through v3/v2/v1 if v4
+is not installed yet. It is useful for checking the production lifecycle
+without relying on Jest fixtures:
+
+1. Build and import the package. The Electron host logs
+   `Registered …; worker dormant until first tool call`.
+2. Open the package screen. This loads its renderer bundle but does not start its
+   provider worker.
+3. Click **Call isolated tool**. The host logs `Starting worker …` and
+   `Worker ready …`.
+4. Click again. The table-persisted, pvar-persisted, and worker-local counts
+   increment, showing that the existing worker handled the second call.
+5. After a worker restart or package reload, the worker-local count resets to
+   one while both persisted counts continue.
+6. Click **Increment public state** to update the public table and observable
+   directly through a renderer contract consumer without starting the worker.
+7. Import `official-packages/isolation-consumer`; its worker consumes v4 and
+   increments the same public values. Private names, guessed physical/system
+   names, and undeclared members fail closed.
+
+Isolated contract tools are not yet mirrored into the legacy `Tools` table, so this
+smoke package uses a contract consumer on its screen rather than
+`peers tools run`.
 
 ## Related topics
 

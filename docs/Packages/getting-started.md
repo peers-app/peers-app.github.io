@@ -23,7 +23,11 @@ See **[Package lifecycle](./package-lifecycle)** for development workflow, per-d
 
 ## Creating a new package
 
-The fastest way to start a new package is from the Peers app (Packages → create) or CLI, which clones the [peers-package-template](https://github.com/peers-app/peers-package-template), patches IDs, builds bundles, registers the `Packages` record, and provisions a per-package author signing key in your personal space.
+The fastest way to start a new package is from the Peers app
+(**Packages → Create**), which clones the
+[peers-package-template](https://github.com/peers-app/peers-package-template),
+patches IDs, builds bundles, registers the `Packages` record, and provisions a
+per-package author signing key in your personal space.
 
 You can also scaffold on disk and import:
 
@@ -32,8 +36,10 @@ cp -r peers-package-template ~/peers/packages/my-app
 cd ~/peers/packages/my-app
 # replace placeholders in src/consts.ts and peers.packageId, then:
 npm install && npm run build
-peers addOrUpdatePackage my-app --packageLocation ~/peers/packages/my-app
 ```
+
+Then open **Packages → Create** in Peers and select the existing package
+directory to import it.
 
 ### Importing an existing package directory
 
@@ -73,6 +79,25 @@ Each webpack config builds one of the three output bundles:
 | `package.bundle.js` | `src/package.ts` | Runtime metadata: tables, tools, contracts |
 | `routes.bundle.js` | `src/routes.ts` | URL path mappings (loaded eagerly at startup) |
 | `uis.bundle.js` | `src/uis.ts` | React components (loaded lazily on navigation) |
+
+An opt-in **isolated** `package.bundle.js` can instead be a `PEERS_ISOLATED_PACKAGE_V1`
+JSON envelope. Electron runs that provider source in a supervised worker instead of
+evaluating it in the host. Every package-owned table schema belongs once at
+`manifest.tables`. Authors declare a package-local name, primary key, fields, and
+optional schema version; they do not provide a table ID or physical name. The host
+stores each table as `${logicalTableName}_${packageId}`, and guest code reads or
+writes copied records through `getOwnedTableRecord(tableName, recordId)` and
+`saveOwnedTableRecord(tableName, record)` during an active tool invocation. A
+provided contract can expose selected schemas using name-only table references;
+unreferenced schemas stay private. Contracts can also expose typed, optionally
+writable observables backed by package-prefixed pvars. Normal contract consumers
+get standard table CRUD and observable get/set/subscription, while isolated
+consumer workers use the corresponding consumed-state helpers. Routes and UI
+bundles stay in the renderer. Upgrade every peer that syncs a group before using
+isolated package tables there; older hosts derive a different physical table name.
+See
+**[Package contracts](./contracts#isolated-contract-packages-electron)** for the
+artifact boundary, Electron-only status, and legacy compatibility.
 
 See **[Routes and UI](./routes-and-ui)** for how these bundles are loaded and why they are split.
 
