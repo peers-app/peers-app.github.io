@@ -7,6 +7,8 @@ title: Getting started
 
 Peers **packages** are how the app loads extensible behavior: **tables** and **tools** (and related metadata) on the server/runtime side, **routes** for URL mapping in the browser, and **UI bundles** for React screens. The desktop app and PWA install package versions from bundled assets or synced updates, then each **device** chooses which version to run within a group (or personal space), using group-level defaults on `IPackage` when the device has no override.
 
+When a **package version record** syncs to a device, Peers also downloads that version’s **package, routes, and UI bundle files** into the local content-addressed cache. Downloading those bytes does **not** activate the version — activation still follows group defaults and this device’s pin / follow settings.
+
 At a high level, a package contributes:
 
 - **Runtime (Node / Electron main, or PWA runtime)** — table definitions, tool instances, assistants, workflows, and navigation metadata (`appNavs`).

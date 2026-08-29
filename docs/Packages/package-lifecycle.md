@@ -25,6 +25,8 @@ dev ──▶ beta ──▶ stable
 
 The platform assigns `versionTag` (dev / beta / stable). Do not set it in `definePackage()` or in contract definitions.
 
+**Metadata vs bundle bytes:** `PackageVersions` (and related `Files` records) sync as group data. As soon as a version record arrives, this device also downloads that version’s package, routes, and UI bundles into the local chunk cache so later activation or UI load does not wait on a peer. A downloaded version is **not** automatically activated; pin, follow, and device-override rules still decide which version this device runs. If a peer cannot provide a bundle yet, metadata sync still succeeds and the missing chunks retry when another peer becomes available.
+
 ## Group defaults vs this device
 
 Two layers work together:
@@ -48,7 +50,7 @@ Activation scope depends on the version and override state:
 
 1. **Edit your package on disk** (local path in Package settings).
 2. **Reload or restart** the app (or use your usual dev workflow). The installer creates or updates a **dev** package version from the bundle on disk.
-3. **Dev versions sync** to the group as `PackageVersions` records, but **other devices do not auto-switch** to dev.
+3. **Dev versions sync** to the group as `PackageVersions` records, and other devices **download those version files immediately**, but they **do not auto-switch** to dev.
 4. Open **Packages → your package → Versions** to see versions, hashes, and tags. Use **Activate** on a dev version to run it on **this device** without changing the group active version.
 
 App icons in the apps list come from `appNavs` on the **active PackageVersion** (copied from `definePackage` when bundles are installed). Startup sync always persists `appNavs` onto new versions, including when the group is currently on a stable build.
