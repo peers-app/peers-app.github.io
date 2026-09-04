@@ -7,7 +7,7 @@ title: Package contracts
 
 **Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
-The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Packages use `definePackage()` to declare contracts, and the `PackageLoader` and `installContractPackage` functions handle registration at install time — including registering each package’s provided contracts into that data context’s in-memory `ContractRegistry` and settling each package’s `consumes` handles afterward. Built-in **system contracts** (Logs, Device Operations, …) self-register via `registerSystemContract` and are installed into every loader registry at construction; adding another system contract is one self-registration call, with no loader changes.
+The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Newly scaffolded packages declare contracts in an isolated pure-data manifest; legacy packages can still use `definePackage()`. The `PackageLoader` handles registration at install time — including registering each package’s provided contracts into that data context’s in-memory `ContractRegistry` and settling dependencies afterward. Built-in **system contracts** (Logs, Device Operations, …) self-register via `registerSystemContract` and are installed into every loader registry at construction; adding another system contract is one self-registration call, with no loader changes.
 
 ## Core components
 
@@ -271,8 +271,9 @@ quotas/codecs.
 
 ## Isolated contract packages (Electron)
 
-An opt-in **isolated package** artifact lets a headless contract-tool provider run
-outside the Electron host process. The host never evaluates provider source.
+The default new-package scaffold uses an **isolated package** artifact so contract providers run
+outside the Electron host process. The host never evaluates provider source. Legacy
+`definePackage()` artifacts remain supported for existing packages.
 
 - **Format.** The existing `package.bundle.js` slot starts with
   `PEERS_ISOLATED_PACKAGE_V1` followed by a JSON envelope: package/version identity,
@@ -369,6 +370,11 @@ outside the Electron host process. The host never evaluates provider source.
   the newest older eligible legacy version and records that choice only in its
   existing device-local package preference; when isolation support becomes
   available, it retries and restores the originally selected version.
+
+The canonical template keeps identity in `src/ids.json`, writes the envelope from
+`build-package.mjs`, and keeps plain worker code in `src/provider-source.js`. Its starter
+contract exposes a group-scoped writable state observable so renderer-only packages have a
+reactive persistence path before they need tools or record tables.
 
 This is not a production security claim. An SES escape still reaches Worker ambient
 APIs; `Worker.terminate()` remains the availability path. See

@@ -48,7 +48,10 @@ sequenceDiagram
 
 These three concepts serve different purposes in the package lifecycle:
 
-**appNavs** are declarative metadata stored on the `IPackageVersion` record. They populate the Apps tab in the launcher so users can see what apps are available. An `IAppNav` has a `name`, `iconClassName`, and `navigationPath` — no executable code.
+**appNavs** are declarative metadata stored on the `IPackageVersion` record. The default
+isolated template declares them in `build-package.mjs`; Peers copies them from the manifest
+during install. They populate the Apps tab in the launcher so users can see what apps are
+available. An `IAppNav` has a `name`, `iconClassName`, and `navigationPath` — no executable code.
 
 **Routes** (`routes.bundle.js`) are a lightweight JavaScript bundle that registers URL-path-to-component mappings. Routes can contain logic (e.g., an `isMatch` function that parses a path and extracts an ID), which is why they must be a bundle rather than a JSON field. They are loaded eagerly so the runtime knows how to resolve any path before the user navigates.
 
