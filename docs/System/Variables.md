@@ -23,6 +23,14 @@ Optional `opts` include `defaultValue`, `userContext`, `dataContext`, and `isSec
 
 Instances are **cached** by scope, logical name, user context, and data context. Calling the same factory with the same arguments returns the same observable.
 
+### `dataContext` and where a row is stored
+
+Only `groupVar` stores its row in a group database. For `groupDeviceVar` and `groupUserVar`, `opts.dataContext` (or, when omitted, the current default group) selects **which group's value** is addressed by suffixing the stored name with that data context id (`${name}_${dataContextId}`); the row itself always lives in the user's **personal** database. Two groups using the same logical name therefore get two distinct rows and IDs and never collide.
+
+This matters because server-side code usually pins a `dataContext` (for example `packagePrefsVar(packageId, dataContext)` in the package version resolver) while renderer code follows the default group and passes none. Both address the same personal-DB row, so a version selected in the Packages UI is the version the main process loads.
+
+Earlier releases stored a pinned `groupDevice` / `groupUser` var in the pinned group's database. On first load, a var that has no personal-DB row copies any such legacy row forward (secrets excepted, since their ciphertext is bound to the group key). The legacy row is left in place; the personal copy is authoritative from then on.
+
 ## Observable shape
 
 A `PersistentVar<T>` is an `Observable<T>` with two extra members:

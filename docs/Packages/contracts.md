@@ -318,6 +318,12 @@ outside the Electron host process. The host never evaluates provider source. Leg
   All peers that sync a group must be upgraded before that group uses isolated
   package tables: older hosts derive the physical name from `tableId`, while
   current hosts intentionally use `${logicalTableName}_${packageId}`.
+  Renderer table calls (`tableMethodCall`) resolve against the host's registered
+  tables first; when no package on the device registered the name, the host
+  falls back to the synced `TableDefinitions` record for it. A UI bundle that
+  references a table its host's loaded package version does not declare (for
+  example, a device that has not yet activated the newer version) still reaches
+  the table's data with the synced schema instead of failing.
 - **Persistent variables.** Isolated provider code can call
   `getOwnedPersistentVar(scope, name)` and
   `setOwnedPersistentVar(scope, name, value)` during an authorized tool
