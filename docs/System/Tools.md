@@ -36,6 +36,26 @@ the process-wide user-context singleton — so a remote device call cannot
 hang waiting for a context that belongs to another device in the same
 process. Missing identity or a missing user context fails closed.
 
+## Remote access level
+
+`accessLevel` decides who may run a tool on the device where it lives. A
+second, optional field, `remoteAccessLevel`, decides whether callers on
+**other devices** may run it at all. It uses the same 0–100 scale and is
+compared against the caller's role in the shared group the call names.
+
+| `remoteAccessLevel` | Callers on other devices |
+|---|---|
+| omitted (default) | Local-only. Denied unless the caller is Self-trusted by the provider. |
+| `n` | Verified group members with role level `>= n` (and `> 0`) may run it; Self-trusted callers always may. |
+
+Both checks apply on the executing device: a remote group member must clear
+`remoteAccessLevel` to be admitted and `accessLevel` to run. Tools whose
+`accessLevel` is Self stay effectively local-only for other accounts even if
+`remoteAccessLevel` is set. Remote callers never receive step-up approval
+prompts; a denied call simply fails. Packages reach remote tools through
+`pkg.remote(contractId, version)` and then `remote.device(deviceId).tools.<name>(...)` — see
+[Package contracts](../Packages/contracts#remote-tool-calls-across-devices).
+
 ## Step-up approval
 
 Approvals are local-only records. They store the tool id, a sanitized

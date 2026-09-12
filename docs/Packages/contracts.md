@@ -13,7 +13,7 @@ The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` an
 
 | Piece | Role |
 | --- | --- |
-| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, events, and `alsoImplements` on each `ContractBuilder`. Declare dependencies with `pkg.consumes(...)` on `PackageBuilder`. |
+| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, events, and `alsoImplements` on each `ContractBuilder`. Declare dependencies with `pkg.consumes(...)` and cross-device tool targets with `pkg.remote(...)` on `PackageBuilder`. |
 | **Shape extraction** | Builds pure-data contract shapes from `IField[]` (derived from Zod schemas via `schemaToFields`). |
 | **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables, and event payloads), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
 | **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, select a provider for a `consumes` declaration (`providerPackageIds` / `fallbackToDefaultProvider`), swap providers, unregister, finalize contracts, and check consumer dependencies. Each data context’s `PackageLoader` owns one, seeds it with built-in **system contracts** at construction, and registers package providers when contract packages are installed. SQLite persistence of the registry is still a follow-up. |
@@ -75,6 +75,23 @@ things that are already available at that point — `networkManagerPromise` and
 is only resolved *after* package loading (such as `peersDeviceInitializedPromise`)
 deadlocks device initialization, and the app never leaves its loading screen.
 :::
+
+### Declaring a remote contract
+
+`pkg.remote(contractId, version)` is the sibling of `consumes` for calling a contract's
+tools on **other devices**. It follows the same deferred-handle pattern, but needs no
+local provider and has no `optional` flag:
+
+```typescript
+const gameRemote = pkg.remote<IGameConsumer>(GAME_CONTRACT_ID, 1);
+
+// Later, outside definePackage:
+const remote = await gameRemote.consumer;
+await remote.device(peerDeviceId).tools.offer({ sdp });
+```
+
+See [Remote tool calls across devices](#remote-tool-calls-across-devices) for the
+permission model and routing.
 
 ## Contract lifecycle and promotion
 
@@ -150,6 +167,8 @@ See **[System: Tools](../System/Tools)** for the full tool authoring guide.
 - `loadingPromise`, which waits for observable snapshots and queued writes;
 - `dispose()`, which releases every subscription and transport listener owned by that consumer.
 
+To run a contract's tools on another device, declare `pkg.remote(...)` instead of (or alongside) `pkg.consumes(...)` — see [Remote tool calls](#remote-tool-calls-across-devices).
+
 For in-process wiring, pair the consumer with a stateful provider session:
 
 ```typescript
@@ -171,6 +190,91 @@ try {
 ```
 
 Always dispose both sides. Consumer disposal is idempotent, unsubscribes generic events, table events, and observable streams, and removes only that consumer's notify handler. New remote calls and subscriptions reject after disposal. Cached observable reads remain available, but writes throw.
+
+### Remote tool calls across devices
+
+A package can run a contract **tool** on another device instead of the local provider.
+`pkg.remote(contractId, version)` is the mesh sibling of `pkg.consumes(...)`: it returns
+a deferred handle whose `consumer` resolves to a per-device factory. `device(deviceId)`
+hands out a tools-only consumer of the contract whose calls execute on that device. The
+target does not need a direct connection — the call travels through `sendDeviceMessage`,
+so any device reachable through the peers mesh works.
+
+```typescript
+// Inside definePackage(...)
+const logsRemote = pkg.remote<ILogsConsumer>(logsContractId, 1);
+
+// From runtime code, after the package has loaded.
+const remote = await logsRemote.consumer;
+const remoteLogs = remote.device(otherDeviceId);
+await remoteLogs.tools.log({ level: "info", message: "remote" });
+```
+
+Unlike `consumes`, `remote` needs **no local provider**: the executing device selects
+its own. That makes it the natural way for a package to call its *own* contract on a
+peer's device (a signaling channel, a shared game session, and so on) without declaring
+itself as its own consumer. There is also no `optional` flag — whether the remote device
+can serve a call is only known per call. The handle settles as long as the contract
+definition is registered on this device (from the package's own `provides` or another
+installed package) and rejects otherwise.
+
+Only tools cross devices today. `tables`, `observables`, and `events` on a device
+consumer throw on access, and `loadingPromise` resolves immediately. Device consumers are
+cached per device id; passing this device's own id resolves locally. Disposing the factory
+disposes every device consumer; a device consumer may also be disposed on its own.
+Isolated packages use the same feature through
+`callRemoteTool(contractId, version, deviceId, toolName, args)`, for any contract the
+package provides or consumes.
+
+**Opting a tool in.** Tools are local-only by default. To allow callers on other devices,
+set `remoteAccessLevel` on the tool definition (or on the `tools[]` entry of an isolated
+package's `provides` declaration) to the minimum group access level a caller needs, using
+the same 0–100 scale as `accessLevel` (`AccessLevel.Reader` = 20, `Writer` = 40, `Admin` =
+60, `Owner` = 80). Omit it to keep the tool local-only. The ordinary `accessLevel` check
+still runs on the executing device as well.
+
+```typescript
+const pingTool: ITool = {
+  // ...
+  accessLevel: AccessLevel.Reader,
+  remoteAccessLevel: AccessLevel.Writer, // group Writers on other devices may call this
+};
+```
+
+**Who may call.** The receiving device authorizes every inbound call itself, in layers:
+
+1. The sender's signing and box keys must match a valid self-signed `Users` record the
+   provider already knows (personal or shared-group data). Unknown or mismatched identities
+   fail closed.
+2. A **Self-trusted** caller — the provider's own account, or an account granted exact
+   `TrustLevel.Self` in the provider's personal context — keeps full access, exactly as over
+   a direct connection. `remoteAccessLevel` is not consulted; an omitted data context selects
+   the provider's personal context.
+3. Any other verified caller is treated as a **group member**. The call must name a shared
+   group data context, must be a tool run, the contract definition registered in that group
+   must give the tool a numeric `remoteAccessLevel`, and the caller's role in that group must
+   be above `None` and at least that level. Anything else is denied.
+
+Cross-account remote calls therefore require the package to be loaded in the shared
+group's data context (the handle's calls are scoped to the context the package loaded in),
+because that is the context whose membership is checked and whose keys seal the message.
+
+**How it is routed.** The device consumer stamps `targetDeviceId` on each call. The trusted local
+host router (the package loader, the Electron/PWA local-user router, or an isolated
+package's host gateway) recognizes the target, skips local provider selection, and forwards
+the call over a `sendDeviceMessage`-backed transport registered by the `ConnectionManager`
+(`setRemoteContractTransportFactory`). Before sending it **strips** `targetDeviceId`, so the
+receiving device sees an ordinary call addressed to itself, signed by the forwarding device.
+Routers that serve *remote* callers reject any call that still carries `targetDeviceId`: one
+device can never relay another device's call under its own identity. Multi-hop delivery
+happens inside `sendDeviceMessage`, not by chaining contract routers.
+
+On the receiving side the `ConnectionManager` owns one `contract-call` device-message
+handler and lazily builds a per-sender provider router — the same
+`createUserContextContractProviderRouter` used for direct connections — so provider
+selection, endpoint caching, and trust-change resets behave identically. Unreachable
+targets reject with a clear error rather than hanging, and each round trip has a 30 s
+deadline. Provider pushes (events, observables) do not cross the mesh yet.
 
 ### Local UI-to-host contracts
 
@@ -208,7 +312,8 @@ Verified device connections use one provider router per connection. A consumer w
 - invokes a trusted host authorization/data-context hook before any contract resolver;
 - derives caller context only from trusted connection/session state and ignores extra wire arguments;
 - verifies that connection keys match a valid self-signed `Users` record known in the provider's personal or shared-group data;
-- requires the caller to have exact `TrustLevel.Self` in the provider's personal data context;
+- grants full access to callers with exact `TrustLevel.Self` in the provider's personal data context, and limits every other verified caller to group tool runs marked with `remoteAccessLevel` (see [Remote tool calls](#remote-tool-calls-across-devices));
+- rejects calls that still carry a `targetDeviceId` so the device is never used as a relay;
 - normalizes omitted personal context and an explicitly named personal context to the same route;
 - lazily caches stateful provider endpoints by contract id, version, and authorized data context;
 - sends event, table `dataChanged`, and observable notifications back on `contractNotify` over the same duplex connection;
@@ -216,6 +321,8 @@ Verified device connections use one provider router per connection. A consumer w
 - disposes every endpoint and live provider subscription when the connection closes or the caller's personal trust assignment changes.
 
 No separate notify RPC registration is required. The consumer's existing notify listener receives reverse traffic through the symmetric transport. Multiple consumers may share a connection and keep independent subscription IDs and listeners.
+
+The same router also serves calls that arrive as `contract-call` device messages (the mesh path behind `pkg.remote(...)`), keyed by sending device and data context instead of by connection. Those routers are evicted after ten idle minutes and reset on the same trust changes.
 
 ### Table-call boundary
 
@@ -240,11 +347,14 @@ Events and table `dataChanged` differ from observables: they are subscription-ga
 
 ## Permission and transport limits
 
-The production cross-device policy is an identity-equivalent **Self** grant. Authorization
-uses the provider's personal `UserTrustLevels` table, not a trust row supplied by the caller
-or a shared group. The provider's own account is implicitly Self. A different account must
-have an explicit personal-context row whose value is exactly `TrustLevel.Self`; `Trusted`
-and every lower level are denied.
+Cross-device access has two tiers. The broad tier is an identity-equivalent **Self**
+grant: authorization uses the provider's personal `UserTrustLevels` table, not a trust row
+supplied by the caller or a shared group. The provider's own account is implicitly Self. A
+different account must have an explicit personal-context row whose value is exactly
+`TrustLevel.Self`; `Trusted` and every lower level get no Self access. The narrow tier is
+per-tool: a verified member of a shared group may run a tool that the provider's contract
+marks with `remoteAccessLevel` at or below the member's role, and nothing else. See
+[Remote tool calls](#remote-tool-calls-across-devices).
 
 User ID alone is insufficient. The verified connection's signing and box keys must match a
 valid self-signed `Users` record in data already known to the provider. Missing identities,
@@ -266,8 +376,9 @@ helper for isolated providers. Production connection routing does not use it.
 `connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
 
 Still deferred are installed-package provider resolver registration, precise generic
-`createContractConsumer<T>()` typing, granular per-package UI permissions, and payload
-quotas/codecs.
+`createContractConsumer<T>()` typing, granular per-package UI permissions, payload
+quotas/codecs, and remote access to tables, observables, and events (remote consumers are
+tools-only).
 
 ## Isolated contract packages (Electron)
 
