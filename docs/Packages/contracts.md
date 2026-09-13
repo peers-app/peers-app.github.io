@@ -231,7 +231,10 @@ set `remoteAccessLevel` on the tool definition (or on the `tools[]` entry of an 
 package's `provides` declaration) to the minimum group access level a caller needs, using
 the same 0–100 scale as `accessLevel` (`AccessLevel.Reader` = 20, `Writer` = 40, `Admin` =
 60, `Owner` = 80). Omit it to keep the tool local-only. The ordinary `accessLevel` check
-still runs on the executing device as well.
+still runs on the executing device as well. Isolated packages also need
+`suggestedAccessLevel` at or below that same floor — it is the worker's default
+effective level until install-time approval exists. A tool that sets only
+`remoteAccessLevel` still defaults to Self in the isolated worker.
 
 ```typescript
 const pingTool: ITool = {
@@ -468,10 +471,11 @@ outside the Electron host process. The host never evaluates provider source. Leg
   boundary with collision-safe tags and retain their Peers table/pvar types.
   Functions, unsupported objects, non-finite numbers, cycles, oversized values,
   and excessive nesting are rejected.
-- **Access.** Tool suggestions stay **Self** until an administrator approves them.
-  Direct user calls use the trusted local `DataContext` access level. Persistent
-  approval storage/UI is a later tools-system milestone; the first smoke path runs
-  in the personal context.
+- **Access.** A tool's `suggestedAccessLevel` is the default effective level
+  until install-time approval exists. Omit it to keep the fail-closed **Self**
+  default. Direct user calls use the trusted local `DataContext` access level.
+  Persistent approval storage/UI is a later tools-system milestone; the first
+  smoke path runs in the personal context.
 - **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
   are unchanged. Isolated packages do not yet expose events, custom table
   methods, table `dataChanged`, isolated-guest subscriptions, owned-pvar
