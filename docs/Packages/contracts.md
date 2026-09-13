@@ -468,8 +468,14 @@ outside the Electron host process. The host never evaluates provider source. Leg
   payload)`; the host rejects undeclared events, payloads that do not match
   `payloadFields`, and emits made at eval time or between invocations. Renderer
   and host consumers subscribe with `consumer.events[name].subscribe(handler)`.
-  Events stay local (no `pkg.remote()` / mesh delivery), carry no per-event
-  access level yet, and isolated guests cannot subscribe to consumed events.
+  Another isolated package on the same device may subscribe with
+  `subscribeConsumedEvent(contractId, version, eventName, handler)` once its
+  worker is running (lazy: `startProvider` or a first tool call). The host holds
+  the live subscription and delivers into the consumer worker; payloads emitted
+  before that attach are not replayed. Events stay local (no `pkg.remote()` /
+  mesh delivery) and carry no per-event access level yet. Isolated guests cannot
+  yet subscribe to host/system provider events, consumed observables, or table
+  `dataChanged`.
 - **Table `dataChanged`.** Consumers may call
   `consumer.tables[name].dataChanged.subscribe(handler)` on a contract-exposed
   isolated table. The host attaches to the real `Table.dataChanged` event, so
@@ -481,8 +487,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `createLocalUserContextContractProviderRouter` resolves an isolated or
   resolver-backed endpoint only for the provider selected by that context's
   `ContractRegistry`. Legacy unscoped resolvers remain available only when no
-  registry provider exists. Package-to-package tool, table, and observable
-  consumes go back through the trusted host. The caller must declare the exact
+  registry provider exists. Package-to-package tool, table, observable, and
+  event consumes go back through the trusted host. The caller must declare the exact
   consume and its provider allowlist must accept the resolved package; guest
   payloads cannot choose provider identity or authority. `alsoImplements` aliases
   route older consumer versions to the validated compatible implementation
@@ -498,8 +504,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
   smoke path runs in the personal context.
 - **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
   are unchanged. Isolated packages do not yet expose custom table methods or
-  table events other than `dataChanged`, isolated-guest subscriptions (observable
-  or event), owned-pvar subscriptions, mesh events, or global pvar grants.
+  table events other than `dataChanged`, isolated-guest observable or
+  `dataChanged` subscriptions, owned-pvar subscriptions, mesh events, guest
+  subscribe to host/system events, or global pvar grants.
   Electron is currently the only isolated
   execution host. PWA safely skips valid isolated provider artifacts instead of
   failing device startup; those providers and their contract tools remain
