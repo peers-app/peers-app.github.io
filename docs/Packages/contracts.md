@@ -348,6 +348,8 @@ Writability is enforced twice:
 
 Events and table `dataChanged` differ from observables: they are subscription-gated. The provider attaches to the live source only while at least one consumer subscription exists and detaches after the last unsubscribe.
 
+Events are fire-and-forget with no replay: a payload emitted before a consumer subscribes is not delivered to it later. A package that needs durability (for example a signaling mailbox) must buffer in its own tool or table; that is an application concern, not an `Event` feature. Events are local to the device that emits them — `pkg.remote()` and the mesh carry tool calls only.
+
 ## Permission and transport limits
 
 Cross-device access has two tiers. The broad tier is an identity-equivalent **Self**
@@ -457,6 +459,24 @@ outside the Electron host process. The host never evaluates provider source. Leg
   writes through either the contract or the provider's owned-pvar helper. The
   pvar binding is host-only and never lets a consumer supply package or physical
   storage identity. Isolated guest subscriptions remain deferred.
+- **Contract events.** A provided contract may declare `events` with a `name`,
+  `description`, and optional `payloadFields` (an events-only contract is
+  valid). The host owns an emitter per declared event from install time, so a
+  worker restart does not drop subscribers; uninstall, or a replacement that
+  removes the event, detaches them. Provider code emits during an authorized
+  tool invocation with `emitContractEvent(contractId, version, eventName,
+  payload)`; the host rejects undeclared events, payloads that do not match
+  `payloadFields`, and emits made at eval time or between invocations. Renderer
+  and host consumers subscribe with `consumer.events[name].subscribe(handler)`.
+  Events stay local (no `pkg.remote()` / mesh delivery), carry no per-event
+  access level yet, and isolated guests cannot subscribe to consumed events.
+- **Table `dataChanged`.** Consumers may call
+  `consumer.tables[name].dataChanged.subscribe(handler)` on a contract-exposed
+  isolated table. The host attaches to the real `Table.dataChanged` event, so
+  writes through the contract proxy, the provider's `saveOwnedTableRecord`, and
+  device sync all notify with the usual `{ dataObject, op, source }` payload.
+  Private tables are rejected exactly like CRUD; `dataChanged` is the only
+  table event supported.
 - **Routing.** For package-registered contracts,
   `createLocalUserContextContractProviderRouter` resolves an isolated or
   resolver-backed endpoint only for the provider selected by that context's
@@ -477,9 +497,10 @@ outside the Electron host process. The host never evaluates provider source. Leg
   Persistent approval storage/UI is a later tools-system milestone; the first
   smoke path runs in the personal context.
 - **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
-  are unchanged. Isolated packages do not yet expose events, custom table
-  methods, table `dataChanged`, isolated-guest subscriptions, owned-pvar
-  subscriptions, or global pvar grants. Electron is currently the only isolated
+  are unchanged. Isolated packages do not yet expose custom table methods or
+  table events other than `dataChanged`, isolated-guest subscriptions (observable
+  or event), owned-pvar subscriptions, mesh events, or global pvar grants.
+  Electron is currently the only isolated
   execution host. PWA safely skips valid isolated provider artifacts instead of
   failing device startup; those providers and their contract tools remain
   unavailable there. PWA browser Workers are a follow-up that can reuse the same
