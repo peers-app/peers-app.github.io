@@ -39,6 +39,12 @@ A device that once wrote far-future `createdAt` values (mis-set clock) repairs t
 
 Truly concurrent edits (neither device saw the other's write) remain last-write-wins on `createdAt`. That is inherent to the model, not a clock bug.
 
+### How changes travel between devices
+
+Each device does not push to every peer it is connected to. Per group, it **elects** a small set of *preferred* connections that together reach every known device (a greedy cover; on a fully meshed LAN that is usually one peer). A device pushes a "changes exist" notify to its preferred peers and to the peers that have chosen *it*, and it only acts on notifies from that same priority set. Everyone else receives the change transitively.
+
+Elections run when a connection is added or a preferred one drops, and every `RESYNC_INTERVAL` (60 s) as a safety net; the same tick pulls once from each preferred peer, which is a cheap watermark check when nothing changed. Because a device learns that a peer depends on it only by reading that peer's election result, two devices that connect at the same moment can each elect before the other has finished. To close that gap the election is **re-run shortly after a new connection settles** (`ELECTION_SETTLE_DELAYS_MS`, 10 s and 30 s later), and when a device discovers a new dependent it pulls from it once and sends it one notify. In practice a freshly connected device is fully wired into the group within tens of seconds; the resync tick bounds the worst case at about a minute.
+
 ## Reactivity and `dataChanged`
 
 When rows are inserted, updated, or deleted, the table emits **`dataChanged`** so UIs and other subscribers can refresh or patch local state. Under the hood that uses the shared **named event** system (`Emitter` / `emit`).
