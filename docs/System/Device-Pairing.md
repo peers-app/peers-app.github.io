@@ -8,88 +8,99 @@ title: Add another device
 Device pairing signs a new Electron or PWA installation in to the same Peers
 account without displaying or manually copying the account secret key.
 
-The destination must be signed out. Pairing does not replace an account that is
+The new device must be signed out. Pairing does not replace an account that is
 already installed on a device.
 
-## Pair with a QR code
+## How it works
 
-1. On a signed-in device, open **Settings** and choose **Add another device**.
-2. Keep the invitation open. It expires after five minutes.
-3. On the signed-out device, scan the QR code with its normal camera and open
-   the Peers link.
-4. Wait for both devices to show the remote device name and the same six-digit
-   number.
-5. Compare the numbers directly. If either the device or number is unexpected,
-   reject the request.
-6. Choose **Numbers match — approve** on both devices.
-7. Wait for the destination to finish initializing and reload.
+Pairing follows the "link a device" model used by Signal and WhatsApp: the
+**new** device shows a short code, and a device that is **already signed in**
+reads it and approves the transfer.
 
-The link can also be copied to the destination. For manual entry, paste the
-complete pairing link or versioned token; there is no separate short,
-low-entropy pairing code.
+1. On the new device, open Peers and choose **Sign in from another device**. It
+   shows a pairing code such as `7-guitar-revenge-tunnel` and the same code as a
+   QR code.
+2. On a device already signed in, open **Settings → Add another device**.
+3. Scan the QR code with the camera inside Peers, or type the code. Codes are
+   case-insensitive and can be separated by hyphens or spaces.
+4. When the signed-in device shows the new device's name, choose **Approve**.
+5. Wait for the new device to finish installing and reload.
+
+Only the signed-in device approves. The new device has nothing to confirm; it
+either receives credentials from a device that proved it knows the code, or it
+shows a fresh code.
+
+Devices that do not have a camera (a desktop, for example) type the code. The
+code is short enough to read aloud or type from another screen; no link is
+copied between devices.
+
+## What the code protects
+
+The code has two parts. The leading number selects a short-lived rendezvous room
+on the Peers service. The three words are the password for a
+[PAKE](https://en.wikipedia.org/wiki/Password-authenticated_key_agreement)
+(CPace over X25519). Both devices derive the same session secret only if they
+used the same words, and neither the service nor anyone else on the network
+learns the words from the exchange.
+
+Every signaling message (WebRTC offer, answer, and ICE candidates) is
+authenticated with a key derived from that secret, so the service cannot
+substitute its own endpoint. After the WebRTC data channel opens, the devices
+complete the normal authenticated Peers `Connection` handshake and exchange a
+final confirmation MAC bound to both device identities and the session
+transcript. Only then does the signed-in device offer **Approve**.
+
+Because the words carry 24 bits of entropy, a guess has a one in ~16 million
+chance. A wrong guess ends the room, and the new device rotates to a brand-new
+code, so an attacker gets one attempt per code the user shows.
 
 ## What the service can see
 
-The invitation secret is stored after `#` in the link. Browsers do not include
-URL fragments in normal HTTP requests, and Peers removes the fragment from the
-address bar as soon as the destination captures it.
+`peers.app` provides the two-party signaling room and, on networks that need it,
+short-lived STUN/TURN configuration. It relays only bounded, authenticated
+signaling messages and never sees the pairing words or the account secret.
+Account credentials are signed and encrypted directly to the new device's
+temporary identity over the WebRTC connection; on networks that require TURN,
+only encrypted WebRTC packets transit the relay.
 
-`peers.app` provides a short-lived, two-party WebRTC signaling room. It relays
-only bounded offer, answer, and ICE messages. Each signaling message is
-authenticated with a key derived from the invitation, so the service cannot
-silently replace a WebRTC endpoint.
+The room and its TURN credentials expire after five minutes on the service's
+own clock.
 
-The service sets the room's authoritative expiry using its own clock. After a
-source creates the room or a destination joins it, that room member can obtain
-short-lived STUN/TURN configuration. TURN credentials expire with the room and
-are not available to clients that have not joined it.
+## After approval
 
-After the WebRTC data channel opens, the devices complete the normal Peers
-authenticated `Connection` handshake using the source device identity and a
-temporary in-memory destination identity. The six-digit comparison value binds
-the invitation, both identities, endpoint nonces, and WebRTC certificate
-fingerprints. Before approval, pairing also applies strict message-size,
-concurrency, aggregate-memory, and reassembly-time limits; violating them
-closes the temporary peer.
+The new device installs the credentials only in memory first, initializes its
+normal runtime, and commits to stable storage only if the pairing ceremony
+still owns the signed-out credential reservation. It then returns a signed
+installation receipt.
 
-Account credentials are signed and encrypted directly to that temporary
-destination identity. They are never sent as a signaling payload or retained
-by `peers.app`; on networks that require TURN, encrypted WebRTC packets may
-transit the relay. Credentials are sent only after both devices approve. The
-destination first reserves its signed-out credential store and initializes its
-normal Peers runtime using the received credentials only in memory. It commits
-the credentials to stable storage only if the pairing ceremony still owns that
-reservation, then returns a signed installation receipt. Another tab or sign-in
-cannot overwrite or clear that in-progress installation.
+When the receipt arrives, the signed-in device adds the new device to the
+`Devices` table of every group it belongs to, with the same trust level as
+itself. The new device can therefore sync and connect in those groups without
+any extra admission step.
 
 ## Failure and cleanup
 
-Rejecting, canceling, closing either endpoint, losing the connection, or
-reaching the five-minute timeout marks the ceremony canceled and closes the
-temporary WebRTC connection immediately. Source room deletion is best-effort
-cleanup after the data path is closed, so a slow signaling service cannot keep
-credential transfer available. Temporary identities and ceremony state are
-kept only in memory.
+Canceling, closing either screen, losing the connection, or a failed code check
+ends the ceremony and closes the temporary WebRTC connection immediately. The
+new device shows a new code; the signed-in device returns to the code entry.
+Temporary identities and ceremony state are kept only in memory.
 
-If destination initialization fails or is canceled before the atomic commit,
-Peers rolls back only the reservation or credential revision owned by that
-ceremony. If initialization touched process-wide runtime state, the PWA reloads
-or Electron relaunches into a clean signed-out process rather than attempting a
-partial teardown.
+If installation on the new device fails before the atomic commit, Peers rolls
+back only the reservation owned by that ceremony. If initialization touched
+process-wide runtime state, the PWA reloads or Electron relaunches into a
+clean signed-out process rather than attempting a partial teardown.
 
 ## Troubleshooting
 
-- **Invitation is invalid or expired:** Create a new invitation on the signed-in
-  device and keep the screen open.
+- **Code not recognized:** Check each word. A word in the wrong slot is
+  rejected before anything is sent. Codes expire after five minutes; if the new
+  device has rotated, read the current code.
 - **The devices never connect:** Confirm both devices can reach the configured
   Peers service. A restrictive network may require its TURN relay.
-- **The numbers differ:** Reject on both devices. Do not retry with the same
-  invitation; create a new one.
-- **An unexpected device name appears:** Reject the request and confirm which
-  device opened the invitation.
-- **The destination stays signed out:** Reopen Peers and retry with a new
-  invitation. Failed initialization does not retain usable credentials.
+- **An unexpected device name appears on Approve:** Do not approve. Someone
+  else may have entered the same code; have the new device show a fresh one.
+- **The new device stays signed out:** Reopen Peers and retry with the new code.
+  Failed initialization does not retain usable credentials.
 
-This pairing flow is a temporary bridge. It intentionally reuses normal Peers
-connections and platform WebRTC implementations rather than introducing a
-durable pairing transport or persistent pairing records.
+Pairing is only for your own devices. To connect with another person, see
+[Contacts](./Contacts.md); to join a group, see [Invites](./Invites.md).

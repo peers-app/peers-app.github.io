@@ -26,21 +26,34 @@ override the identity recorded in the declared shared group.
 
 ## Joining a group
 
-A password invitation is complete only after both sides have enough seed data to start
-group-context messaging:
+Members join through [invites](./Invites.md). An Admin or Owner opens the group's **Members**
+screen and uses **Invite people**:
 
-- The approving admin writes a signed `GroupMembers` row and weak `Users`/`Devices` stubs
-  for the joiner in the group context.
-- The joiner receives the group record, Admin+ seed memberships, their own signed
-  membership, and the admin's identity. Personal `Groups` is added only when it is missing;
-  an existing personal row is left in place so a local disable or leave stays authoritative.
-- After import, the joiner opens a targeted connection to the approving admin in that group
-  context. Signaling encrypts to the admin's user box key, so the group secret is not
-  required for this first hop.
+- **Contacts** — pick one or more existing contacts and a role. Each contact receives a
+  ready-to-accept invite; nothing needs to be copied or scanned.
+- **Share a link** — issue a link/QR with a role and a mode: **I approve each join** (people
+  request, you approve) or **Anyone with the link joins** (auto-admit while the link is
+  valid). Pending requests and outstanding links appear below the panel.
 
-The group encryption secret stays a personal persistent variable. It is not sent with the
-invitation. Whole-group ciphertext still requires matching group key material on Writer+
-devices; distributing that secret is a separate step from joining.
+Whichever path is used, admission is a signed **group approval** produced by the approving
+Admin or Owner's device:
+
+- The approver writes a signed `GroupMembers` row and weak `Users`/`Devices` stubs for the
+  joiner in the group context.
+- The joiner receives the group record, Admin+ seed memberships, their own signed membership,
+  the approver's identity, and the group encryption secret boxed to the joiner's key. Personal
+  `Groups` is added only when it is missing; an existing personal row is left in place so a
+  local disable or leave stays authoritative.
+- After import, the joiner opens a targeted connection to the approver in that group context.
+  Signaling encrypts to the approver's user box key, so the group secret is not required for
+  this first hop.
+
+The group secret is validated against the signed group record before it is stored as a
+personal persistent variable, so a joiner can read and write group data as soon as the
+approval is imported. A member can only approve a role at or below their own.
+
+From the CLI: `peers groups invite <groupId> <userId>`, `peers groups invite <groupId> --link`,
+and `peers groups join <token>`. See [CLI](./CLI#peers-contacts-peers-groups-peers-invites--invites).
 
 ## Display names
 

@@ -80,7 +80,7 @@ When a user wants to add a new device, both devices must be under the user's con
 
 ### Proposed flow
 
-1. **New device** generates its own keypair and displays a short connection code (the existing `user-connect` / connection-code machinery can be adapted).
+1. **New device** generates its own keypair and displays a short connection code (the device-pairing code + PAKE machinery can be adapted).
 2. **Existing device** enters (or scans) the code, establishing a secure channel.
 3. **Existing device** verifies intent (user confirms on both devices).
 4. **Existing device** signs a statement: "I (device A, authorized for user X) authorize device B's public key for user X."

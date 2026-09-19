@@ -4,59 +4,60 @@ sidebar_position: 7
 
 # Contacts
 
-Peers contacts let two people exchange their public identities and verify that
-they connected to the intended person. Connecting does not share an account
+A contact is another Peers user whose public identity (user ID, signing key,
+and encryption key) you have saved. Connecting does not share an account
 secret or sign either person in on another device.
 
-## Connect in person with a QR code
+Contacts are made through [invites](./Invites.md). Both people do not need to
+be online at the same time.
 
-1. Open **Contacts** and choose **Connect to user**.
-2. Keep Peers open while the connection QR code is visible.
-3. Ask the other person to scan the QR code with their normal phone camera.
-4. They open the Peers link and select **Connect**.
-5. Compare the short confirmation value shown on both devices. Continue only
-   when the values match.
-6. Choose **Trust and view contact** to mark the person as trusted, or **View
-   without trusting** to save the contact without granting trust.
+## Invite someone
 
-The QR code and link expire after ten minutes. Create a new invite if the
-countdown finishes or either person stops waiting.
+1. Open **Contacts** and choose **Invite**.
+2. Show the QR code, or use **Copy link** or **Share…** to send the link through
+   any messaging app.
+3. When they accept, they appear in your contact list and you appear in theirs.
 
-## Share a connection link
+If they are not reachable when they accept, their reply is queued and delivered
+when a route becomes available (a direct connection, a shared device, or the
+Peers mailbox). The invite appears under **Pending contact invites** until then.
 
-Use **Share link** to send the same short-lived invite through a messaging or
-email app. If sharing is unavailable, use **Copy link** and paste it yourself.
-Both people need Peers open and connected to the internet or another Peers
-device while the exchange completes.
+A one-off contact invite expires after seven days by default and can be used
+once. Anyone who has the link before it is used can accept it, so send it only
+to the person you mean.
 
-The connection code is kept after `#` in the link, so it is not sent to the web
-server as part of the page request. Treat an active link as a temporary bearer
-invite and share it only with the intended person.
+## Your profile QR
 
-## Enter a code manually
+**Account → Profile QR** shows a long-lived invite that you can print, add to a
+business card, or keep on your phone. Anyone who scans it can send you a contact
+**request**. Nothing happens until you confirm the request under **Contacts →
+Pending**.
 
-Select **Enter a code instead** and enter the displayed
-`XXXX-YYYY-ZZZZ` code. This uses the same exchange and confirmation step as the
-QR/link flow.
+**Regenerate** replaces the profile QR and revokes every invite link you have
+issued so far. Use it if a code has leaked.
 
-## Troubleshooting
+## Accept an invite
 
-- **Invite not found or expired:** Ask the other person to create a new invite
-  and keep their Connect screen open.
-- **Device is not connected:** Connect to the internet or another Peers device,
-  then select **Check again**.
-- **Other device stopped waiting:** Ask the other person to reopen **Connect to
-  user** and share the new invite.
-- **Connection canceled:** Reopen **Connect to user** and retry with a new
-  invite. Peers clears the previous attempt so it cannot resume unexpectedly.
-- **Confirmation values do not match:** Do not grant trust. Cancel and restart
-  the connection with a new invite.
-- **Invalid link or code:** Open a fresh link or carefully re-enter the complete
-  12-character code.
+From **Contacts** choose **Accept invite**, then paste the link or code, or use
+**Scan QR** on a device with a camera. Peers verifies the inviter's signature
+and expiry and shows who is inviting you before you accept. Pick a trust level
+for the new contact at the same time; you can change it later from the contact's
+details.
 
-Connecting exchanges public contact and device identity through the existing
-Peers network. Trust remains an explicit local choice. This flow is not account
-sign-in, account recovery, or a way to transfer a secret key.
+Links opened on a device where Peers is installed go straight to this screen.
+See [Invites](./Invites.md#opening-an-invite-link) for what happens when a link
+is opened elsewhere.
+
+## Inviting a contact to a group
+
+Once someone is a contact, they can be invited into any of your groups directly
+with no new link: see [Groups](./Groups.md#joining-a-group).
+
+## Trust
+
+Saving a contact does not grant them anything beyond the ability to address you
+on the Peers network. Trust remains an explicit local choice that you set on the
+contact.
 
 To sign in a new installation to your own account, use
 [Add another device](./Device-Pairing.md) instead.

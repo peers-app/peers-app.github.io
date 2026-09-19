@@ -38,6 +38,10 @@ peers app status
 
 # List directly connected devices
 peers devices
+
+# Invite a contact / see pending invites
+peers contacts invite
+peers invites
 ```
 
 ## Commands
@@ -225,6 +229,56 @@ the failure count; three consecutive failures stop the command with a nonzero ex
 of leaving a disconnected or unauthorized session running silently. In `--json` mode,
 stdout remains newline-delimited log records.
 
+### `peers contacts`, `peers groups`, `peers invites` — Invites
+
+Issue, accept, and review [invites](./Invites) from the terminal. These commands talk to the
+running app's System Invites contract, so they act as the signed-in user and share the same
+pending list as the UI.
+
+```bash
+# Contacts
+peers contacts                          # list contacts
+peers contacts invite                   # one-off contact invite (link + token)
+peers contacts invite --profile         # reusable profile invite (QR payload)
+peers contacts accept <token|link>      # accept a contact invite
+peers contacts pending                  # pending contact invites, in and out
+
+# Groups
+peers groups                            # list my groups
+peers groups invite <groupId> <userId>  # invite an existing contact directly
+peers groups invite <groupId> --link    # shareable link (approve each join)
+peers groups invite <groupId> --link --mode open --expires 24h
+peers groups join <token|link>          # join a group from a link
+peers groups pending                    # pending group invites and join requests
+
+# Everything pending
+peers invites                           # show pending invites
+peers invites preview <token>           # verify a token and show what it grants
+peers invites accept <inviteId|token>
+peers invites decline <inviteId>
+peers invites approve <inviteId> [--role admin]
+peers invites deny <inviteId>
+peers invites revoke <inviteId>
+peers invites sync                      # fetch mailbox, retry queued sends
+peers invites regenerate-profile        # revoke all my tokens, issue a new profile QR
+```
+
+**Options:**
+
+| Flag | Description |
+| --- | --- |
+| `--role <role>` | `reader`, `writer`, `admin`, `owner`, or a number. Default `writer` for invites |
+| `--mode <mode>` | Link mode: `approve` (default) or `open` (auto-admit) |
+| `--uses <n>` | Link uses: `1` or `unlimited` (default) |
+| `--expires <duration>` | Lifetime such as `30m`, `12h`, `7d` |
+| `--trust <level>` | Trust level for a new contact when accepting |
+| `--status <status>` | `peers invites list` filter: `pending`, `accepted`, `declined`, `expired`, `revoked`, `used` |
+| `--direction <dir>` | `peers invites list` filter: `in` or `out` |
+| `--json` | Output JSON |
+
+Tokens are accepted in any of their forms: the raw code, the `https://peers.app/i#…` link,
+or the `peers://i#…` deep link.
+
 ### `peers app` — App control
 
 Start, stop, and check the status of the Peers desktop app.
@@ -340,3 +394,4 @@ Configuration is stored at `~/peers/cli-config.json`.
 - **[System: Workflows](./Workflows)** — workflows triggered by CLI messages.
 - **[System: Assistants](./Assistants)** — the assistants that respond to CLI messages.
 - **[System: Tables](./Tables)** — the data model behind `peers db`.
+- **[System: Invites](./Invites)** — the invite model behind `peers contacts`, `peers groups`, and `peers invites`.

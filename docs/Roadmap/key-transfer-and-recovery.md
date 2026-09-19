@@ -39,7 +39,7 @@ The existing `connection-code.ts` infrastructure (`encryptWithSecret` / `decrypt
 | Layer | Change |
 |-------|--------|
 | `peers-sdk` | New `transferKey` / `receiveKey` helpers wrapping `encryptWithSecret` / `decryptWithSecret` |
-| `peers-device` | New device-message handler for transfer requests (similar to `userConnectOffer` / `userConnectAnswer`) |
+| `peers-device` | New device-message handler for transfer requests (similar to the invite envelope handler in `peers-device/src/invites`) |
 | `peers-ui` | "Link new device" screen on existing device; "Import identity" option on setup screen |
 | `peers-pwa` | Calls `setUserIdAndSecretKey` after receiving the key |
 | `peers-electron` | Calls keytar `setPassword` after receiving the key |
@@ -50,7 +50,7 @@ No changes to `IUser`, `verifyUserSignature`, group key handling, or the sync la
 
 - The secret key is encrypted in transit over the shared-secret channel; it never appears as plaintext in UI or logs.
 - The transfer requires physical access to (or line-of-sight with) the existing device.
-- An attacker who intercepts the code has a window to impersonate the new device, but this is the same threat model as the existing user-connect flow and can be mitigated with a confirmation step on both sides.
+- An attacker who intercepts the code has a window to impersonate the new device, but this is the same threat model as the contact-invite flow and can be mitigated with a confirmation step on both sides.
 
 ### Limitation
 
