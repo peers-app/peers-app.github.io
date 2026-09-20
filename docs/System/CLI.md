@@ -147,6 +147,26 @@ peers devices status <deviceId>
 Only direct connections are listed. A device that is merely known through synchronized records
 or an indirect network path is not available to `--device`.
 
+### `peers pair` — Add a new device {#pair}
+
+Approve a new device that is showing a pairing code, from a signed-in host. The host the CLI
+is connected to (Electron by default, or a headless host via `--auth-file`) is the signed-in
+side; its account credentials are sent to the new device once the code checks out.
+
+```bash
+peers pair 7-guitar-revenge-tunnel      # prompts before sending credentials
+peers pair 7 guitar revenge tunnel -y   # approve without the prompt
+peers pair status                       # current ceremony state
+peers pair cancel                       # abandon the active ceremony
+```
+
+`--json` prints each state transition as a JSON line (`connecting`, `waiting-for-approval`
+with the new device's name, `transferring`, `complete`). The command exits non-zero if the code
+is wrong, the ceremony is rejected, or it fails. See
+[Add another device](./Device-Pairing.md) for the ceremony and
+[Headless host](./Headless.md#pair-instead-of-copying-a-secret) for pairing a headless
+process as the new device.
+
 ### `peers tools` — Tools
 
 List, inspect, and execute [tools](./Tools).

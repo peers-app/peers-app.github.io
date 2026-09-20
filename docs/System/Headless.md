@@ -33,6 +33,47 @@ Explicit `--user-id`/`--secret-key`, `--credentials <file>`, or
 rename from another device is kept. `peers app restart` re-execs as the same
 identity.
 
+## Pair instead of copying a secret
+
+To add a headless host to an account you already use, do not copy the secret
+key around. Start it signed out with `--pair`:
+
+```bash
+npx peers-headless --pair --db ~/peers/headless/server --name "Home server"
+```
+
+It creates a rendezvous room on `--services-url` (default `https://peers.app`)
+and prints a code such as `7-guitar-revenge-tunnel`, plus a QR code when stdout
+is a terminal. On a signed-in device choose **Settings → Add another device**
+and scan or type the code, or on a signed-in host run
+`peers pair 7-guitar-revenge-tunnel`. When you approve, the headless process
+receives the credentials over a direct WebSocket, writes
+`<db>/credentials.json` (mode 0600), and continues booting as that account in
+the same process. The secret never appears on argv, in the environment, or in
+logs. Later launches need only `--db`.
+
+While pairing, the process listens on `--peer-port` (default 3341) for the
+signed-in device and advertises `http://<lan-ip>:<port>` and
+`http://127.0.0.1:<port>`; the normal device-mesh listener takes the port over
+once pairing completes. Only a socket presenting the PAKE-derived token for the
+current code is admitted, and only one. If the host sits behind a proxy or TLS
+terminator, advertise the public origin instead:
+
+```bash
+npx peers-headless --pair --db /srv/peers --pair-url https://peers.example.com
+```
+
+`--pair` refuses to run when `<db>/credentials.json`, explicit credentials, or
+`USER_ID`/`SECRET_KEY` already provide an identity, and it needs a
+`--services-url` (not `none`) for the rendezvous. Each line of progress is
+printed; `PAIRING_CODE <code>` is a machine-readable marker for scripts. A
+failed attempt rotates to a new code; if the runtime had already initialized
+when the failure happened, the process exits non-zero and should be started
+again. Details of the ceremony are in [Add another device](./Device-Pairing.md).
+
+The signed-in side is available too: `peers --auth-file ~/peers/cli/headless-auth.json pair <code>`
+approves a new device from a headless host.
+
 The process binds a frontend socket on `127.0.0.1` and writes
 `~/peers/cli/headless-auth.json` (`port` + token). That path is separate from
 Electron's `~/peers/cli/cli-auth.json`, so a running desktop app is not stolen.
@@ -66,6 +107,8 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
 - Serves the same socket.io RPC + system contracts the CLI already uses
 - Listens for device connections (`--peer-port`, default 3341) and can dial
   explicit peers (`--peer http://127.0.0.1:3342`)
+- Device pairing on both sides: `--pair` as the signed-out new device (direct
+  WebSocket transport), `peers pair <code>` as the signed-in approver
 - One process, one user — spawn another process for a second device
 
 ## Offline / test flags
@@ -84,11 +127,19 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
 Each spawned host is a separate process (in-memory SQLite, ephemeral ports,
 loopback mesh, `--services-url none`) that prints `READY {json}`; the CLI is
 pointed at it with `--auth-file`. Children run without `NODE_ENV=test` so the
-runtime behaves like a real device. In `peers-headless`: `npm test` (unit +
+runtime behaves like a real device. Set `PEERS_HARNESS_DEBUG=1` to mirror every
+child's output to the test's stderr. In `peers-headless`: `npm test` (unit +
 in-process smoke), `npm run test:live` (real hosts + CLI), `npm run test:all`.
+
+For pairing, `startTestPairingRendezvous` starts a happy-path stand-in for the
+`peers.app` room on loopback and `spawnPairingHeadlessProcess` starts a `--pair`
+host and resolves with its code (`ready` resolves with the READY payload once a
+source approves). `live.pairing.test.ts` pairs two real headless processes this
+way, driving the source with `peers pair <code> --yes`.
 
 ## Not yet
 
 - UI / static file serving
 - `peers://` protocol handling
-- WebRTC sidecar and device pairing as a signed-out destination
+- WebRTC (sidecar); pairing uses the direct WebSocket transport, so a headless
+  destination needs a source that can reach one of its advertised URLs
