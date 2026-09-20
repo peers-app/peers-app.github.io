@@ -6,7 +6,10 @@ sidebar_position: 0
 
 The Peers CLI (`peers`) lets you interact with the Peers app entirely from the terminal. You can chat with assistants, query databases, run tools, tail logs, inspect directly connected devices, and control the UI — all without opening the app window.
 
-The CLI communicates with the running Peers desktop app over a local WebSocket connection. If the app isn't running, the CLI starts it automatically.
+The CLI communicates with a running Peers host (the desktop app or
+`peers-headless`) over a local WebSocket connection. If the desktop app isn't
+running and you have not passed `--auth-file`, the CLI starts Electron
+automatically.
 
 ## Installation
 
@@ -42,7 +45,13 @@ peers devices
 # Invite a contact / see pending invites
 peers contacts invite
 peers invites
+
+# Talk to a peers-headless process instead of Electron
+peers --auth-file ~/peers/cli/headless-auth.json db tables
 ```
+
+`--auth-file` (or `PEERS_CLI_AUTH_FILE`) points the CLI at any host that wrote
+an auth JSON. When that flag is set, the CLI will not auto-start Electron.
 
 ## Commands
 
