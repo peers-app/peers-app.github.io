@@ -13,6 +13,11 @@ variable. Peers validates that a stored group secret derives the public keys on 
 record before using it. A mismatched or malformed key is rejected instead of being used to
 encrypt new group data.
 
+The founder also gets an explicit, signed `GroupMembers` row with the `Founder` role in the
+group context, so approvals and role checks see the same membership data joiners will
+receive. Groups created before this row existed are repaired the first time the founder
+approves a join.
+
 Targeted device messages use the target user's public key from the shared group's `Users`
 and `Devices` records. This lets devices owned by different users exchange signaling and
 administration messages without depending on the sender's local copy of the group secret.

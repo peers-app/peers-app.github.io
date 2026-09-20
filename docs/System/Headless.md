@@ -107,8 +107,17 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
 - Serves the same socket.io RPC + system contracts the CLI already uses
 - Listens for device connections (`--peer-port`, default 3341) and can dial
   explicit peers (`--peer http://127.0.0.1:3342`)
+- Dials devices it discovers, not only the ones on argv: a `ws` protocol manager
+  lets `NetworkManager` connect to own devices found in the synced `Devices`
+  table, peers learned from another device's network info, and group admins on
+  join. Addresses come from `Devices.serverUrl` and from asking the target
+  (`get-ws-addresses` over the mesh); the target answers with what it
+  advertises: `http://127.0.0.1:<peer-port>` plus its LAN address, or the
+  `--advertise-url` origins when given (hosts behind a reverse proxy or NAT)
 - Device pairing on both sides: `--pair` as the signed-out new device (direct
   WebSocket transport), `peers pair <code>` as the signed-in approver
+- Logs unhandled promise rejections instead of exiting, like Electron's main
+  process, so a peer disconnecting mid-sync cannot take the host down
 - One process, one user — spawn another process for a second device
 
 ## Offline / test flags
@@ -119,12 +128,21 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
 | `--no-peer` | Do not listen for other devices |
 | `--peer-host 127.0.0.1` | Mesh listener on loopback only |
 | `--peer <url>` | Connect to a known peer (repeatable) |
+| `--advertise-url <url>` | Origin other devices dial to reach this listener instead of the detected addresses (repeatable) |
 | `--lan-scan` | Scan the LAN for Electron peers on port 3333 |
 
 ## Testing with it
 
-`@peers-app/peers-headless` exports `spawnHeadlessProcess` and `runPeersCli`.
-Each spawned host is a separate process (in-memory SQLite, ephemeral ports,
+Multi-device scenarios live in `peers-e2e`; see
+[End-to-end fleet testing](./E2E-Testing.md). It spawns fleets of real headless
+processes (up to 100), wires them into a mesh over loopback, and drives each
+through its RPC socket, with per-device logs, mesh snapshots, and fault
+injection. `npx peers-fleet up` from that package stands up the same fleet
+detached for interactive or agent use.
+
+`peers-headless` itself keeps only the spawn helpers and a runtime smoke suite.
+`@peers-app/peers-headless` exports `spawnHeadlessProcess` and `runPeersCli`:
+each spawned host is a separate process (in-memory SQLite, ephemeral ports,
 loopback mesh, `--services-url none`) that prints `READY {json}`; the CLI is
 pointed at it with `--auth-file`. Children run without `NODE_ENV=test` so the
 runtime behaves like a real device. Set `PEERS_HARNESS_DEBUG=1` to mirror every
