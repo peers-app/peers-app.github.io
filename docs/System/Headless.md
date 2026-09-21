@@ -94,7 +94,51 @@ loopback (default is every interface). `--no-db-access` disables
 `--no-peer` skips the mesh listener.
 
 A machine-readable `READY {json}` line is printed on stdout when the host is
-up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
+up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`, `webrtc`).
+
+## WebRTC (optional)
+
+Device-to-device WebRTC runs in a separate Go process, `peers-webrtc`, the same
+sidecar the desktop app ships. It is an optional dependency: `peers-headless`
+does not bundle the binary, and a host without one (or with one that keeps
+crashing) boots and forms WebSocket edges exactly as before. WebRTC adds the
+paths a plain listener cannot cover: two devices that both sit behind NAT with
+no reachable `--peer-port`, and a pairing destination that a source cannot
+dial directly.
+
+Discovery order at startup:
+
+1. `--webrtc-sidecar <path>` (or `PEERS_WEBRTC_SIDECAR`): use exactly this
+   binary. If it does not exist the host logs one line and continues without
+   WebRTC.
+2. Otherwise auto-detect: the sibling dev build for this platform
+   (`../peers-webrtc/bin/<goos>-<goarch>/peers-webrtc`), the legacy
+   un-suffixed `../peers-webrtc/bin/peers-webrtc`, then `peers-webrtc` on
+   `PATH`.
+3. `--no-webrtc`: never look for or start a sidecar (`webrtc: "off"`).
+
+Build the binary once with `cd peers-webrtc && make local` (needs Go); the
+monorepo checkout then auto-detects it. Nothing is started when `--no-peer` is
+given, since there is no mesh to take part in.
+
+Status shows up in three places. The startup log prints `[WebRTC] Starting
+sidecar <path>` then `[WebRTC] sidecar ready`, or a single `[WebRTC] ... 
+continuing with WebSocket only` line naming the flags when nothing was found.
+The `READY` payload carries `webrtc`: `off`, `starting`, `ready`, `down`, or
+`unavailable`. And `NetworkManager` only advertises `wrtc` to peers while the
+sidecar is authenticated (`isAvailable()`), so a host whose sidecar is starting
+or gone never invites a 30 s WebRTC timeout from the other side.
+
+Failure handling is bounded. A sidecar that exits before authenticating or
+within a few seconds of spawning counts as a failed start; restarts back off
+(2 s, 4 s, ... 60 s) and after five consecutive failures the host stops
+retrying, logs `[WebRTC] sidecar unavailable; continuing with WebSocket only`,
+and keeps running. A sidecar that ran healthily and then died is restarted
+with the counter reset.
+
+Scope on loopback: two headless hosts on one machine exercise the signaling
+path, the datachannel state machine, and sync over `wrtc://`; they do not
+exercise STUN/TURN or NAT traversal.
 
 ## What it does
 
@@ -112,6 +156,10 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
   (`--link-remote`) is Electron-only because it needs `git`/`gh`
 - Listens for device connections (`--peer-port`, default 3341) and can dial
   explicit peers (`--peer http://127.0.0.1:3342`)
+- Registers the WebRTC sidecar as a second protocol manager when a
+  `peers-webrtc` binary is found (see [WebRTC](#webrtc-optional)); the
+  sidecar itself lives in the Runtime (`peers-device`'s `WebRTCSidecar`) and
+  is shared with the desktop app
 - Dials devices it discovers, not only the ones on argv: a `ws` protocol manager
   lets `NetworkManager` connect to own devices found in the synced `Devices`
   table, peers learned from another device's network info, and group admins on
@@ -136,6 +184,8 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
 | `--advertise-url <url>` | Origin other devices dial to reach this listener instead of the detected addresses (repeatable) |
 | `--lan-scan` | Scan the LAN for Electron peers on port 3333 |
 | `--max-connections <n>` | Override the device connection cap (default 30). A testing knob: a small cap reproduces at-capacity shedding with a handful of devices (`peers-e2e`'s `cap.e2e.test.ts` uses 4) |
+| `--webrtc-sidecar <path>` | Use this `peers-webrtc` binary instead of auto-detecting (`PEERS_WEBRTC_SIDECAR` is the same) |
+| `--no-webrtc` | Never look for or start the WebRTC sidecar; WebSocket edges only |
 
 ## Testing with it
 
@@ -165,7 +215,9 @@ way, driving the source with `peers pair <code> --yes`.
 
 - UI / static file serving
 - `peers://` protocol handling
-- WebRTC (sidecar); pairing uses the direct WebSocket transport, so a headless
-  destination needs a source that can reach one of its advertised URLs. The
-  sidecar still lives in `peers-electron`; extracting it into the Runtime so
-  headless can register it is the remaining host-parity item.
+- Shipping the `peers-webrtc` binary with `npx peers-headless` (a
+  platform-specific optional package or a release download); today you build
+  it or point `--webrtc-sidecar` at one
+- Pairing over WebRTC: `--pair` still uses the direct WebSocket transport, so a
+  headless destination needs a source that can reach one of its advertised
+  URLs

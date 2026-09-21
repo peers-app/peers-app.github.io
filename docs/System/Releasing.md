@@ -28,6 +28,12 @@ e2e packages are deliberately not in CI; the Azure workflow *is* CI, and the
 release script waits for it so a green local test run cannot ship a client
 against a server that never deployed.
 
+Step 2b also runs `make local` in `peers-webrtc` before the Tier 1 scenarios.
+The WebRTC scenario skips itself on machines without a sidecar binary, which
+is fine on a laptop and wrong on the release machine, so a failed `make local`
+(missing Go, missing checkout) aborts the release instead of letting the
+scenario quietly skip.
+
 Typical Azure time is about seven minutes. The wait polls `gh run list` for
 the just-pushed commit (20 minute timeout) and treats any conclusion other
 than `success` as a failed release. You need an authenticated `gh` that can

@@ -13,9 +13,10 @@ partition.
 
 Nothing in the product is mocked. Every device is a separate Node process with
 its own SQLite database, real handshakes and signatures, real sync, and the
-same `ws` protocol manager the headless host uses in production. The only
-differences from a deployment are `--services-url none` (no cloud), loopback
-addresses, and ephemeral ports.
+same `ws` protocol manager the headless host uses in production. Devices that
+opt in also run the real `peers-webrtc` sidecar and form `wrtc://` edges. The
+only differences from a deployment are `--services-url none` (no cloud),
+loopback addresses, and ephemeral ports.
 
 ## Layout
 
@@ -54,7 +55,7 @@ npm run e2e:fleet:large  # Tier 3: PEERS_FLEET_SIZE=100
 | Tier | Processes | What it proves | Typical time |
 |---|---|---|---|
 | 0 | none | topology builders and cap checks, wait helpers, proxy, handle serialization | seconds |
-| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, pairing, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group | ~3 min |
+| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, pairing, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group, WebRTC sidecar (skipped without a `peers-webrtc` binary) | ~3–4 min |
 | 2 | 32 | own-device cap (≤ 8 dials, ≤ 30 connections), hub pruning, tree of 32 with contacts and a group, sync latency percentiles | ~2–3 min |
 | 3 | 100 | 10 users × 10 devices: connected within caps, per-user convergence within budget, resource report | ~1–2 min |
 
@@ -69,7 +70,9 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
 - **Tier 0/1** after touching `peers-sdk` sync or connection code, `peers-device`,
   `peers-headless`, `peers-e2e`, or an official package. The scenarios in Tier 1
   need `official-packages/isolation-smoke` and `isolation-consumer` built
-  (`npm run build` in each).
+  (`npm run build` in each), and `webrtc.e2e.test.ts` needs a `peers-webrtc`
+  binary (`cd peers-webrtc && make local`, requires Go); without one it prints
+  a warning and skips rather than failing.
 - **Tier 2** when touching `connection-manager*`, `network-manager`, `sync-group`,
   `websocket-client`, or device election: the 32-device cap scenario is where
   shedding and redial policy show their real behaviour. Compare
@@ -78,7 +81,8 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
 
 `full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
 smoke tests) as Step 2b before anything is versioned or published, and aborts
-the release on failure. After `peers-services` is pushed it also waits for the
+the release on failure. It runs `make local` in `peers-webrtc` first so the
+WebRTC scenario cannot silently skip on the release machine. After `peers-services` is pushed it also waits for the
 Azure deploy workflow to succeed before releasing the desktop client. `--skip-e2e`
 and `--skip-services-deploy` bypass those gates for an emergency release and say
 so loudly. The e2e packages are deliberately not wired into CI. See
@@ -124,12 +128,18 @@ it("a row written on one device reaches the others", async () => {
 
 ### Fleet
 
-- `fleet.user({ name, devices, bootstrap, persistent, pairing, proxied })` creates an
+- `fleet.user({ name, devices, bootstrap, persistent, pairing, proxied, webrtc })` creates an
   identity and spawns its devices in topological waves so every `--peer` target
   is READY before its dialers start. The first device is `--new-user`; the rest
   share a fleet-private credentials file. Users after the first bootstrap to the
   fleet's first device (`hub: "none"` to disable).
-- `fleet.addDevice(user, { peers, persistent, noPeer, pairing, proxied })` adds one more.
+- `fleet.addDevice(user, { peers, persistent, noPeer, pairing, proxied, webrtc })` adds one more.
+- `webrtc` is off by default: every device is started with `--no-webrtc`, so
+  the 32- and 100-device fleets never spawn a Go process per device and every
+  edge stays a WebSocket. `webrtc: true` auto-detects the sibling
+  `peers-webrtc` build; a string is passed through as `--webrtc-sidecar <path>`
+  (a nonexistent path or `/usr/bin/false` are how the failure modes are
+  exercised). `device.process.webrtc` is the state the child reported at READY.
 - `fleet.connectContacts(a, b)`, `fleet.createGroup(founder, members, { role })`
   drive the invite contracts on the devices' handles, exactly as the UI does
   (`role` defaults to Reader; pass `GroupMemberRole.Writer` when a scenario
@@ -254,6 +264,13 @@ available from the CLI: the proxies live in the process that created them.
   in-process pairing rendezvous.
 - LAN scan (`--lan-scan` probes port 3333 across a /24) cannot be exercised on
   one host.
-- WebRTC: headless has no sidecar; every edge is a WebSocket.
+- WebRTC beyond loopback. `webrtc.e2e.test.ts` puts two sidecar devices with no
+  listener (`noPeer`) behind a WebSocket-only hub and asserts a direct
+  `wrtc://` edge forms and syncs a row, that a missing binary degrades to
+  WebSocket-only, and that a sidecar which exits immediately hits the restart
+  cap without taking the host down. That covers signaling over the mesh and
+  the datachannel state machine; it says nothing about STUN/TURN, NAT
+  traversal, or the TURN credentials `peers.app` hands out. Every other
+  scenario runs `--no-webrtc`.
 - Multi-host latency and NAT. The loopback proxy adds delay, not packet loss or
   NAT behaviour.

@@ -215,8 +215,19 @@ UI, or process-lifecycle control.
 
 ## Interpreting a WebRTC attempt
 
+On desktop and headless hosts WebRTC runs in the `peers-webrtc` sidecar process, which the
+Runtime (`peers-device`) supervises. The **Troubleshoot** row *WebRTC sidecar (Go/Pion)*
+distinguishes three states: not registered (no binary was found at startup), registered but
+not ready (the sidecar is starting, restarting after a crash, or gave up after repeated
+failures), and available. While the sidecar is not ready the host stops advertising `wrtc`
+to peers, so a device in that state is dialed over WebSocket rather than timing out on
+WebRTC; look for `[Sidecar]` or `[WebRTC]` lines in the logs.
+
 - No target device in Phase 2 remote network information indicates a group-discovery or
   membership problem.
+- A target that advertises only `ws` even though it runs the desktop app means its sidecar
+  is down; the connection still works over WebSocket if either side has a reachable
+  listener.
 - A target that is visible but never selected indicates candidate, status, or cooldown
   logic.
 - Protocol discovery errors indicate that routed device messaging did not reach the
