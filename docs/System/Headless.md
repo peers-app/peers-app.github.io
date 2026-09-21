@@ -166,4 +166,6 @@ way, driving the source with `peers pair <code> --yes`.
 - UI / static file serving
 - `peers://` protocol handling
 - WebRTC (sidecar); pairing uses the direct WebSocket transport, so a headless
-  destination needs a source that can reach one of its advertised URLs
+  destination needs a source that can reach one of its advertised URLs. The
+  sidecar still lives in `peers-electron`; extracting it into the Runtime so
+  headless can register it is the remaining host-parity item.

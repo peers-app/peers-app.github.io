@@ -1,0 +1,59 @@
+---
+sidebar_position: 11
+---
+
+# Releasing
+
+`full-release.js` at the monorepo root versions, tests, publishes, and deploys
+the packages that ship together. Run it from the root after you are logged in
+to npm and `gh` can see `peers-app/peers-services`:
+
+```bash
+node full-release.js          # keep the current version
+node full-release.js patch    # or minor / major
+```
+
+## Gates
+
+The script aborts on the first failed gate. Two of those gates exist because
+unit tests on a single process cannot see them:
+
+| Gate | When | Bypass |
+|---|---|---|
+| Step 2b: `peers-headless` tests + `peers-e2e` Tier 0/1 | Before any package is versioned or published | `--skip-e2e` |
+| After Step 3 pushes `peers-services`: GitHub Actions `main_peers-services.yml` (build, test, Azure) | Before `peers-electron` is processed | `--skip-services-deploy` |
+
+Both skip flags are for emergency releases only and print a loud warning. The
+e2e packages are deliberately not in CI; the Azure workflow *is* CI, and the
+release script waits for it so a green local test run cannot ship a client
+against a server that never deployed.
+
+Typical Azure time is about seven minutes. The wait polls `gh run list` for
+the just-pushed commit (20 minute timeout) and treats any conclusion other
+than `success` as a failed release. You need an authenticated `gh` that can
+read Actions on `peers-app/peers-services`.
+
+## Server first when the verifier changes
+
+New signatures, handshakes, and other objects that `peers-services` must
+*accept* are one-way compatible: a new signer plus an old verifier fails, a
+new verifier plus an old signer succeeds (or falls back). The 0.25.0
+canonical-JSON signature change shipped a client that `peers.app` rejected
+until a later CI fix deployed the matching server.
+
+Rules of thumb:
+
+- Put the new verifier on `peers-services` and wait for Azure to finish
+  (`full-release.js` does this wait) before releasing any client that produces
+  the new bytes.
+- Keep a legacy verify fallback in `@peers-app/peers-sdk` until you are sure
+  no pre-change clients remain; do not treat that fallback as permanent.
+- Do not announce a desktop or npm client until `https://peers.app` is running
+  the commit you just pushed.
+
+## After the script
+
+1. Check the published npm packages (`npm view <package-name>`).
+2. Check the desktop artifacts (electron-builder / S3).
+3. Confirm `https://peers.app` is the just-released `peers-services`.
+4. Commit the `official-packages` submodule pointer at the monorepo root.

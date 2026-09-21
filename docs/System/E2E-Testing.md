@@ -78,8 +78,11 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
 
 `full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
 smoke tests) as Step 2b before anything is versioned or published, and aborts
-the release on failure. `--skip-e2e` bypasses the gate for an emergency release
-and says so loudly. The e2e packages are deliberately not wired into CI.
+the release on failure. After `peers-services` is pushed it also waits for the
+Azure deploy workflow to succeed before releasing the desktop client. `--skip-e2e`
+and `--skip-services-deploy` bypass those gates for an emergency release and say
+so loudly. The e2e packages are deliberately not wired into CI. See
+[Releasing](./Releasing.md).
 
 ### Environment flags
 

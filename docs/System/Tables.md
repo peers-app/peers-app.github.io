@@ -51,7 +51,7 @@ Identity and permission tables (`Users`, `Groups`, `GroupMembers`, `Packages`, `
 
 The signature covers a **canonical JSON** form of the row, not whatever key order the object happened to have when it was built: keys are sorted at every level and keys whose value is `null` or `undefined` are dropped. This matters because a signed row is read back from SQLite in schema column order with `NULL` columns as `undefined`, and it is reordered again by msgpack and object spreads on the wire. None of that changes the signed bytes, so an optional field that is absent, `null`, or `undefined` verifies the same way. Extended types (`Date`, `Buffer`, `Uint8Array`) are encoded the same way the ORM stores them.
 
-Verification also accepts the pre-canonical (insertion-order) form, so rows signed by older builds keep verifying without being re-signed. New signatures are always canonical; when upgrading, deploy the SDK to `peers-services` and to every device before relying on it, because an old verifier will reject a canonical signature whose key order differs from what it expects.
+Verification also accepts the pre-canonical (insertion-order) form, so rows signed by older builds keep verifying without being re-signed. New signatures are always canonical. That fallback is one-way: an old verifier rejects a canonical signature whose key order differs from what it expects. Deploy `peers-services` (and confirm the Azure workflow succeeded) before shipping any client that produces the new form. `full-release.js` waits for that deploy before releasing `peers-electron`; see [Releasing](./Releasing.md).
 
 ### Placeholders never overwrite
 
