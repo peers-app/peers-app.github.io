@@ -53,6 +53,14 @@ The signature covers a **canonical JSON** form of the row, not whatever key orde
 
 Verification also accepts the pre-canonical (insertion-order) form, so rows signed by older builds keep verifying without being re-signed. New signatures are always canonical; when upgrading, deploy the SDK to `peers-services` and to every device before relying on it, because an old verifier will reject a canonical signature whose key order differs from what it expects.
 
+### Placeholders never overwrite
+
+A device often learns of a user before it has that user's signed row: a connection handshake, an invite identity, or a join approval carries only `userId` and public keys. Those are written as **unsigned placeholders** with `save(user, { weakInsert: true })`, which gives the change a near-zero timestamp so any real write wins last-write-wins.
+
+`weakInsert` alone only protects the *insert* case. `UsersTable` therefore also marks every unsigned weak save `insertOnly` (an `ISaveOptions` flag): if a row for that user already exists, the save returns it untouched instead of updating it. The decision is made inside the data source's serialized write path, not by the caller's earlier `get`, because the owner's signed row can land in between (a sync apply, or the owner's own device copying its identity into a group) and a plain update would replace it with an unsigned snapshot carrying a fresh timestamp that then out-votes the signed row on every device. The visible symptom of that race was remote contract calls failing with `unverified caller identity` even though the caller was a group member.
+
+Each user's own device writes its **signed** row into every group it belongs to with a normal (non-weak) timestamp, so members always end up holding the verifiable record.
+
 ## Reactivity and `dataChanged`
 
 When rows are inserted, updated, or deleted, the table emits **`dataChanged`** so UIs and other subscribers can refresh or patch local state. Under the hood that uses the shared **named event** system (`Emitter` / `emit`).

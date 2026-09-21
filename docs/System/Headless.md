@@ -104,7 +104,12 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
   when `--services-url` is not `none`)
 - Registers the Node isolated-package runtime
 - Captures console output into `ConsoleLogs`
-- Serves the same socket.io RPC + system contracts the CLI already uses
+- Serves the same socket.io RPC + system contracts the CLI already uses,
+  including `addOrUpdatePackage`: `peers packages add <name|url|id>` installs,
+  imports, clones, or copies packages exactly as on Electron. The installer
+  itself lives in the Runtime (`peers-device`'s `package-install`); headless
+  gives it plain Node filesystem and shell deps. Remote-repo linking
+  (`--link-remote`) is Electron-only because it needs `git`/`gh`
 - Listens for device connections (`--peer-port`, default 3341) and can dial
   explicit peers (`--peer http://127.0.0.1:3342`)
 - Dials devices it discovers, not only the ones on argv: a `ws` protocol manager
@@ -130,6 +135,7 @@ up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`).
 | `--peer <url>` | Connect to a known peer (repeatable) |
 | `--advertise-url <url>` | Origin other devices dial to reach this listener instead of the detected addresses (repeatable) |
 | `--lan-scan` | Scan the LAN for Electron peers on port 3333 |
+| `--max-connections <n>` | Override the device connection cap (default 30). A testing knob: a small cap reproduces at-capacity shedding with a handful of devices (`peers-e2e`'s `cap.e2e.test.ts` uses 4) |
 
 ## Testing with it
 

@@ -54,7 +54,7 @@ npm run e2e:fleet:large  # Tier 3: PEERS_FLEET_SIZE=100
 | Tier | Processes | What it proves | Typical time |
 |---|---|---|---|
 | 0 | none | topology builders and cap checks, wait helpers, proxy, handle serialization | seconds |
-| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, pairing, resilience, faults | ~1 min |
+| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, pairing, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group | ~3 min |
 | 2 | 32 | own-device cap (≤ 8 dials, ≤ 30 connections), hub pruning, tree of 32 with contacts and a group, sync latency percentiles | ~2–3 min |
 | 3 | 100 | 10 users × 10 devices: connected within caps, per-user convergence within budget, resource report | ~1–2 min |
 
@@ -63,6 +63,23 @@ waves; it is meant for a workstation or a nightly job, not a default CI runner.
 The pre-flight budget check warns when free memory or `ulimit -n` look too small
 (macOS under-reports free memory, so the warning there is usually noise; pass
 `failOnBudget: true` to make it fatal).
+
+### When to run which tier
+
+- **Tier 0/1** after touching `peers-sdk` sync or connection code, `peers-device`,
+  `peers-headless`, `peers-e2e`, or an official package. The scenarios in Tier 1
+  need `official-packages/isolation-smoke` and `isolation-consumer` built
+  (`npm run build` in each).
+- **Tier 2** when touching `connection-manager*`, `network-manager`, `sync-group`,
+  `websocket-client`, or device election: the 32-device cap scenario is where
+  shedding and redial policy show their real behaviour. Compare
+  `sync-latency-same-user.json` before and after.
+- **Tier 3** on a workstation or nightly, not per change.
+
+`full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
+smoke tests) as Step 2b before anything is versioned or published, and aborts
+the release on failure. `--skip-e2e` bypasses the gate for an emergency release
+and says so loudly. The e2e packages are deliberately not wired into CI.
 
 ### Environment flags
 
@@ -110,17 +127,34 @@ it("a row written on one device reaches the others", async () => {
   share a fleet-private credentials file. Users after the first bootstrap to the
   fleet's first device (`hub: "none"` to disable).
 - `fleet.addDevice(user, { peers, persistent, noPeer, pairing, proxied })` adds one more.
-- `fleet.connectContacts(a, b)`, `fleet.createGroup(founder, members)` drive the
-  invite contracts on the devices' handles, exactly as the UI does.
+- `fleet.connectContacts(a, b)`, `fleet.createGroup(founder, members, { role })`
+  drive the invite contracts on the devices' handles, exactly as the UI does
+  (`role` defaults to Reader; pass `GroupMemberRole.Writer` when a scenario
+  needs remote tool access).
 - `fleet.pairDevice(source)` spawns a `--pair` child against an in-process
   rendezvous and approves it from `source`.
-- `fleet.waitForMesh({ connected, minDegree, perContext })`,
-  `fleet.meshGraph()`, `fleet.snapshotMesh(name)`.
+- `fleet.waitForMesh({ connected, minDegree, perContext, stableFor })`,
+  `fleet.meshGraph()`, `fleet.snapshotMesh(name)`. `stableFor: n` requires the
+  invariants to hold on `n` consecutive polls, which matters right after a
+  burst of dials at a device's cap: a single passing sample can be a mirage.
 - `fleet.writeProbeRow(device)`, `fleet.waitForRow(devices, table, filter)`
   returns `{ timings, p50Ms, p95Ms, maxMs }`. Sync only travels over direct
   edges that share a data context, so assert `perContext` connectivity before
   asserting convergence.
+- `fleet.installOfficialPackage(device, name, { dataContextId })` imports a
+  built `official-packages/<name>` through the host's `addOrUpdatePackage` RPC
+  (the same path as `peers packages add`); `fleet.waitForPackage(devices,
+  packageId, dataContextId, { probe })` waits until the `Packages` and
+  `PackageVersions` rows have arrived and, with `probe`, a local contract tool
+  call succeeds on each device, which proves the bundle was downloaded and the
+  isolated worker booted. `PEERS_OFFICIAL_PACKAGES_DIR` overrides the default
+  `<monorepo>/official-packages`.
 - `fleet.resourceReport()` (RSS per child), `fleet.describe()`, `fleet.stop()`.
+
+`startFleet({ maxConnections })` starts every device with
+`--max-connections <n>` and makes `MeshGraph.capViolations()` judge against the
+same cap, so at-capacity shedding can be reproduced with a handful of processes
+(`cap.e2e.test.ts`: seven devices, cap four).
 
 Timeouts scale with fleet size: `scaledTimeoutMs(n)` is `base + perDevice × n`.
 
@@ -130,7 +164,15 @@ Timeouts scale with fleet size: `scaledTimeoutMs(n)` is `base + perDevice × n`.
 
 - `device.handle.table(dataContextId, "Tasks").list(filter)` / `.get` / `.save`
 - `device.handle.query(sql)`, `device.handle.runTool(name, args)`
-- `device.handle.contract(definition, { dataContextId })` for invites, groups, pairing
+- `device.handle.contract(definition, { dataContextId })` for invites, groups, pairing,
+  and any installed package's contract (tools, tables, observables)
+- `device.handle.remoteContract(definition, { dataContextId }).device(peerId).tools.x()`
+  runs a contract tool on another device; the host forwards the call over the
+  mesh and the target authorizes it (same account, or a group member meeting
+  the tool's `remoteAccessLevel`). `packages.e2e.test.ts` exercises the
+  same-account, cross-account, and denied paths.
+- `device.handle.installPackage(input, { dataContextId, packageLocation })` calls
+  the host's `addOrUpdatePackage` RPC directly
 - `device.handle.onEvents(prefix, handler)`, `device.handle.waitForEvent(...)`
 - `device.handle.logs({ sinceMs, level, textSearch })` reads `ConsoleLogs`
 - `device.handle.connectedDevices()`, `verifiedPeers()`, `waitForPeer(deviceId)`

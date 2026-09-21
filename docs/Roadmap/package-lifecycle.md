@@ -232,7 +232,7 @@ After peers-core is on S3, `full-release.js` runs `yarn release:local` in `peers
 | `peers-sdk/src/data/package-permissions.ts` | Allow Writer role for dev versions |
 | `peers-sdk/src/data/package-version-permissions.ts` | Allow Writer role for dev versions |
 | `peers-sdk/src/data/package-versions.ts` | Remove versionTag from hash, update `doesTagMatch`, add history field |
-| `peers-electron/src/server/package-installer.ts` | Dev tag for disk updates, contract finalization on promote |
+| `peers-device/src/package-install/add-or-update-package.ts` (Electron and headless both call it; `peers-electron/src/server/package-installer.ts` only adds `linkRemote`) | Dev tag for disk updates, contract finalization on promote |
 | `peers-core/src/package.ts` | Remove versionTag and devTag |
 | `official-packages/*/src/package.ts` | Remove versionTag and devTag |
 | `peers-core/src/tools/` | New promote-package-version and set-active-package-version tools |
