@@ -268,9 +268,11 @@ available from the CLI: the proxies live in the process that created them.
   listener (`noPeer`) behind a WebSocket-only hub and asserts a direct
   `wrtc://` edge forms and syncs a row, that a missing binary degrades to
   WebSocket-only, and that a sidecar which exits immediately hits the restart
-  cap without taking the host down. That covers signaling over the mesh and
-  the datachannel state machine; it says nothing about STUN/TURN, NAT
-  traversal, or the TURN credentials `peers.app` hands out. Every other
-  scenario runs `--no-webrtc`.
+  cap without taking the host down. Both sidecar devices discover each other
+  through the hub and dial at once; `WebRTCSidecar` keeps the offer from the
+  smaller `deviceId` so the edge forms instead of both sides abandoning their
+  own offer. That covers signaling over the mesh and the datachannel state
+  machine; it says nothing about STUN/TURN, NAT traversal, or the TURN
+  credentials `peers.app` hands out. Every other scenario runs `--no-webrtc`.
 - Multi-host latency and NAT. The loopback proxy adds delay, not packet loss or
   NAT behaviour.

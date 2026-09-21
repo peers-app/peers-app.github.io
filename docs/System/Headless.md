@@ -138,7 +138,10 @@ with the counter reset.
 
 Scope on loopback: two headless hosts on one machine exercise the signaling
 path, the datachannel state machine, and sync over `wrtc://`; they do not
-exercise STUN/TURN or NAT traversal.
+exercise STUN/TURN or NAT traversal. If both sides dial at once, the device
+with the lexicographically smaller `deviceId` keeps its offer and the other
+answers it (`[Sidecar] WebRTC glare ...` in the logs). Without that rule each
+side dropped its own offer and the `wrtc://` edge never formed.
 
 ## What it does
 
