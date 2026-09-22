@@ -31,7 +31,8 @@ override the identity recorded in the declared shared group.
 
 ## Joining a group
 
-Members join through [invites](./Invites.md). An Admin or Owner opens the group's **Members**
+Members join through [invites](./Invites.md). Inbound group invites and join requests
+also appear at the top of the **Groups** list, without opening a group. An Admin or Owner opens the group's **Members**
 screen and uses **Invite people**:
 
 - **Contacts** — pick one or more existing contacts and a role. Each contact receives a

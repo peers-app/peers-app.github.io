@@ -290,6 +290,11 @@ Electron renderers and the PWA can use the same typed contract consumers:
 - `registerHostContractTransport`, `waitForHostContractTransport`, and
   `subscribeHostContractTransport` expose transport readiness and reconnect lifecycle to UI
   modules. Consumers must be disposed and recreated when the transport changes.
+- Screens share one cache via `hostContractConsumer(definition, options)` from the SDK.
+  `useHostContract(accessor)` in `peers-ui` returns `{ consumer, error }` and refreshes
+  when the host transport is replaced. Read `consumer.observables.*` with `useObservable`.
+  System Identity is the example that resolves before sign-in: the handle passes no
+  `dataContextId`, and the screen subscribes to `consumer.observables.state`.
 
 The local router registers its request listener before the user context is ready, then
 resolves that context lazily per call. It accepts only the user's personal context and

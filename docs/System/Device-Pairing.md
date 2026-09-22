@@ -21,7 +21,8 @@ reads it and approves the transfer.
 1. On the new device, open Peers and choose **Sign in from another device**. It
    shows a pairing code such as `7-guitar-revenge-tunnel` and the same code as a
    QR code.
-2. On a device already signed in, open **Settings → Add another device**.
+2. On a device already signed in, open **Devices → Add a device** (Settings links
+   to the same screen).
 3. Scan the QR code with the camera inside Peers, or type the code. Codes are
    case-insensitive and can be separated by hyphens or spaces.
 4. When the signed-in device shows the new device's name, choose **Approve**.
@@ -39,11 +40,12 @@ A signed-in host without a UI approves from the command line:
 
 ```bash
 peers pair 7-guitar-revenge-tunnel          # prompts before sending credentials
+peers devices pair 7-guitar-revenge-tunnel  # same command
 peers pair 7 guitar revenge tunnel --yes    # approve as soon as the code checks out
 ```
 
-`peers pair` works against Electron and headless hosts (pick the host with
-`--auth-file`). See [CLI](./CLI.md#pair).
+`peers pair` and `peers devices pair` work against Electron and headless hosts (pick the host with
+`--auth-file`). See [CLI](./CLI.md#pair) and [Devices](./Devices.md).
 
 ### Headless as the new device
 

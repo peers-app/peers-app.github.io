@@ -21,6 +21,10 @@ be online at the same time.
 If they are not reachable when they accept, their reply is queued and delivered
 when a route becomes available (a direct connection, a shared device, or the
 Peers mailbox). The invite appears under **Pending contact invites** until then.
+**Show history** includes invites that were accepted, declined, expired, or revoked.
+The section stays hidden when there are no contact invites; once one has been resolved,
+only **Show history** remains until you open it. There is no separate Invites tab;
+`/invites` opens Contacts.
 
 A one-off contact invite expires after seven days by default and can be used
 once. Anyone who has the link before it is used can accept it, so send it only

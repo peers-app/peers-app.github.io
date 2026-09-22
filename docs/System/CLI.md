@@ -155,12 +155,13 @@ side; its account credentials are sent to the new device once the code checks ou
 
 ```bash
 peers pair 7-guitar-revenge-tunnel      # prompts before sending credentials
+peers devices pair 7-guitar-revenge-tunnel
 peers pair 7 guitar revenge tunnel -y   # approve without the prompt
 peers pair status                       # current ceremony state
 peers pair cancel                       # abandon the active ceremony
 ```
 
-`--json` prints each state transition as a JSON line (`connecting`, `waiting-for-approval`
+`peers devices pair` is the same command as `peers pair`. `--json` prints each state transition as a JSON line (`connecting`, `waiting-for-approval`
 with the new device's name, `transferring`, `complete`). The command exits non-zero if the code
 is wrong, the ceremony is rejected, or it fails. See
 [Add another device](./Device-Pairing.md) for the ceremony and

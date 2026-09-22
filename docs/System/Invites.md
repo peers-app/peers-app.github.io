@@ -59,9 +59,14 @@ role above the issuer's own.
 ## Pending invites
 
 Every invite you issue or receive is a row in your personal `Invites` table,
-synced across your devices. The UI lists them under **Contacts**, each group's
-**Invite people** panel, and the **Invites** screen; the CLI shows them with
-`peers invites`.
+synced across your devices. Pending rows show on the screen they belong to:
+**Contacts** (`type: "contact"`), the **Groups** list (`type: "group"`), and
+**Devices** (`type: "device"`, a slot for later device admission; nothing writes
+those rows yet). A list stays hidden when it has no rows. **Show history** appears
+once a resolved invite exists and includes accepted, declined, expired, and revoked
+rows. The CLI shows the same rows with `peers invites`. There is no Invites tab.
+Opening `#invites` goes to Contacts. `#invites/accept` stays the shared paste-and-scan
+screen.
 
 Rows are `pending` until resolved, then `accepted`, `declined`, `expired`,
 `revoked`, or `used`. Pending rows expire with their token (inbound requests
