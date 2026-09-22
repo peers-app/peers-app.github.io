@@ -95,6 +95,13 @@ days, with per-sender rate limits and per-recipient quotas. An account can opt
 out of receiving mailbox messages (`PUT /api/v1/mailbox/settings`); invites then
 still work whenever both parties share a connection or a mesh route.
 
+Using the mailbox requires the account to be registered with `peers.app` (the
+welcome screen or **Account → Register** on desktop and PWA, `--register-services`
+on a headless host). Registration issues a 30-day account token that the
+runtime renews on its own: it re-authenticates with the account key a week
+before the token expires, and once more if the service ever rejects the token
+it holds. A user who never registered is never registered automatically.
+
 None of this requires `peers.app`. Two devices on the same network, or any
 chain of connected Peers devices, can complete every flow described here.
 

@@ -114,8 +114,13 @@ variable, where `MailboxClient` reads it. Registration is best effort: a
 failure logs `[services] registration ... failed; continuing without a mailbox
 token` and startup continues. The `READY` payload reports `services` as `off`
 (flag not given or `--services-url none`), `registered`, or `failed`. The flag
-refuses to run together with `--services-url none`. A device that was already
-registered on an earlier start simply refreshes its token.
+refuses to run together with `--services-url none`.
+
+The flag is only the opt-in. Once a token is stored, the runtime keeps it
+alive on every host (headless, desktop, PWA): it re-authenticates a week before
+the 30-day expiry and once more if the mailbox answers `401`, so a long-running
+host does not need `--register-services` on later starts. A host that never
+registered is left alone.
 
 ## WebRTC (optional)
 
