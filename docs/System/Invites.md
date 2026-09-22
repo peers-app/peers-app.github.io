@@ -98,6 +98,13 @@ still work whenever both parties share a connection or a mesh route.
 None of this requires `peers.app`. Two devices on the same network, or any
 chain of connected Peers devices, can complete every flow described here.
 
+Each rung is exercised end to end by real processes in `peers-e2e`:
+`contacts-group.e2e.test.ts` covers the direct and mesh paths with no cloud at
+all, and `invites-services.e2e.test.ts` runs the real `peers-services` to
+cover the mailbox while one party is offline, the `queued` state during a
+service outage and its retry, and the relay between two users who share no
+direct connection. See [End-to-end fleet testing](./E2E-Testing.md).
+
 ## Opening an invite link
 
 `https://peers.app/i#…` opens a small page that reads the token from the

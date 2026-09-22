@@ -94,7 +94,28 @@ loopback (default is every interface). `--no-db-access` disables
 `--no-peer` skips the mesh listener.
 
 A machine-readable `READY {json}` line is printed on stdout when the host is
-up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`, `webrtc`).
+up (`userId`, `deviceId`, `port`, `token`, `authFile`, `peerPort`, `webrtc`,
+`services`).
+
+## Registering with peers-services
+
+A device needs an account token from `peers-services` before it can use the
+mailbox (store-and-forward for invites while the other party is offline). On
+the desktop and PWA the welcome screen asks for it; a headless host asks with
+`--register-services` (or `PEERS_REGISTER_SERVICES=1`):
+
+```bash
+npx peers-headless --db ~/peers/headless/server --register-services
+```
+
+After the device initializes it calls the same `registerWithPeersServices` RPC
+the UI uses and stores the token in the encrypted `PEERS_SERVICES_TOKEN` user
+variable, where `MailboxClient` reads it. Registration is best effort: a
+failure logs `[services] registration ... failed; continuing without a mailbox
+token` and startup continues. The `READY` payload reports `services` as `off`
+(flag not given or `--services-url none`), `registered`, or `failed`. The flag
+refuses to run together with `--services-url none`. A device that was already
+registered on an earlier start simply refreshes its token.
 
 ## WebRTC (optional)
 
@@ -181,6 +202,7 @@ side dropped its own offer and the `wrtc://` edge never formed.
 | Flag | Purpose |
 |---|---|
 | `--services-url none` | No mailbox, no `peers.app` discovery |
+| `--register-services` | Register with `--services-url` at startup and store the mailbox token (`PEERS_REGISTER_SERVICES=1`). Incompatible with `--services-url none` |
 | `--no-peer` | Do not listen for other devices |
 | `--peer-host 127.0.0.1` | Mesh listener on loopback only |
 | `--peer <url>` | Connect to a known peer (repeatable) |
@@ -208,11 +230,11 @@ runtime behaves like a real device. Set `PEERS_HARNESS_DEBUG=1` to mirror every
 child's output to the test's stderr. In `peers-headless`: `npm test` (unit +
 in-process smoke), `npm run test:live` (real hosts + CLI), `npm run test:all`.
 
-For pairing, `startTestPairingRendezvous` starts a happy-path stand-in for the
-`peers.app` room on loopback and `spawnPairingHeadlessProcess` starts a `--pair`
-host and resolves with its code (`ready` resolves with the READY payload once a
-source approves). `live.pairing.test.ts` pairs two real headless processes this
-way, driving the source with `peers pair <code> --yes`.
+For pairing, `spawnPairingHeadlessProcess` starts a `--pair` host against a
+given `--services-url` and resolves with its code (`ready` resolves with the
+READY payload once a source approves). There is no stand-in rendezvous any
+more: `peers-e2e`'s `pairing.e2e.test.ts` runs the real `peers-services` as a
+fleet child and pairs two real headless processes through it.
 
 ## Not yet
 

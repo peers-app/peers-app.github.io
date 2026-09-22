@@ -14,9 +14,11 @@ partition.
 Nothing in the product is mocked. Every device is a separate Node process with
 its own SQLite database, real handshakes and signatures, real sync, and the
 same `ws` protocol manager the headless host uses in production. Devices that
-opt in also run the real `peers-webrtc` sidecar and form `wrtc://` edges. The
-only differences from a deployment are `--services-url none` (no cloud),
-loopback addresses, and ephemeral ports.
+opt in also run the real `peers-webrtc` sidecar and form `wrtc://` edges, and
+fleets that opt in run the real `peers-services` (with an in-memory Mongo) so
+pairing and the invite mailbox are exercised against the production server
+code. The only differences from a deployment are loopback addresses, ephemeral
+ports, and `--services-url none` on the scenarios that do not need the cloud.
 
 ## Layout
 
@@ -26,6 +28,7 @@ peers-e2e/
     process.ts       HeadlessProcess: one child, its log file, stop/kill, READY payload
     device-handle.ts DeviceHandle: RPC socket per device (tables, tools, contracts, events, logs)
     fleet.ts         Fleet: users, devices, bootstrap waves, contacts/groups/pairing, faults, teardown
+    services.ts      ServicesProcess: real peers-services child + MongoMemoryServer, restart, mailbox queries
     topology.ts      bootstrap shapes (star, chain, ring, tree, random, custom) + cap validation
     wait.ts          waitUntil / waitForAll convergence helpers with per-device timings
     mesh-graph.ts    snapshot of who is connected to whom; invariants; Mermaid output
@@ -40,7 +43,11 @@ peers-e2e/
 The package depends on built siblings: `peers-sdk`, `peers-device`,
 `peers-core`, `peers-cli`, and `peers-headless`. Build those first (see
 [Headless host](./Headless.md)); the harness fails fast with the same
-`requireBuilt` messages the headless smoke tests use.
+`requireBuilt` messages the headless smoke tests use. The pairing and invites
+scenarios additionally need `peers-services` built (`npm run build` there) and
+a Mongo: by default `mongodb-memory-server` downloads a `mongod` binary on the
+first run (network needed once, cached under `~/.cache/mongodb-binaries`);
+set `PEERS_E2E_MONGO_URI` to use an existing server instead.
 
 ## Running
 
@@ -55,7 +62,7 @@ npm run e2e:fleet:large  # Tier 3: PEERS_FLEET_SIZE=100
 | Tier | Processes | What it proves | Typical time |
 |---|---|---|---|
 | 0 | none | topology builders and cap checks, wait helpers, proxy, handle serialization | seconds |
-| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, pairing, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group, WebRTC sidecar (skipped without a `peers-webrtc` binary) | ~3–4 min |
+| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group, WebRTC sidecar (skipped without a `peers-webrtc` binary), pairing and invites against the real `peers-services` (skipped when it is not built or no Mongo can start) | ~3–4 min |
 | 2 | 32 | own-device cap (≤ 8 dials, ≤ 30 connections), hub pruning, tree of 32 with contacts and a group, sync latency percentiles | ~2–3 min |
 | 3 | 100 | 10 users × 10 devices: connected within caps, per-user convergence within budget, resource report | ~1–2 min |
 
@@ -72,7 +79,11 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
   need `official-packages/isolation-smoke` and `isolation-consumer` built
   (`npm run build` in each), and `webrtc.e2e.test.ts` needs a `peers-webrtc`
   binary (`cd peers-webrtc && make local`, requires Go); without one it prints
-  a warning and skips rather than failing.
+  a warning and skips rather than failing. `pairing.e2e.test.ts` and
+  `invites-services.e2e.test.ts` need `peers-services/dist` and a Mongo and
+  skip the same way; also run them after touching `peers-services`
+  (`auth`, `mailbox`, `device-pairing`, `connection-*`), `peers-device`
+  `invites/`, or `MailboxClient`.
 - **Tier 2** when touching `connection-manager*`, `network-manager`, `sync-group`,
   `websocket-client`, or device election: the 32-device cap scenario is where
   shedding and redial policy show their real behaviour. Compare
@@ -82,7 +93,9 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
 `full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
 smoke tests) as Step 2b before anything is versioned or published, and aborts
 the release on failure. It runs `make local` in `peers-webrtc` first so the
-WebRTC scenario cannot silently skip on the release machine. After `peers-services` is pushed it also waits for the
+WebRTC scenario cannot silently skip on the release machine, and sets
+`PEERS_E2E_REQUIRE_SERVICES=1` so the pairing and invites scenarios fail instead
+of skipping when `peers-services` or Mongo is unavailable. After `peers-services` is pushed it also waits for the
 Azure deploy workflow to succeed before releasing the desktop client. `--skip-e2e`
 and `--skip-services-deploy` bypass those gates for an emergency release and say
 so loudly. The e2e packages are deliberately not wired into CI. See
@@ -98,6 +111,9 @@ so loudly. The e2e packages are deliberately not wired into CI. See
 | `PEERS_HARNESS_KEEP=1` | Keep the artifact directory (and on-disk databases) after a passing run. |
 | `PEERS_E2E_ARTIFACTS` | Artifact root (default `peers-e2e/artifacts`). |
 | `PEERS_FLEET_HOME` | State directory for `peers-fleet` (default `~/peers/fleet`). |
+| `PEERS_E2E_MONGO_URI` | Use this Mongo for `peers-services` instead of starting `mongodb-memory-server`. The server always uses the `peers-services` database, so rows from earlier runs remain; assertions are keyed by per-run user ids and are not affected. |
+| `PEERS_E2E_REQUIRE_SERVICES=1` | Fail (rather than skip) the scenarios that need a real `peers-services`. Set by `full-release.js`. |
+| `PEERS_SERVICES_DIR` | Location of the `peers-services` checkout (default: the monorepo sibling). |
 
 ## Writing a scenario
 
@@ -128,12 +144,23 @@ it("a row written on one device reaches the others", async () => {
 
 ### Fleet
 
-- `fleet.user({ name, devices, bootstrap, persistent, pairing, proxied, webrtc })` creates an
+- `fleet.user({ name, devices, bootstrap, persistent, services, proxied, webrtc })` creates an
   identity and spawns its devices in topological waves so every `--peer` target
   is READY before its dialers start. The first device is `--new-user`; the rest
   share a fleet-private credentials file. Users after the first bootstrap to the
   fleet's first device (`hub: "none"` to disable).
-- `fleet.addDevice(user, { peers, persistent, noPeer, pairing, proxied, webrtc })` adds one more.
+- `fleet.addDevice(user, { peers, persistent, noPeer, services, proxied, webrtc })` adds one more.
+- `services: true` on a user or device starts it with
+  `--services-url <fleet services> --register-services`, so it dials the
+  fleet's `peers-services`, registers, and holds a mailbox token
+  (`device.process.services` is `"registered"` or `"failed"`; `"off"` for every
+  other device). `pairing: true` is an alias. The service itself is started on
+  first use, or eagerly with `startFleet({ services: true })`; `fleet.services`
+  exposes `url`, `userId`, `stop()` / `start()` (same port, simulating an
+  outage), and `mailboxCount(userId)` which reads the Mongo `mailbox`
+  collection directly. `fleet.waitForServices(device)` resolves once the
+  device's connection to the service is verified, which is the moment
+  cross-user relays and queued-send retries become possible.
 - `webrtc` is off by default: every device is started with `--no-webrtc`, so
   the 32- and 100-device fleets never spawn a Go process per device and every
   edge stays a WebSocket. `webrtc: true` auto-detects the sibling
@@ -144,8 +171,9 @@ it("a row written on one device reaches the others", async () => {
   drive the invite contracts on the devices' handles, exactly as the UI does
   (`role` defaults to Reader; pass `GroupMemberRole.Writer` when a scenario
   needs remote tool access).
-- `fleet.pairDevice(source)` spawns a `--pair` child against an in-process
-  rendezvous and approves it from `source`.
+- `fleet.pairDevice(source)` spawns a `--pair` child against the fleet's real
+  `peers-services` pairing namespace and approves it from `source` (which must
+  have been started `services: true`).
 - `fleet.waitForMesh({ connected, minDegree, perContext, stableFor })`,
   `fleet.meshGraph()`, `fleet.snapshotMesh(name)`. `stableFor: n` requires the
   invariants to hold on `n` consecutive polls, which matters right after a
@@ -257,11 +285,32 @@ and logs); `PEERS_FLEET_HOME` overrides it. `--persist` keeps on-disk databases
 so devices can be restarted with the same identity. Proxied faults are not
 available from the CLI: the proxies live in the process that created them.
 
+## Pairing and invites against the real service
+
+`pairing.e2e.test.ts` and `invites-services.e2e.test.ts` are the only
+scenarios that run `peers-services`. The service is the production
+`dist/server.js` started with `PORT=0`, a fresh identity, a per-run Mongo, and
+the test-fleet env vars documented in the `peers-services` README (no dial to
+`peers.app`, advertises only `127.0.0.1`). `invites-services` runs with
+`hub: "none"`, so Alice and Bob have no direct edge and every path between
+them goes through the service:
+
+| Test | What it pins down |
+|---|---|
+| inviter offline | Bob accepts a token while Alice's device is stopped: the reply lands in Alice's mailbox (`mailboxCount === 1`, row `deliveryState: "sent"`); Alice's restart drains it (`InviteService.start` calls `syncMailbox`) and acks it (`mailboxCount === 0`). |
+| invitee offline | Alice `inviteContactToGroup` while Bob is stopped; on restart Bob gets a pending inbound `Invites` row, accepts, and can read the group context (`GroupMembers` seeded from the approval, which carried the group secret). |
+| services down | With the service stopped the row is `queued`; after `fleet.services.start()` the host's reconnect hook (or the Invites `syncMailbox` tool) flips it to `sent` and the message is in Bob's mailbox. |
+| both online | Two users with no direct edge: the reply is relayed over the service's `user:<id>` route and never touches the mailbox. If this test starts failing with a mailbox count of one, the relay stopped delivering and the fallback to store-and-forward kicked in. |
+
+`mailboxCount` runs its query in a child `node` process rather than in the Jest
+VM: inside Jest the Mongo driver's handshake serializes without its `driver`
+sub-document and the server rejects the connection.
+
 ## What is deliberately not covered
 
-- Cloud discovery, mailbox, and the production pairing room need
-  `peers-services` (Mongo); the fleet runs with `--services-url none` and an
-  in-process pairing rendezvous.
+- Cloud discovery beyond the single test service, TURN credentials, and Azure
+  specifics (the fleet's `peers-services` has no `.env`, no API keys, and no
+  peer servers).
 - LAN scan (`--lan-scan` probes port 3333 across a /24) cannot be exercised on
   one host.
 - WebRTC beyond loopback. `webrtc.e2e.test.ts` puts two sidecar devices with no

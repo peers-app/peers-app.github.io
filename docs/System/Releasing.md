@@ -32,7 +32,14 @@ Step 2b also runs `make local` in `peers-webrtc` before the Tier 1 scenarios.
 The WebRTC scenario skips itself on machines without a sidecar binary, which
 is fine on a laptop and wrong on the release machine, so a failed `make local`
 (missing Go, missing checkout) aborts the release instead of letting the
-scenario quietly skip.
+scenario quietly skip. The same rule applies to the pairing and invites
+scenarios, which run the real `peers-services` (built in Step 2) with an
+in-memory Mongo: Step 2b checks `peers-services/dist/server.js` exists and runs
+the scenarios with `PEERS_E2E_REQUIRE_SERVICES=1`, so a machine that cannot
+start Mongo fails the release rather than skipping the only end-to-end
+coverage of device pairing and the invite mailbox. The first run on a new
+machine downloads the `mongod` binary (see
+[E2E testing](./E2E-Testing.md)).
 
 Typical Azure time is about seven minutes. The wait polls `gh run list` for
 the just-pushed commit (20 minute timeout) and treats any conclusion other
