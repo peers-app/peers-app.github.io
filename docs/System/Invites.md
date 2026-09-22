@@ -38,9 +38,9 @@ higher role than it states.
 ## Invite modes
 
 **Contact invites** connect two people. A one-off invite is used once and
-expires after seven days by default. Your **profile QR** (Account → Profile QR)
-is a long-lived, reusable variant that produces contact *requests* you confirm
-individually.
+expires after seven days by default. Your **profile QR** (**Identity → People →
+Share my profile**) is a long-lived, reusable variant that produces contact
+*requests* you confirm individually.
 
 **Group invites** have a role and a mode:
 
@@ -59,17 +59,25 @@ role above the issuer's own.
 ## Pending invites
 
 Every invite you issue or receive is a row in your personal `Invites` table,
-synced across your devices. Pending rows show on the screen they belong to:
-**Contacts** (`type: "contact"`), the **Groups** list (`type: "group"`), and
-**Devices** (`type: "device"`, a slot for later device admission; nothing writes
-those rows yet). A list stays hidden when it has no rows. **Show history** appears
-once a resolved invite exists and includes accepted, declined, expired, and revoked
-rows. The CLI shows the same rows with `peers invites`. There is no Invites tab.
-Opening `#invites` goes to Contacts. `#invites/accept` stays the shared paste-and-scan
-screen.
+synced across your devices. **Identity → Activity** is the one inbox:
+
+- **Needs your attention** — contact requests, direct group invites, join
+  approvals, and other rows with a decision you can make now.
+- **Waiting on others** — invites you sent and requests that are not yours to
+  decide yet. Unsupported future device admissions stay here until actions
+  exist.
+- **History** — accepted, declined, expired, and revoked rows.
+
+Section badges count only rows that need your attention. Resource screens link
+into Activity when relevant rows exist, but do not keep their own history. The
+CLI shows the same rows with `peers invites`.
+
+`#invites` opens Activity. `#invites/accept` and `#identity/activity/accept`
+open the shared paste-and-scan screen. Older `#contacts`, `#groups`, and
+`#devices` links open the matching Identity section.
 
 Rows are `pending` until resolved, then `accepted`, `declined`, `expired`,
-`revoked`, or `used`. Pending rows expire with their token (inbound requests
+or `revoked`. Pending rows expire with their token (inbound requests
 after 30 days) and resolved rows are purged after 30 days.
 
 Actions on a row:
@@ -80,8 +88,8 @@ Actions on a row:
 | Inbound join request for my link | Approve (optionally with a different role) · Deny |
 | My outstanding invite | Revoke |
 
-**Regenerate** on the Account screen revokes *every* token you have issued by
-bumping an invite epoch that all your tokens carry.
+**Regenerate** on **Identity → People → Share my profile** revokes *every* token
+you have issued by bumping an invite epoch that all your tokens carry.
 
 ## Delivery
 
@@ -101,7 +109,7 @@ out of receiving mailbox messages (`PUT /api/v1/mailbox/settings`); invites then
 still work whenever both parties share a connection or a mesh route.
 
 Using the mailbox requires the account to be registered with `peers.app` (the
-welcome screen or **Account → Register** on desktop and PWA, `--register-services`
+welcome screen or **Identity → Account** on desktop and PWA, `--register-services`
 on a headless host). Registration issues a 30-day account token that the
 runtime renews on its own: it re-authenticates with the account key a week
 before the token expires, and once more if the service ever rejects the token

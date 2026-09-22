@@ -31,15 +31,23 @@ override the identity recorded in the declared shared group.
 
 ## Joining a group
 
-Members join through [invites](./Invites.md). Inbound group invites and join requests
-also appear at the top of the **Groups** list, without opening a group. An Admin or Owner opens the group's **Members**
-screen and uses **Invite people**:
+Open **Identity → Groups**. The list summarizes each group's description,
+member count, and your role. **Create group** in the persistent Identity action
+bar asks for a name. **Use invite** opens the same paste-or-scan screen used for
+contact invites.
+
+Members join through [invites](./Invites.md). Inbound group invites and join
+requests appear in **Identity → Activity**. The Groups section badge counts only
+requests that need your decision; requests waiting on someone else do not
+create false urgency. An Admin or Owner opens the group's
+**Members** screen and uses **Invite people**:
 
 - **Contacts** — pick one or more existing contacts and a role. Each contact receives a
   ready-to-accept invite; nothing needs to be copied or scanned.
 - **Share a link** — issue a link/QR with a role and a mode: **I approve each join** (people
   request, you approve) or **Anyone with the link joins** (auto-admit while the link is
-  valid). Pending requests and outstanding links appear below the panel.
+  valid). Pending requests and outstanding links are in **Activity**, filtered to
+  this group.
 
 Whichever path is used, admission is a signed **group approval** produced by the approving
 Admin or Owner's device:

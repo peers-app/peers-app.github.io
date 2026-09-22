@@ -21,8 +21,8 @@ reads it and approves the transfer.
 1. On the new device, open Peers and choose **Sign in from another device**. It
    shows a pairing code such as `7-guitar-revenge-tunnel` and the same code as a
    QR code.
-2. On a device already signed in, open **Devices → Add a device** (Settings links
-   to the same screen).
+2. On a device already signed in, choose **Add device** from the persistent
+   Identity action bar (Settings links to the same screen).
 3. Scan the QR code with the camera inside Peers, or type the code. Codes are
    case-insensitive and can be separated by hyphens or spaces.
 4. When the signed-in device shows the new device's name, choose **Approve**.

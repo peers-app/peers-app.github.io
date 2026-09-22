@@ -5,22 +5,24 @@ title: Devices
 
 # Devices
 
-**Devices** lists the installations signed in to this account: this device, every other
-device Peers knows about, and whether each one is connected right now.
+**Identity → Devices** lists only installations signed in to the current
+account. The personal `Devices` table can also contain devices observed for
+other users, but those records never appear in this account-management view.
+It is separate from [Network Viewer](./Network-Diagnostics.md): Devices is
+where you name, pair, and forget installations; Network Viewer is the
+connection diagnostic.
 
-Open it from the Devices app. The row for this device is editable — that name is the
-label other screens use for this installation. Other rows show trust, last seen, and a
-live connection summary (online state and whether the path is direct or indirect).
-**Forget** removes a device from this account.
-
-Connection diagnostics beyond that summary stay on
-[Network Viewer](./Network-Diagnostics.md).
+The current installation is marked **This device**. Every row shows its name,
+online/offline state, latest path when connected, and human-readable last seen
+time. Open a row for its ID and management actions. **Forget** stays on the
+detail screen rather than being a dominant list action.
 
 ## Add a device
 
-**Add a device** (or **Settings → Add another device**) opens pairing on this screen.
-The new device must be signed out and showing a code. See
-[Add another device](./Device-Pairing.md).
+**Add device** in the persistent Identity action bar (or **Settings → Add
+another device**) opens
+`#identity/devices/pair`. The new device must be signed out and showing a code.
+See [Add another device](./Device-Pairing.md).
 
 From a signed-in terminal:
 
@@ -33,8 +35,8 @@ Both commands are the same ceremony.
 
 ## Pending device invites
 
-When a device invite exists, it appears under **Pending device invites**, the same
-`Invites` table used by [Contacts](./Contacts.md) and [Groups](./Groups.md), filtered to
-`type: "device"`. Nothing creates those rows yet, so the section stays hidden. When a
-device needs an existing member's approval before it can join a group, that request
-will show up here.
+Device admission uses the same `Invites` table as [contacts](./Contacts.md) and
+[groups](./Groups.md), with `type: "device"`. Nothing creates those rows yet.
+No admission actions exist for those rows yet, so they stay out of
+**Needs your attention** and the Devices badge. The UI will surface them only
+when a real decision flow exists.
