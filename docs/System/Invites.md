@@ -51,7 +51,9 @@ Share my profile**) is a long-lived, reusable variant that produces contact
   inviter approves or denies each request. Default lifetime seven days.
 - **Link, anyone joins** — anyone with the link is admitted automatically as
   long as the link is valid. Default lifetime one day, maximum 30 days. Use it
-  for a quick "everyone in this room" moment and let it expire.
+  for a quick "everyone in this room" moment and let it expire. The join screen
+  may briefly show **Finishing your automatic join** while the request and
+  membership packet travel; no person needs to approve it.
 
 Only Admin or Owner members can issue group invites, and a link cannot grant a
 role above the issuer's own.
@@ -102,6 +104,13 @@ Accepting an invite sends a reply to the inviter. Peers tries, in order:
 4. otherwise the reply is kept locally as `queued` and retried when connections
    change and every five minutes.
 
+Both halves are durable: the accepting device retains its request until an
+inviter device handles it, and the inviter retains the resulting confirmation
+until the accepting device receives it. If a different inviter device receives
+the request before the newly issued link has synchronized to it, that device
+asks the sender to retry instead of treating the request as complete. Opening
+the same pending link again also retries it safely.
+
 Replies are signed by the sender and encrypted to the recipient's key before
 they leave the device. The mailbox stores only that ciphertext, for at most 30
 days, with per-sender rate limits and per-recipient quotas. An account can opt
@@ -120,10 +129,12 @@ chain of connected Peers devices, can complete every flow described here.
 
 Each rung is exercised end to end by real processes in `peers-e2e`:
 `contacts-group.e2e.test.ts` covers the direct and mesh paths with no cloud at
-all, and `invites-services.e2e.test.ts` runs the real `peers-services` to
-cover the mailbox while one party is offline, the `queued` state during a
-service outage and its retry, and the relay between two users who share no
-direct connection. See [End-to-end fleet testing](./E2E-Testing.md).
+all, including an automatic group join that completes after its route returns.
+`invites-services.e2e.test.ts` runs the real `peers-services` to cover the
+mailbox while one party is offline, open-link admission through the mailbox,
+the `queued` state during a service outage and its retry, and the relay between
+two users who share no direct connection. See
+[End-to-end fleet testing](./E2E-Testing.md).
 
 ## Opening an invite link
 
