@@ -49,6 +49,12 @@ a Mongo: by default `mongodb-memory-server` downloads a `mongod` binary on the
 first run (network needed once, cached under `~/.cache/mongodb-binaries`);
 set `PEERS_E2E_MONGO_URI` to use an existing server instead.
 
+Run `node link-deps.js` from the monorepo root before those builds when using
+local npm checkouts. Runtime packages share process-global SDK registries for
+signing, RPC handlers, and isolated-package loading; nested physical SDK copies
+do not share those registries. The release script performs this linking step
+before its E2E gate.
+
 ## Running
 
 ```bash
@@ -62,7 +68,7 @@ npm run e2e:fleet:large  # Tier 3: PEERS_FLEET_SIZE=100
 | Tier | Processes | What it proves | Typical time |
 |---|---|---|---|
 | 0 | none | topology builders and cap checks, wait helpers, proxy, handle serialization | seconds |
-| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group, WebRTC sidecar (skipped without a `peers-webrtc` binary), pairing and invites against the real `peers-services` (skipped when it is not built or no Mongo can start) | ~3–4 min |
+| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group, offline package-history catch-up and upgrades, WebRTC sidecar (skipped without a `peers-webrtc` binary), pairing and invites against the real `peers-services` (skipped when it is not built or no Mongo can start) | ~4–5 min |
 | 2 | 32 | own-device cap (≤ 8 dials, ≤ 30 connections), hub pruning, tree of 32 with contacts and a group, sync latency percentiles | ~2–3 min |
 | 3 | 100 | 10 users × 10 devices: connected within caps, per-user convergence within budget, resource report | ~1–2 min |
 
@@ -190,6 +196,15 @@ it("a row written on one device reaches the others", async () => {
   call succeeds on each device, which proves the bundle was downloaded and the
   isolated worker booted. `PEERS_OFFICIAL_PACKAGES_DIR` overrides the default
   `<monorepo>/official-packages`.
+- `package-lifecycle.e2e.test.ts` makes a fleet-private copy of the built
+  `isolation-smoke` artifact and emits schema-v4/v5/v6 versions without
+  modifying the official checkout. Its offline follower receives v4 and v5
+  across separate sync pages after the schema-v5 `TableDefinitions` pre-pass,
+  caches both bundles, and activates only v5 after the watermark is durable.
+  It then follows a stable v6 upgrade and proves the selected version survives
+  a process restart. Reading the historical v4 bundle while the devices are
+  partitioned verifies eager all-version bundle caching rather than an
+  on-demand fetch.
 - `fleet.resourceReport()` (RSS per child), `fleet.describe()`, `fleet.stop()`.
 
 `startFleet({ maxConnections })` starts every device with

@@ -45,6 +45,10 @@ Each device does not push to every peer it is connected to. Per group, it **elec
 
 Elections run when a connection is added or a preferred one drops, and every `RESYNC_INTERVAL` (60 s) as a safety net; the same tick pulls once from each preferred peer, which is a cheap watermark check when nothing changed. Because a device learns that a peer depends on it only by reading that peer's election result, two devices that connect at the same moment can each elect before the other has finished. To close that gap the election is **re-run shortly after a new connection settles** (`ELECTION_SETTLE_DELAYS_MS`, 10 s and 30 s later), and when a device discovers a new dependent it pulls from it once and sends it one notify. In practice a freshly connected device is fully wired into the group within tens of seconds; the resync tick bounds the worst case at about a minute.
 
+### Post-sync runtime work
+
+Applying synced rows is separate from runtime side effects that depend on several tables. Those effects are coalesced while pages are applied and run only after the sync watermark is durable. For example, `Packages`, `PackageVersions`, and `Files` may arrive in different pages; package activation evaluates their final combined state once instead of loading every intermediate version. A runtime load failure is reported as a package warning and does not roll back synchronized rows or freeze the peer watermark.
+
 ## Signed rows
 
 Identity and permission tables (`Users`, `Groups`, `GroupMembers`, `Packages`, `PackageVersions`) carry a `signature` column of the form `publicKey:signature`. The row is signed with `addSignatureToObject` and checked with `verifyObjectSignature` (both in `@peers-app/peers-sdk`) before a remote write is accepted, so a device cannot forge another user's record.

@@ -26,7 +26,7 @@ dev ──▶ beta ──▶ stable
 The platform assigns `versionTag` (dev / beta / stable). Do not set it in an isolated manifest,
 `definePackage()`, or contract definitions.
 
-**Metadata vs bundle bytes:** `PackageVersions` (and related `Files` records) sync as group data. As soon as a version record arrives, this device also downloads that version’s package, routes, and UI bundles into the local chunk cache so later activation or UI load does not wait on a peer. A downloaded version is **not** automatically activated; pin, follow, and device-override rules still decide which version this device runs. If a peer cannot provide a bundle yet, metadata sync still succeeds and the missing chunks retry when another peer becomes available.
+**Metadata vs bundle bytes:** `PackageVersions` (and related `Files` records) sync as group data. As soon as a version record arrives, this device also downloads that version’s package, routes, and UI bundles into the local chunk cache so later activation or UI load does not wait on a peer. A downloaded version is **not** automatically activated. The device waits until the current sync has applied every page and saved its watermark, then evaluates the final package state once using its pin, follow, and device-override rules. An incompatible bundle can fail to load without blocking metadata sync or preventing a newer version from arriving. If a peer cannot provide a bundle yet, metadata sync still succeeds and the missing chunks retry when another peer becomes available.
 
 ## Group defaults vs this device
 
