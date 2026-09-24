@@ -5,8 +5,10 @@ sidebar_position: 11
 # Releasing
 
 `full-release.js` at the monorepo root versions, tests, publishes, and deploys
-the packages that ship together. Run it from the root after you are logged in
-to npm and `gh` can see `peers-app/peers-services`:
+the packages that ship together. Run it from the root. Before any other work,
+the script runs `npm whoami` against the registry `npm publish` will use and
+aborts if that login is missing or rejected. `gh` must be able to see
+`peers-app/peers-services`:
 
 ```bash
 node full-release.js          # keep the current version
