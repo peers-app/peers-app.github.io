@@ -33,9 +33,13 @@ Non-`localOnly` tables are wrapped in a tracked data source. Writes do not last-
 
 ### Clock skew expectation
 
-Devices are expected to keep wall clocks within **5 minutes** of each other. Handshake already rejects peers outside that window (`CLOCK_SKEW_TOLERANCE_MS`). Incoming changes whose `createdAt` is more than **10 minutes** ahead of local now (`CHANGE_TIMESTAMP_TOLERANCE_MS`) are skipped and do not advance the local clock. The wider bound covers allowed handshake skew plus a little hybrid-clock lead on multi-hop sync.
+Devices are expected to keep wall clocks within **5 minutes** of each other. Handshake rejects peers outside that window (`CLOCK_SKEW_TOLERANCE_MS`). Incoming changes whose `createdAt` is more than **10 minutes** ahead of local now (`CHANGE_TIMESTAMP_TOLERANCE_MS`) are excluded from active history and materialized data, so a bad timestamp cannot pin a field ahead of every subsequent correctly timed edit. The wider bound covers allowed handshake skew plus a little hybrid-clock lead on multi-hop sync.
 
-A device that once wrote far-future `createdAt` values (mis-set clock) repairs those rows locally on startup and on the periodic resync interval, then they propagate with sane timestamps.
+Exclusion blocks the source device's sync watermark from advancing. The sync is reported as failed/degraded, and the source offers the same rows again on the next pull. Valid rows from the same batch are still applied idempotently. This avoids both timestamp poisoning and the previous silent-loss failure, where the watermark advanced past rows the receiver had discarded.
+
+A receiver can otherwise confuse "the author's clock is ahead" with "my clock is behind". The second case occurs when a phone sleeps because `performance.now()` may not advance while an iOS page is suspended. `getTimestamp()` therefore re-anchors to `Date.now()` when those clocks diverge. Once the receiver has re-anchored, its next pull accepts the previously excluded rows and advances the watermark normally.
+
+Stored `createdAt` values are never rewritten locally. A change's `changeId` and `createdAt` are its identity for last-write-wins on every device, and peers that already hold a row ignore a re-sent copy. Restamping one copy would therefore make devices order the same change differently. On startup the write clock is seeded from the largest `createdAt` that is not far in the future, so a stored bad row cannot push later local writes forward. Repairing records genuinely authored under a bad wall clock requires an explicit distributed repair operation rather than an in-place timestamp update.
 
 Truly concurrent edits (neither device saw the other's write) remain last-write-wins on `createdAt`. That is inherent to the model, not a clock bug.
 
@@ -48,6 +52,8 @@ Elections run when a connection is added or a preferred one drops, and every `RE
 ### Post-sync runtime work
 
 Applying synced rows is separate from runtime side effects that depend on several tables. Those effects are coalesced while pages are applied and run only after the sync watermark is durable. For example, `Packages`, `PackageVersions`, and `Files` may arrive in different pages; package activation evaluates their final combined state once instead of loading every intermediate version. A runtime load failure is reported as a package warning and does not roll back synchronized rows or freeze the peer watermark.
+
+If a far-future row blocks watermark advancement, reconciliation for sane rows already accepted from that pull is flushed before the sync reports its degraded state. Retrying the same range is idempotent.
 
 ## Signed rows
 
