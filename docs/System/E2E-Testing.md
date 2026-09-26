@@ -98,7 +98,9 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
 
 `full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
 smoke tests) as Step 2b before anything is versioned or published, and aborts
-the release on failure. It runs `make local` in `peers-webrtc` first so the
+the release on failure. It builds `isolation-smoke` and `isolation-consumer`
+first so the packages scenario has bundles, without versioning or publishing
+those packages. It runs `make local` in `peers-webrtc` so the
 WebRTC scenario cannot silently skip on the release machine, and sets
 `PEERS_E2E_REQUIRE_SERVICES=1` so the pairing and invites scenarios fail instead
 of skipping when `peers-services` or Mongo is unavailable. After `peers-services` is pushed it also waits for the

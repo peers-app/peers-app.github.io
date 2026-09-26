@@ -68,27 +68,34 @@ Rules of thumb:
 
 ## Dependency sync
 
-After every release repo is published, Step 4 pins consumers that are not in
-the release repo list. Step 1 only sees versions already on npm, so this pass
-is what moves them to the version just published.
+After every release repo is published, Step 4 pins `peers-headless` to the
+version just published. Step 1 only sees versions already on npm, so this pass
+is what moves that consumer forward. Step 1 itself runs `update-deps.js` and
+`link-deps.js` with `--host-only`, so official package manifests are left
+alone.
 
-- `peers-headless` gets `@peers-app/peers-sdk` set to the release version. The
-  script fast-forwards that repo, installs from the registry, then lints,
-  builds, and tests. It commits and pushes only `package.json` and
-  `package-lock.json` inside the `peers-headless` repo. Its own version stays
-  `0.1.0`. It is not tagged or published.
-- Each official package gets the same registry pin for `@peers-app/peers-sdk`
-  and `@peers-app/peers-ui`. The script then commits and pushes the
-  `official-packages` repo.
+`peers-headless` gets `@peers-app/peers-sdk` set to the release version. The
+script fast-forwards that repo, installs from the registry, then lints,
+builds, and tests. It commits and pushes only `package.json` and
+`package-lock.json` inside the `peers-headless` repo. Its own version stays
+`0.1.0`. It is not tagged or published.
 
-If either sync fails, the release stops before the later publish steps. A
+If that sync fails, the release stops before the later publish steps. A
 repeat of the same version skips the commit when those manifests are already
 pinned.
+
+Official packages (`official-packages/`) are not part of this release. Each
+one is versioned, built, and promoted on its own through the package
+[lifecycle](../Packages/package-lifecycle.md) (dev, then Promote to beta or
+stable). A host release does not bump their `@peers-app/*` pins or push the
+`official-packages` repo. Step 2b still builds `isolation-smoke` and
+`isolation-consumer` so the Tier 1 packages scenario can install them; that
+build does not commit or publish those packages.
 
 ## After the script
 
 1. Check the published npm packages (`npm view <package-name>`).
 2. Check the desktop artifacts (electron-builder / S3).
 3. Confirm `https://peers.app` is the just-released `peers-services`.
-4. Commit the `peers-headless` and `official-packages` submodule pointers at
-   the monorepo root (`git add peers-headless official-packages && git commit`).
+4. Commit the `peers-headless` submodule pointer at the monorepo root
+   (`git add peers-headless && git commit`).
