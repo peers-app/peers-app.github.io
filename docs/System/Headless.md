@@ -169,6 +169,13 @@ with the lexicographically smaller `deviceId` keeps its offer and the other
 answers it (`[Sidecar] WebRTC glare ...` in the logs). Without that rule each
 side dropped its own offer and the `wrtc://` edge never formed.
 
+The connection manager applies the same ordering after both sockets have
+finished the handshake, on every transport. The smaller `deviceId` keeps its
+outbound connection and the other device keeps that connection's inbound side
+(`Keeping the deterministic connection to … after dial glare`). Without that
+shared choice each endpoint keeps its own outbound socket and closes the
+other, so both links go down and redial backs off.
+
 ## What it does
 
 - Calls `initializePeerDevice` with `DBLocal` (file or `:memory:`)
