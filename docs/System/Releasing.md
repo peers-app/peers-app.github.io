@@ -66,9 +66,29 @@ Rules of thumb:
 - Do not announce a desktop or npm client until `https://peers.app` is running
   the commit you just pushed.
 
+## Dependency sync
+
+After every release repo is published, Step 4 pins consumers that are not in
+the release repo list. Step 1 only sees versions already on npm, so this pass
+is what moves them to the version just published.
+
+- `peers-headless` gets `@peers-app/peers-sdk` set to the release version. The
+  script fast-forwards that repo, installs from the registry, then lints,
+  builds, and tests. It commits and pushes only `package.json` and
+  `package-lock.json` inside the `peers-headless` repo. Its own version stays
+  `0.1.0`. It is not tagged or published.
+- Each official package gets the same registry pin for `@peers-app/peers-sdk`
+  and `@peers-app/peers-ui`. The script then commits and pushes the
+  `official-packages` repo.
+
+If either sync fails, the release stops before the later publish steps. A
+repeat of the same version skips the commit when those manifests are already
+pinned.
+
 ## After the script
 
 1. Check the published npm packages (`npm view <package-name>`).
 2. Check the desktop artifacts (electron-builder / S3).
 3. Confirm `https://peers.app` is the just-released `peers-services`.
-4. Commit the `official-packages` submodule pointer at the monorepo root.
+4. Commit the `peers-headless` and `official-packages` submodule pointers at
+   the monorepo root (`git add peers-headless official-packages && git commit`).
