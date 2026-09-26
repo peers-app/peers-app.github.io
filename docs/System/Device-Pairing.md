@@ -92,8 +92,8 @@ after the PAKE:
 
 | Transport | When | Encryption |
 |---|---|---|
-| **WebRTC** data channel | Electron and PWA on both ends (default) | DTLS at the transport layer |
-| **Direct WebSocket** | The new device is a host that can listen, currently `peers-headless`, and the signed-in device can reach one of the URLs it advertises | Peers application-level sign+box on every message, regardless of `ws://` or `wss://` |
+| **WebRTC** data channel | Electron and PWA on both ends (default) | Peers per-frame cipher (see [Devices](./Devices.md#what-is-encrypted-on-which-transport)) over DTLS |
+| **Direct WebSocket** | The new device is a host that can listen, currently `peers-headless`, and the signed-in device can reach one of the URLs it advertises | Peers per-frame cipher, regardless of `ws://` or `wss://`; the connection also requests per-message sign+box so a legacy peer is still covered |
 
 The new device advertises what it can host (`webrtc: true/false` and any
 WebSocket URLs, for example `http://192.168.1.20:3341`). The signed-in device

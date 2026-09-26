@@ -138,6 +138,11 @@ peers devices
 peers devices --json
 ```
 
+Each verified row also says `encrypted` when the per-frame cipher is armed on that
+connection, or `legacy` when the remote runs a build without it (see
+[Devices](./Devices.md#what-is-encrypted-on-which-transport)); `--json` exposes the same fact as
+`frameCipherArmed`.
+
 Inspect the portable administration capabilities and enforced limits advertised by one target:
 
 ```bash
