@@ -37,10 +37,13 @@ status mark (and a connection count on desktop):
 - **Loading / unavailable** — spinner or question-mark icon while the local diagnostics
   host is starting or reconnecting.
 
-Select the indicator to see connection, syncing-context, error, groups-connected, and
-groups-offline counts, plus a simplified list of connected devices (user, device, and shared
-group count) for a quick check. **Open Network Viewer** opens the full diagnostics screen. On
-mobile, the same indicator appears beside the tabs menu.
+Select the indicator to see connections, groups connected, and the last successful sync.
+Syncing contexts, groups offline, and sync errors appear only when their counts are above
+zero. Groups offline is shown in yellow. A simplified list of connected devices (user, device, and shared group count) is
+included for a quick check. **Open Network Viewer** opens the full diagnostics screen.
+**Sync recovery** appears in this popover only when records need attention; the same pane
+is always available from Network Viewer. On mobile, the same indicator appears beside the
+tabs menu.
 
 ## Platform-specific diagnostics
 
@@ -89,11 +92,61 @@ unrelated records continue syncing. The failed record is added to the local-only
 `SyncRecoveryQueue`, with one entry per table and record, a lifetime attempt count, and the
 10 most recent bounded error details.
 
-Recovery is requested after each normal sync with a remote device. It asks connected peers
-for the record's active changes (preferred devices first, with sequential fallback), then
-rematerializes through the normal table apply pipeline. Retries for the same entry/device
-use a short in-memory cooldown so a bad peer is skipped without starving other devices.
-A successful rematerialization clears the queue entry.
+Recovery is requested after each normal sync with a remote device. What happens next
+depends on the latest error:
+
+- **Schema validation** (`Validation on insert failed`, `Validation on update failed`,
+  `ZodError`, or Zod's issue JSON such as `"code": "invalid_type"`) is parked. Peer
+  retry stops, the entry stays in the queue, and local history is tried again once
+  per process start, when a new change for that record arrives, and when you press
+  **Retry**. Dropping the entry would be unsafe: an older
+  device can reject a row written by a newer schema, and after it upgrades the change
+  is already known so it would never be written.
+- **Unique-key conflicts** (`UNIQUE constraint failed`) are resolved only when that
+  table defines a deterministic rule. `PersistentVars` keeps the deterministic record
+  id when either row has one (otherwise the lexicographically smaller id) and the
+  value from the row with the newer `modifiedAt`. The other id is tombstoned through
+  normal change tracking, so every device converges on the same row. Tables without
+  a rule are parked. Nothing is deleted by a generic guess.
+- **Missing history** (`No full write found`, `Last full write has no value`, and
+  similar) and **transient** errors (locks, closed connections, anything unrecognized)
+  keep asking peers. The delay starts at one minute and doubles after each unresolved
+  peer sweep, up to one hour. An empty history response and a transport failure both
+  count as a sweep. Schema and unique failures are not asked of peers on those sweeps.
+
+Creating the local sync groups recounts every recovery queue at startup, including
+groups this device belongs to, before any peer connects. That recount fills
+`stuckRecoveryCount` and schedules the next time a retrying entry will cross the
+10-minute stuck age.
+
+A successful rematerialization clears the queue entry. An operator can also clear it
+from **Sync recovery**, a pane of Network Viewer (like Troubleshoot). The network status overlay focuses the Network tab, opening one if needed, with that pane already selected. Each row has short explanations of the status and of each action. **Details** under Latest error and under Record expands the full text. The record view shows when that change was written, the row **Keep** will snapshot, and the queued change when that history differs. Dates inside a record use the same encoding as change history.
+
+| Action | Effect |
+| --- | --- |
+| Retry | Unpark the entry, rebuild it from local history, then ask peers once. If a schema or unique-key entry is still queued, it is parked again. |
+| Keep this device's version | Snapshot the row this device will keep: the queued row when it is stored here, otherwise the other row that holds the same unique value. When both rows are stored, the other record is deleted everywhere. When only the other row is stored, that row is kept and this queued id is tombstoned. Disabled when this device has no row to keep. |
+| Delete everywhere | Write a tracked delete for the queued record. |
+| Ignore on this device | Remove the local queue entry only. Other devices keep theirs. |
+
+The tabs-strip indicator turns yellow when any entry is parked, or has been retrying
+for at least 5 attempts over 10 minutes. Offline keeps the cloud-slash icon and turns
+yellow as well. Sync activity (green pulse, blue spinner) still shows; red sync errors
+stay red. The count is `stuckRecoveryCount` on the System Network Diagnostics `status`
+observable. The recovery screen reloads when that observable changes.
+
+The same queue is available from System Network Diagnostics `getSyncRecoveryEntries`
+and System Network Control `retrySyncRecovery` / `resolveSyncRecovery`.
+Each call is authorized in the context it names, as the signed-in user. Reading the
+queue requires Reader. Retry and `resetDeviceSyncInfo` require Admin. Resolve and
+`resetChangeTracking` require Owner. A named context below that level is rejected
+and is not changed. Omitting the context lists or updates only the contexts the user
+can access at that level, and a reset that skips any context reports those names.
+Calling `getSyncRecoveryEntries` with no context lists every readable personal and
+group queue on this device, which is what the Sync Recovery screen shows. The status
+indicator counts stuck entries across those same queues.
+`resetChangeTracking` and `resetDeviceSyncInfo` reset the named context, or every
+context the signed-in user can access at the required level when the context id is omitted.
 
 To inspect pending recovery work, query the affected personal or group context:
 

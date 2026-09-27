@@ -31,6 +31,12 @@ This matters because server-side code usually pins a `dataContext` (for example 
 
 Earlier releases stored a pinned `groupDevice` / `groupUser` var in the pinned group's database. On first load, a var that has no personal-DB row copies any such legacy row forward (secrets excepted, since their ciphertext is bound to the group key). The legacy row is left in place; the personal copy is authoritative from then on.
 
+### Duplicate names
+
+`name` is unique. Current builds address a variable by a deterministic record id derived from that name. Older builds used a random id. If two devices each created a different id for the same name before they synchronized, both change records stay active and neither insert can land on the other device.
+
+Sync resolves that pair without asking: the deterministic id owns the name when either row has one, otherwise the lexicographically smaller id does. The value, scope, and secret flag come from the row with the newer `modifiedAt` (a missing timestamp counts as zero; a tie keeps the identity winner's value). The other id is tombstoned, so every device ends on the same row. The rule only uses the two records every device already has, which is why the devices agree.
+
 ## Observable shape
 
 A `PersistentVar<T>` is an `Observable<T>` with two extra members:
