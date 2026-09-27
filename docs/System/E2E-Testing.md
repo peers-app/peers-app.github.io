@@ -65,6 +65,8 @@ npm run e2e:fleet        # Tier 2: PEERS_FLEET_SIZE=32
 npm run e2e:fleet:large  # Tier 3: PEERS_FLEET_SIZE=100
 ```
 
+On macOS the `e2e*` scripts run under `caffeinate -i`, so an idle laptop does not sleep and freeze the fleet mid-scenario. That includes the release gate, which runs `npm run e2e`. Closing the lid still sleeps the machine. `npm test` (Tier 0) does not take this assertion.
+
 | Tier | Processes | What it proves | Typical time |
 |---|---|---|---|
 | 0 | none | topology builders and cap checks, wait helpers, proxy, handle serialization | seconds |
