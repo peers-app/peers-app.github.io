@@ -4,7 +4,7 @@ sidebar_position: 0
 
 # CLI
 
-The Peers CLI (`peers`) lets you interact with the Peers app entirely from the terminal. You can chat with assistants, query databases, run tools, tail logs, inspect directly connected devices, and control the UI — all without opening the app window.
+The Peers CLI (`peers`) lets you interact with the Peers app entirely from the terminal. You can chat with assistants, query databases, run tools, tail logs, inspect directly connected devices, grant local folders, and control the UI — all without opening the app window.
 
 The CLI communicates with a running Peers host (the desktop app or
 `peers-headless`) over a local WebSocket connection. If the desktop app isn't
@@ -384,6 +384,35 @@ peers ui scroll --direction down
 # Scroll up by 500px
 peers ui scroll --direction up --amount 500
 ```
+
+### `peers fs` — Local folders
+
+Grant and use directories on this device through
+[System Local Folders](./Local-Folders.md). The same commands work against the
+desktop app and against headless (`--auth-file`).
+
+```bash
+# Operator grant (readwrite). groupId is a peer id.
+peers fs grant ~/Documents/notes --group <groupId>
+
+# Package-scoped read-only grant
+peers fs grant ~/Documents/notes --group <groupId> --package <packageId> --mode read
+
+peers fs grants
+peers fs revoke <grantId>
+peers fs ls <grantId> docs -r
+peers fs index <grantId>
+peers fs watch <grantId>
+
+# Headless
+peers --auth-file ~/peers/cli/headless-auth.json fs grants --json
+```
+
+`index` prints progress (`indexed done/total`) and a summary when the job
+finishes. It polls `getJob` every 1.5 seconds, so a missed `jobFinished`
+event still completes the command. `watch` lists the grant first, then prints
+`changed` events until Ctrl+C. `--json` prints JSON for any of these verbs.
+`--mode` is `read` or `readwrite` (the default).
 
 ## Data contexts
 

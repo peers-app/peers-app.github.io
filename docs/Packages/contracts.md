@@ -7,7 +7,7 @@ title: Package contracts
 
 **Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
-The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Newly scaffolded packages declare contracts in an isolated pure-data manifest; legacy packages can still use `definePackage()`. The `PackageLoader` handles registration at install time — including registering each package’s provided contracts into that data context’s in-memory `ContractRegistry` and settling dependencies afterward. Built-in **system contracts** (Logs, Device Operations, …) self-register via `registerSystemContract` and are installed into every loader registry at construction; adding another system contract is one self-registration call, with no loader changes.
+The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Newly scaffolded packages declare contracts in an isolated pure-data manifest; legacy packages can still use `definePackage()`. The `PackageLoader` handles registration at install time — including registering each package’s provided contracts into that data context’s in-memory `ContractRegistry` and settling dependencies afterward. Built-in **system contracts** (Logs, Device Operations, System Local Folders, …) self-register via `registerSystemContract` and are installed into every loader registry at construction; adding another system contract is one self-registration call, with no loader changes. System Local Folders is local-only (another device cannot call it) and is documented in [System Local Folders](../System/Local-Folders.md).
 
 ## Core components
 
@@ -355,6 +355,8 @@ Events and table `dataChanged` differ from observables: they are subscription-ga
 
 Events are fire-and-forget with no replay: a payload emitted before a consumer subscribes is not delivered to it later. A package that needs durability (for example a signaling mailbox) must buffer in its own tool or table; that is an application concern, not an `Event` feature. Events are local to the device that emits them — `pkg.remote()` and the mesh carry tool calls only.
 
+A provider can set `IContractResolution.eventFilter`. The endpoint calls it once per generic-event subscriber with the payload and the caller context captured at subscribe time. Returning false, or rejecting, drops that notification for that subscriber only. Table and observable streams are not filtered. System Local Folders uses this so an isolated package receives `changed` and job events only for its own grants and jobs.
+
 ## Permission and transport limits
 
 Cross-device access has two tiers. The broad tier is an identity-equivalent **Self**
@@ -478,9 +480,15 @@ outside the Electron host process. The host never evaluates provider source. Leg
   worker is running (lazy: `startProvider` or a first tool call). The host holds
   the live subscription and delivers into the consumer worker; payloads emitted
   before that attach are not replayed. Events stay local (no `pkg.remote()` /
-  mesh delivery) and carry no per-event access level yet. Isolated guests cannot
-  yet subscribe to host/system provider events, consumed observables, or table
-  `dataChanged`.
+  mesh delivery) and carry no per-event access level yet. An isolated guest can
+  also subscribe to a **host or system** contract event with
+  `subscribeConsumedEvent`. The runtime holds a provider endpoint until
+  unsubscribe, package replacement, or uninstall, and each delivery wakes the
+  consumer worker (starting it when that generation is not running). There is
+  no replay. The delivery waits for promises returned by the guest handlers, so
+  a handler can finish an owned-table write before the invocation ends. Guest
+  subscriptions to host observables and to table `dataChanged` inside the worker
+  are still deferred.
 - **Table `dataChanged`.** Consumers may call
   `consumer.tables[name].dataChanged.subscribe(handler)` on a contract-exposed
   isolated table. The host attaches to the real `Table.dataChanged` event, so
@@ -510,8 +518,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
 - **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
   are unchanged. Isolated packages do not yet expose custom table methods or
   table events other than `dataChanged`, isolated-guest observable or
-  `dataChanged` subscriptions, owned-pvar subscriptions, mesh events, guest
-  subscribe to host/system events, or global pvar grants.
+  `dataChanged` subscriptions, owned-pvar subscriptions, mesh events, or global
+  pvar grants. Host and system contract events are subscribable; see
+  **Contract events** above.
   Electron is currently the only isolated
   execution host. PWA safely skips valid isolated provider artifacts instead of
   failing device startup; those providers and their contract tools remain

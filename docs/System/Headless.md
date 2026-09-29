@@ -11,6 +11,12 @@ Use it as an always-on personal node, a CI / agent target, or a second device
 in scripted tests. The Electron app, PWA, and hosted k8s device are separate
 hosts; they do not import this package yet.
 
+A headless process can also hold a [System Local Folders](./Local-Folders.md)
+grant for a directory that should stay available while laptops sleep. Pass
+`--folder` (below) or `peers fs grant` after it is up. This phase records the
+grant and can index the folder on this machine. Sending those blocks to other
+devices is a later phase.
+
 ## Start
 
 ```bash
@@ -223,6 +229,7 @@ other, so both links go down and redial backs off.
 | `--max-connections <n>` | Override the device connection cap (default 30). A testing knob: a small cap reproduces at-capacity shedding with a handful of devices (`peers-e2e`'s `cap.e2e.test.ts` uses 4) |
 | `--webrtc-sidecar <path>` | Use this `peers-webrtc` binary instead of auto-detecting (`PEERS_WEBRTC_SIDECAR` is the same) |
 | `--no-webrtc` | Never look for or start the WebRTC sidecar; WebSocket edges only |
+| `--folder <groupId>=<absolutePath>[:ro\|:rw]` | Grant a local directory at startup (repeatable). `:ro` is read-only; the default is readwrite. The same group and real path are reused on later startups. Headless has no folder picker. See [System Local Folders](./Local-Folders.md). |
 
 ## Testing with it
 
