@@ -14,8 +14,10 @@ The contract is **local-only**. Another device cannot call it, even on a
 verified connection. Remote byte transfer is a later phase (block exchange),
 not this contract.
 
-The desktop app and `peers-headless` provide it. The PWA does not: the Packages
-screen shows "System Local Folders is not available on this host."
+The desktop app and `peers-headless` provide it by importing
+`@peers-app/peers-device/local-folders`. That entry is not on the package root,
+so the PWA bundle does not load the filesystem code or the native watcher. The
+Packages screen shows "System Local Folders is not available on this host."
 
 ## Who can call what
 
