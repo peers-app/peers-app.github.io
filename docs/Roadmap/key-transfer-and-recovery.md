@@ -9,6 +9,10 @@ title: "Key Transfer & Recovery"
 This is a lighter-weight step that solves the two most pressing key-management pain points without changing the key architecture. It should ship first; device-specific keys can build on top of it later.
 :::
 
+:::tip Related: Key Registry
+`peers-services` now runs a [key registry](../System/Key-Registry.md) that holds several active keys per user and records revocations. The recovery flows here will register the new key there (authorized by the old one) so other peers and services can accept the change; a later passwordless `peers.app` account is planned as the recovery authority when every device is lost.
+:::
+
 ## Motivation
 
 Today each user has a single Ed25519 keypair. Two practical problems follow:

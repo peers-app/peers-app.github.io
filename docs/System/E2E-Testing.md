@@ -87,11 +87,11 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
   need `official-packages/isolation-smoke` and `isolation-consumer` built
   (`npm run build` in each), and `webrtc.e2e.test.ts` needs a `peers-webrtc`
   binary (`cd peers-webrtc && make local`, requires Go); without one it prints
-  a warning and skips rather than failing. `pairing.e2e.test.ts` and
-  `invites-services.e2e.test.ts` need `peers-services/dist` and a Mongo and
-  skip the same way; also run them after touching `peers-services`
-  (`auth`, `mailbox`, `device-pairing`, `connection-*`), `peers-device`
-  `invites/`, or `MailboxClient`.
+  a warning and skips rather than failing. `pairing.e2e.test.ts`,
+  `invites-services.e2e.test.ts`, and `key-registry.e2e.test.ts` need
+  `peers-services/dist` and a Mongo and skip the same way; also run them after
+  touching `peers-services` (`auth`, `keys`, `mailbox`, `device-pairing`,
+  `connection-*`), `peers-device` `invites/`, or `MailboxClient`.
 - **Tier 2** when touching `connection-manager*`, `network-manager`, `sync-group`,
   `websocket-client`, or device election: the 32-device cap scenario is where
   shedding and redial policy show their real behaviour. Compare
@@ -305,10 +305,10 @@ and logs); `PEERS_FLEET_HOME` overrides it. `--persist` keeps on-disk databases
 so devices can be restarted with the same identity. Proxied faults are not
 available from the CLI: the proxies live in the process that created them.
 
-## Pairing and invites against the real service
+## Pairing, invites, and the key registry against the real service
 
-`pairing.e2e.test.ts` and `invites-services.e2e.test.ts` are the only
-scenarios that run `peers-services`. The service is the production
+`pairing.e2e.test.ts`, `invites-services.e2e.test.ts`, and
+`key-registry.e2e.test.ts` are the only scenarios that run `peers-services`. The service is the production
 `dist/server.js` started with `PORT=0`, a fresh identity, a per-run Mongo, and
 the test-fleet env vars documented in the `peers-services` README (no dial to
 `peers.app`, advertises only `127.0.0.1`). `invites-services` runs with
@@ -324,7 +324,17 @@ them goes through the service:
 
 `mailboxCount` runs its query in a child `node` process rather than in the Jest
 VM: inside Jest the Mongo driver's handshake serializes without its `driver`
-sub-document and the server rejects the connection.
+sub-document and the server rejects the connection. `fleet.services.subjectKeys`
+reads the `subject_keys` collection the same way.
+
+`key-registry.e2e.test.ts` drives the [key registry](./Key-Registry.md) over
+HTTP with one real device: the device's startup registration seeds the
+registry; the test verifies the service-signed read against
+`fleet.services.publicKey`, adds a second key (proof by the new key,
+authorization by the first), checks that challenges are single-use and that
+unauthorized or non-user first claims are refused, revokes the first key with
+the second key's authority, and asserts `/auth/authenticate` now rejects the
+revoked key and accepts the new one.
 
 ## What is deliberately not covered
 

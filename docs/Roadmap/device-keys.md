@@ -13,6 +13,10 @@ This document captures the evolving design for moving from user-level secret key
 [Key Transfer & Recovery](./key-transfer-and-recovery.md) solves the immediate multi-device and account-loss pain points with minimal architectural change. Ship that first; this design builds on top of it.
 :::
 
+:::tip Related: Key Registry
+Per-device keys are `subjectType: "device"` records in the [key registry](../System/Key-Registry.md), which already models several active keys per subject with status and revocation. The registry is the natural place to publish device-key lifecycles once this design lands.
+:::
+
 ## Motivation
 
 Today each user has a single Ed25519 keypair. The secret key **is** the user's credential -- they need it to sign updates to their user object and to decrypt data. This means:

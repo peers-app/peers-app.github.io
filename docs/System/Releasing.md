@@ -60,6 +60,53 @@ Node API and rejects literal `SECRET_KEY`, `rootPrivateKey`,
 `userPrivateKey`, or `devicePrivateKey` values without writing extracted files
 into the repository.
 
+## Signing key
+
+`peers-core` is signed by an Ed25519 publisher key. The public half is
+`peersCorePublishPublicKey` in `peers-sdk/src/system-ids.ts` and ships in every
+host; the secret half exists only in a dedicated 1Password item, separate from
+the AWS, npm, GitHub, Apple, and Azure release credentials, and is never
+written to a file in any repository.
+
+**Generate** a key pair with the audited script (requires a built
+`peers-sdk`):
+
+```bash
+node scripts/generate-publisher-key.mjs            # prints public key and, once, the secret
+node scripts/generate-publisher-key.mjs --public-only
+```
+
+Paste the secret into the 1Password item and keep only the public key.
+
+**Publish** with the secret injected into the process environment for the
+duration of the command:
+
+```bash
+PEERS_CORE_SIGNING_KEY="op://<vault>/<item>/credential" \
+  op run -- node scripts/publish-peers-core.mjs
+```
+
+`publish-peers-core.mjs` derives the public key from the secret and aborts
+when it does not equal `peersCorePublishPublicKey` or when it appears in
+`peersCoreRevokedPublishPublicKeys`.
+
+**Rotate** when the key is compromised or on schedule:
+
+1. Generate the new pair as above and store the secret in a *new* 1Password
+   item.
+2. Set `peersCorePublishPublicKey` to the new public key and append the old
+   one to `peersCoreRevokedPublishPublicKeys`. Rebuild `peers-sdk` and every
+   consumer.
+3. Seed the [key registry](./Key-Registry.md) once `peers-services` is
+   deployed: `npm run seed-subject-key -- --subject <peersCorePackageId>
+   --type package --public-key <old> --status revoked --reason compromised`,
+   then the same with `--public-key <new> --status active`.
+4. Release the desktop and PWA hosts. Each client re-pins to the new key on
+   startup and on its next remote update check.
+5. Publish `peers-core` with the new key. Hosts that have not updated reject
+   it by design and stay on their current `peers-core`; never dual-sign with
+   the revoked key.
+
 ## Gates
 
 The script aborts on the first failed gate. Two of those gates exist because
