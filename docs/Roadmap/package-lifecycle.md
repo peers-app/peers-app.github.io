@@ -160,7 +160,14 @@ If you self-host a package's `updateUrl`, configure CORS on that host to allow `
 
 `peers-core` is published to S3 near the end of `full-release.js` (before the desktop app release), with no running Peers app required. The release calls `scripts/publish-peers-core.mjs --version-tag stable --skip-build`, which signs the freshly built bundles in-process using the pure peers-sdk signing functions, verifies the artifact against `peersCorePublishPublicKey`, and uploads the tarball + pointer to S3.
 
-Standalone signing reads the signing key from `PEERS_CORE_SIGNING_KEY` (in the environment or `peers-electron/.env`, alongside the AWS credentials). The key's public key must match `peersCorePublishPublicKey` or the script aborts (devices would otherwise reject the tarball under TOFU). If `PEERS_CORE_SIGNING_KEY` is not set, the script falls back to invoking the `publish-package` tool over RPC, which does require the Peers app to be running.
+Standalone signing reads `PEERS_CORE_SIGNING_KEY` and the AWS credentials only
+from the release process environment. For local releases, use approved secret
+tooling to inject them; do not store release credentials anywhere under the
+project directory. The signing key's public key must match
+`peersCorePublishPublicKey` or the script aborts (devices would otherwise reject
+the tarball under TOFU). If `PEERS_CORE_SIGNING_KEY` is not set, the script
+falls back to invoking the `publish-package` tool over RPC, which does require
+the Peers app to be running.
 
 The publish script also ensures the S3 bucket has a CORS policy (allowing `GET`/`HEAD` from any origin) on every upload so PWA clients can fetch the pointer and tarball. Run `node scripts/publish-peers-core.mjs --setup-cors` to (re)apply the policy without publishing. Applying CORS requires `s3:PutBucketCors`; if the publishing credentials lack it, the script warns (non-fatal) and prints the manual `aws s3api put-bucket-cors` command.
 
