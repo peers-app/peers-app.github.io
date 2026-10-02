@@ -4,6 +4,20 @@ sidebar_position: 11
 
 # Releasing
 
+:::danger Active release freeze
+
+All npm, peers-core, and desktop publishing is frozen during the 2026-10-02
+release credential exposure incident. The root release script and standalone
+peers-core publisher fail closed while `RELEASES_FROZEN.md` exists. Equivalent
+markers protect the Electron, SDK, and UI release commands, and their GitHub
+publishing workflows are disabled at the repository level.
+
+Do not remove one marker or re-enable one workflow independently. Follow the
+coordinated unfreeze checklist in the root marker after the exposed
+credentials, package channels, and peers-core trust anchor have been handled.
+
+:::
+
 `full-release.js` at the monorepo root versions, tests, publishes, and deploys
 the packages that ship together. Run it from the root. Before any release
 mutation or external login check, the script runs the current-tree and history
@@ -27,6 +41,14 @@ the listed historical credentials are safe. A new entry requires incident
 review and a documented reason; never baseline a new current-tree secret merely
 to unblock a release. The Electron release workflow independently scans its
 archived source tree before any platform build can publish.
+
+Cross-repository Actions access is split by operation. `PEERS_REPOS_READ_TOKEN`
+has only **Contents: read** on explicitly selected private dependency
+repositories; the root secret scan needs that read access across all
+submodules. `PEERS_SERVICES_WRITE_TOKEN` has **Contents: read and write** on
+`peers-services` only and is used only by the Electron download-link update.
+Workflows running in `peers-services` use their scoped `GITHUB_TOKEN` for
+same-repository pushes. Do not restore the former classic full-control PAT.
 
 Electron packaging uses an explicit application-file allowlist: compiled
 `bin/`, `public/`, `preload.js`, `package.json`, and production
