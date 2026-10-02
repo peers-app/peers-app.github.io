@@ -70,7 +70,7 @@ On macOS the `e2e*` scripts run under `caffeinate -i`, so an idle laptop does no
 | Tier | Processes | What it proves | Typical time |
 |---|---|---|---|
 | 0 | none | topology builders and cap checks, wait helpers, proxy, handle serialization | seconds |
-| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group, offline package-history catch-up and upgrades, WebRTC sidecar (skipped without a `peers-webrtc` binary), pairing and invites against the real `peers-services` (skipped when it is not built or no Mongo can start) | ~4–5 min |
+| 1 | ≤ 8 per file | single device, same-user sync, discovery, contacts + group, resilience, faults, connection cap with a small `maxConnections`, packages and contracts across a group, offline package-history catch-up and upgrades, local-folder index and block exchange (256 MB by default), WebRTC sidecar (skipped without a `peers-webrtc` binary), pairing and invites against the real `peers-services` (skipped when it is not built or no Mongo can start) | ~4–5 min |
 | 2 | 32 | own-device cap (≤ 8 dials, ≤ 30 connections), hub pruning, tree of 32 with contacts and a group, sync latency percentiles | ~2–3 min |
 | 3 | 100 | 10 users × 10 devices: connected within caps, per-user convergence within budget, resource report | ~1–2 min |
 
@@ -123,6 +123,7 @@ so loudly. The e2e packages are deliberately not wired into CI. See
 | `PEERS_FLEET_HOME` | State directory for `peers-fleet` (default `~/peers/fleet`). |
 | `PEERS_E2E_MONGO_URI` | Use this Mongo for `peers-services` instead of starting `mongodb-memory-server`. The server always uses the `peers-services` database, so rows from earlier runs remain; assertions are keyed by per-run user ids and are not affected. |
 | `PEERS_E2E_REQUIRE_SERVICES=1` | Fail (rather than skip) the scenarios that need a real `peers-services`. Set by `full-release.js`. |
+| `PEERS_E2E_BLOCK_BYTES` | Size of the noise file in `block-exchange.e2e.test.ts`. Default `268435456` (256 MB). A larger value raises that test's timeout to one hour so a multi-gigabyte run can be started by hand. |
 | `PEERS_SERVICES_DIR` | Location of the `peers-services` checkout (default: the monorepo sibling). |
 
 ## Writing a scenario
