@@ -4,20 +4,6 @@ sidebar_position: 11
 
 # Releasing
 
-:::danger Active release freeze
-
-All npm, peers-core, and desktop publishing is frozen during the 2026-10-02
-release credential exposure incident. The root release script and standalone
-peers-core publisher fail closed while `RELEASES_FROZEN.md` exists. Equivalent
-markers protect the Electron, SDK, and UI release commands, and their GitHub
-publishing workflows are disabled at the repository level.
-
-Do not remove one marker or re-enable one workflow independently. Follow the
-coordinated unfreeze checklist in the root marker after the exposed
-credentials, package channels, and peers-core trust anchor have been handled.
-
-:::
-
 `full-release.js` at the monorepo root versions, tests, publishes, and deploys
 the packages that ship together. Run it from the root. Before any release
 mutation or external login check, the script runs the current-tree and history
@@ -26,9 +12,52 @@ It aborts if either scan fails or the npm login is missing or rejected. `gh`
 must be able to see `peers-app/peers-services`:
 
 ```bash
-node full-release.js          # keep the current version
-node full-release.js patch    # or minor / major
+op run --env-file ~/.config/peers/release.env -- node full-release.js          # keep the current version
+op run --env-file ~/.config/peers/release.env -- node full-release.js patch    # or minor / major
 ```
+
+## Release credentials
+
+No release step reads a `.env` file inside a repository. Every credential is
+injected into the process environment for the duration of the command by the
+[1Password CLI](https://developer.1password.com/docs/cli/secrets-environment-variables)
+and resolved only when the 1Password app approves the request. The env file
+holds `op://` references and non-secret identifiers, never values, so it is
+safe to leave on disk:
+
+```bash
+# ~/.config/peers/release.env
+PEERS_CORE_SIGNING_KEY="op://<vault>/<peers-core publisher item>/credential"
+AWS_ACCESS_KEY_ID="op://<vault>/<peers-release-publisher item>/access key id"
+AWS_SECRET_ACCESS_KEY="op://<vault>/<peers-release-publisher item>/secret access key"
+APPLE_ID="<apple id email>"
+APPLE_TEAM_ID="<team id>"
+APPLE_APP_SPECIFIC_PASSWORD="op://<vault>/<notarization item>/password"
+```
+
+| Variable | Used by |
+|---|---|
+| `PEERS_CORE_SIGNING_KEY` | Step 5, `scripts/publish-peers-core.mjs` (dedicated item, see [Signing key](#signing-key)) |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Step 5 S3 upload and Step 6 electron-builder publish; the IAM user `peers-release-publisher` is limited to the `peers-electron-app` bucket |
+| `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PASSWORD` | Step 6 macOS notarization |
+
+The macOS code-signing certificate comes from the login keychain (`identity`
+in `peers-electron/electron-builder.js`). npm publishing uses the login from
+`~/.npmrc` (`npm whoami` is checked up front). Windows and Linux installers are
+built by the `Build and Release` workflow in `peers-electron` from Actions
+secrets when Step 3 pushes the tag.
+
+## Freezing releases
+
+Create `RELEASES_FROZEN.md` at the monorepo root and in `peers-electron`,
+`peers-sdk`, and `peers-ui`, then disable the `Build and Release` and
+`Publish to npm` workflows in GitHub (`gh workflow disable`). `full-release.js`,
+`publish-peers-core.mjs`, and each repository's `release-guard.js` (run by the
+`release:*` scripts, `prepublishOnly`, and the workflows) fail closed while the
+marker exists. Lift the freeze with one reviewed commit that removes all four
+markers, and re-enable a workflow only after its credentials are confirmed
+current. The 2026-10-02 freeze is recorded in
+`working/release-credential-exposure-incident.md`.
 
 Install [Gitleaks](https://github.com/gitleaks/gitleaks) 8.25.0 or newer on the
 release machine (`brew install gitleaks` on macOS). `npm run scan:secrets`
@@ -79,11 +108,10 @@ node scripts/generate-publisher-key.mjs --public-only
 Paste the secret into the 1Password item and keep only the public key.
 
 **Publish** with the secret injected into the process environment for the
-duration of the command:
+duration of the command (`full-release.js` does this as Step 5; standalone):
 
 ```bash
-PEERS_CORE_SIGNING_KEY="op://<vault>/<item>/credential" \
-  op run -- node scripts/publish-peers-core.mjs
+op run --env-file ~/.config/peers/release.env -- node scripts/publish-peers-core.mjs
 ```
 
 `publish-peers-core.mjs` derives the public key from the secret and aborts
