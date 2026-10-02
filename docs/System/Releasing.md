@@ -5,15 +5,38 @@ sidebar_position: 11
 # Releasing
 
 `full-release.js` at the monorepo root versions, tests, publishes, and deploys
-the packages that ship together. Run it from the root. Before any other work,
-the script runs `npm whoami` against the registry `npm publish` will use and
-aborts if that login is missing or rejected. `gh` must be able to see
-`peers-app/peers-services`:
+the packages that ship together. Run it from the root. Before any release
+mutation or external login check, the script runs the current-tree and history
+secret scans, then runs `npm whoami` against the registry `npm publish` will use.
+It aborts if either scan fails or the npm login is missing or rejected. `gh`
+must be able to see `peers-app/peers-services`:
 
 ```bash
 node full-release.js          # keep the current version
 node full-release.js patch    # or minor / major
 ```
+
+Install [Gitleaks](https://github.com/gitleaks/gitleaks) 8.25.0 or newer on the
+release machine (`brew install gitleaks` on macOS). `npm run scan:secrets`
+scans tracked files and non-ignored untracked files in the root and every
+initialized submodule. `npm run scan:secrets:history` scans every repository's
+available Git history. CI checks out full submodule histories and runs both.
+
+The committed `.gitleaksignore` is an incident baseline, not a declaration that
+the listed historical credentials are safe. A new entry requires incident
+review and a documented reason; never baseline a new current-tree secret merely
+to unblock a release. The Electron release workflow independently scans its
+archived source tree before any platform build can publish.
+
+Electron packaging uses an explicit application-file allowlist: compiled
+`bin/`, `public/`, `preload.js`, `package.json`, and production
+`node_modules/`. The shared `afterPack` verifier inspects the ASAR and unpacked
+native modules and fails if any other top-level path appears, if forbidden
+credential/configuration paths appear anywhere, or if required production
+modules cannot load. It also reads packaged application text through the ASAR
+Node API and rejects literal `SECRET_KEY`, `rootPrivateKey`,
+`userPrivateKey`, or `devicePrivateKey` values without writing extracted files
+into the repository.
 
 ## Gates
 
