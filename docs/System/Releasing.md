@@ -12,9 +12,14 @@ It aborts if either scan fails or the npm login is missing or rejected. `gh`
 must be able to see `peers-app/peers-services`:
 
 ```bash
-op run --env-file ~/.config/peers/release.env -- node full-release.js          # keep the current version
-op run --env-file ~/.config/peers/release.env -- node full-release.js patch    # or minor / major
+npm run release            # keep the current version
+npm run release -- patch  # or minor / major
 ```
+
+`npm run release` runs `scripts/release.sh`, which injects
+`~/.config/peers/release.env` through `op run` for that process. 1Password
+still asks you to approve the request. The arguments after `--` are passed to
+`full-release.js`.
 
 ## Release credentials
 
@@ -68,7 +73,10 @@ available Git history. CI checks out full submodule histories and runs both.
 The committed `.gitleaksignore` is an incident baseline, not a declaration that
 the listed historical credentials are safe. A new entry requires incident
 review and a documented reason; never baseline a new current-tree secret merely
-to unblock a release. The Electron release workflow independently scans its
+to unblock a release. Generated PWA bundles at `public/assets/index-*.js` are
+allowlisted in `.gitleaks.toml`: they are build output, and `generic-api-key`
+matches minified expressions such as `anchor.key`. The PWA source is still
+scanned. The Electron release workflow independently scans its
 archived source tree before any platform build can publish.
 
 Cross-repository Actions access is split by operation. `PEERS_REPOS_READ_TOKEN`
