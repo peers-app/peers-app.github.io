@@ -340,7 +340,12 @@ authenticates.
 key. The rotation scenario that drives that path is `key-rotation.e2e.test.ts`.
 `key-rotation-email.e2e.test.ts` binds a recovery email through the console
 mail transport, opens an anchor-write session, and rotates with
-`publish: "anchors"`. A contact then sees the new key. The fleet forces
+`publish: "anchors"`. A contact then sees the new key.
+`key-recovery.e2e.test.ts` publishes a key with no succession signature. A
+contest signed by the old key keeps the contact on that key past the delay;
+without a contest the contact adopts the new key once the delay elapses. The
+scenario sets `PEERS_RECOVERY_DELAY_MS` before the fleet starts so the wait
+is a few seconds. That variable is for this test only. The fleet forces
 `PEERS_EMAIL_TRANSPORT=console` so a developer `RESEND_API_KEY` cannot send
 real mail.
 

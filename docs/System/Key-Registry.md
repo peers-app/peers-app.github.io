@@ -61,9 +61,12 @@ The presented key is confirmed only when at least one anchor confirms and
 none veto. Any veto refuses it. No anchors, or every anchor abstaining,
 leaves the change pending. A confirmed key whose `authorizedBy` is a valid
 co-signature by the key on record is a **rotation** and replaces the personal
-row immediately. A confirmed key without that co-signature is a **recovery**
-and stays pending until a recovery delay exists. A key that is no longer on
-the personal row is not accepted.
+row immediately. A confirmed key without that co-signature is a **recovery**.
+Peers wait 72 hours from when they first saw it, then adopt it if nobody who
+holds the key on record has contested it. A contest is a signed statement
+posted to `POST /api/v1/account/contest` and listed by
+`GET /api/v1/account/contest?userId=`. It stays pending until a peer accepts
+the new key. A key that is no longer on the personal row is not accepted.
 
 ## API
 

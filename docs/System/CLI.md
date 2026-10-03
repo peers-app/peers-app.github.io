@@ -186,6 +186,10 @@ peers keys email verify --email you@example.com --code 123456
 peers keys email session --code 123456
 peers keys rotate                        # publish through the open session
 peers keys email unbind
+peers keys contest --pending <publicKey>
+peers keys email session --user <userId> --code <code>
+peers keys recover --user <userId>
+peers keys recover --user <userId> --manual
 peers --auth-file ~/peers/cli/headless-auth.json keys show
 ```
 
@@ -196,8 +200,13 @@ without `--manual` publishes to peers-services when a recovery-email session
 is open. Without that session the registry refuses the write and the command
 exits non-zero; nothing local changes. With services off it reports
 `Rotation needs an anchor that accepts writes`. `peers keys email unbind`
-removes the mailbox. See
-[Key Registry › User key rotation](./Key-Registry.md#user-key-rotation).
+removes the mailbox. `peers keys contest --pending` objects to a recovery
+with the key this host still holds. `peers keys recover --user` runs on a
+signed-out host after a recovery-email session for that user, or with
+`--manual` after an operator has published the document. Groups need a new
+invite, and secrets wrapped under the lost key stay unreadable. See
+[Key Registry › User key rotation](./Key-Registry.md#user-key-rotation) and
+[Identity › Lost your key](./Identity.md#lost-your-key).
 
 ### `peers tools` — Tools
 

@@ -62,7 +62,9 @@ A bare `userId::secretKey` string, or a file with only `userId` and
 `secretKey`, is still accepted and upgraded in memory. `peers keys rotate` and
 `peers keys rotate --manual` rewrite the file only after an on-record anchor
 lists the new key. The plain form needs a recovery-email session
-(`peers keys email`). When the identity is given only by `--secret-key` or
+(`peers keys email`). A lost key is `peers keys recover --user <userId>` on a
+signed-out host, after that session, or `--manual` when an operator publishes
+the document. When the identity is given only by `--secret-key` or
 `USER_ID`/`SECRET_KEY`, the host also cannot persist a new secret, because
 there is no file to rewrite.
 

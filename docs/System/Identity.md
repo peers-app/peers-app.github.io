@@ -121,6 +121,26 @@ Your own device, holding the old key, learns it has been replaced when an
 anchor confirms the new one. It does not adopt that key. It has to be paired
 again.
 
+### Lost your key
+
+A recovery is a new key that the anchors list without the old key's
+signature. Peers that still hold the old key see a notice and wait 72 hours,
+measured from when they first saw the new key. After that, with no objection,
+they adopt it. A device that still holds the old key can contest it. The
+contest is signed by that key, carried to contacts in the handshake, and
+posted where Peers Services can be reached. A contest holds the new key until
+someone who can see the notice accepts it. An attacker who controls an anchor
+but not the old key cannot produce that contest.
+
+On a signed-out host, `peers keys email session --user <userId>` opens a
+session from the recovery mailbox, and `peers keys recover --user <userId>`
+publishes the new key and signs this host in. `peers keys recover --user
+<userId> --manual` prints a document for an operator instead. Groups do not
+follow the recovered key; a member invites the device again. Values wrapped
+under the lost key stay unreadable. The account screen shows the same notice,
+with **Contest** on your own account and **Accept the new key** for a
+contact.
+
 ## Host-only operations
 
 The System Identity and System Invites contracts control sensitive local-host
