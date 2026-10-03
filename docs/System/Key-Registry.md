@@ -5,34 +5,65 @@ title: Key Registry
 
 # Key Registry
 
-A **key registry** answers one question for any Peers ID: *which public keys
-belong to this subject right now, and which ones must never be trusted
-again?* `peers.app` runs the default registry as part of `peers-services`;
-a user can point at another registry alongside it or instead of it, and
-everything that works without `peers-services` keeps working without any
-registry.
-
-A subject is any 25‑character Peers ID: a user, a package, a group, or a
-device. Each subject can have **several active keys** so a rotation can
-overlap (add the new key, move devices over, retire the old one later), and
-a key can be **revoked** when it is lost or compromised.
+A **key registry** is one kind of **identity anchor**. An anchor publishes
+which public key is a user's current key. `peers.app` runs the default
+anchor as part of `peers-services`. A user can also name an `https` URL that
+serves the same document. Everything that works without `peers-services`
+keeps working with an empty anchor list: peers simply have no outside
+confirmation, so a different key stays untrusted.
 
 The registry stores only public keys and signatures. It never holds secret
-keys, password hashes, or recovery codes.
+keys, password hashes, or recovery codes. Holding the current key proves you
+can speak as that key. It does not let you replace it.
 
-## Key records
+## The anchor document
+
+`GET /api/v1/keys/:subjectId` returns a document signed by the registry
+(`{ contents, signature, publicKey }`). An `https` anchor serves the same
+`contents`, with or without that envelope.
 
 | Field | Meaning |
 |---|---|
-| `subjectId`, `subjectType` | the Peers ID and whether it is a `user`, `package`, `group`, or `device` |
-| `algorithm`, `publicKey`, `publicBoxKey` | `ed25519` today; the X25519 encryption key is derived from the signing key |
-| `status` | `active`, `retired` (no longer used, still trusted for old signatures), or `revoked` (never trust) |
-| `reason` | `rotation`, `compromised`, `lost`, or `expired` |
-| `label`, `notBefore`, `expiresAt` | optional metadata and validity window |
-| `authorizedBy` | the existing key that approved this one |
+| `version` | `1` |
+| `userId` | the Peers ID the document is about |
+| `keys` | keys that are active right now, oldest first. A listed key is current. Retired and revoked keys are omitted |
+| `keys[].issuedAt` | when that key was registered |
+| `keys[].authorizedBy` | `{ publicKey, signature }` when the previous key co-signed the succession statement. Present means a rotation; absent means a recovery |
+| `anchors` | where else to look. A user document defaults to this registry's own URL. A package, group, or device document lists none |
+| `updatedAt` | when the registry signed the document |
 
-`active → retired → revoked`; revoked is final and the same key material
-cannot be added again.
+The succession statement the previous key signs is
+`{ purpose: "peers-key-succession", userId, publicKey, issuedAt }`, where
+`publicKey` is the new key. `authorizedBy.publicKey` is the previous key and
+`authorizedBy.signature` is its signature over that statement.
+
+Responses send `Cache-Control: public, max-age=60`. A peer keeps a confirmed
+answer for that long, or for the shortest `max-age` it was given.
+
+## How a peer decides
+
+A peer resolves a new key against the anchors **already stored** for that
+user (the on-record list, on the personal `Users` row). A list that arrives
+with the new key is ignored. So is a synced `Users` row that tries to change
+`publicKey` or `anchors` for someone else: the row is not written until the
+anchors on record confirm the key, and a replacement anchor list is never
+taken from that row.
+
+Each anchor answers in one of three ways:
+
+| Answer | When |
+|---|---|
+| Confirm | the document is for this user and lists the presented key |
+| Veto | 404, the wrong user, a document that omits the key, or a body that is not a document |
+| Abstain | timeout, network error, or a 5xx |
+
+The presented key is confirmed only when at least one anchor confirms and
+none veto. Any veto refuses it. No anchors, or every anchor abstaining,
+leaves the change pending. A confirmed key whose `authorizedBy` is a valid
+co-signature by the key on record is a **rotation** and replaces the personal
+row immediately. A confirmed key without that co-signature is a **recovery**
+and stays pending until a recovery delay exists. A key that is no longer on
+the personal row is not accepted.
 
 ## API
 
@@ -42,30 +73,34 @@ rate limited per IP.
 | Call | What it does |
 |---|---|
 | `GET /.well-known/peers-key-registry.json` | The registry's own ID and signing key. Pin this; every signed read verifies against it. |
-| `GET /api/v1/keys/:subjectId` | All keys for a subject, signed by the registry (`{ contents, signature, publicKey }`). `contents.primary` is the newest usable key; `userId`/`publicKey`/`publicBoxKey` are kept for older clients. |
-| `GET /api/v1/keys/:subjectId/:publicKey` | One key record, signed. A cheap "is this key revoked?" check. |
+| `GET /api/v1/keys/:subjectId` | The anchor document, signed by the registry. |
+| `GET /api/v1/keys/:subjectId/:publicKey` | One stored key record, signed, including retired and revoked rows. |
 | `POST /api/v1/keys/:subjectId/challenge` | `{ publicKey }` → `{ challengeId, nonce, expiresAt }`. Single use, bound to that subject and key. |
-| `POST /api/v1/keys/:subjectId` | Add a key: `{ challengeId, key, proofOfPossession, authorization }`. |
-| `POST /api/v1/keys/:subjectId/:publicKey/status` | Retire or revoke: `{ challengeId, status, reason, authorization }`. |
+| `POST /api/v1/keys/:subjectId` | Add a key: `{ challengeId, key, proofOfPossession, authorization? }`. |
+| `POST /api/v1/keys/:subjectId/:publicKey/status` | Retire or revoke a package, group, or device key: `{ challengeId, status, reason, authorization }`. |
 
-Writes never need a password or session. Two signatures do the work:
+**Proof of possession** – the new key signs
+`{ purpose: "peers-key-proof", subjectId, publicKey, nonce }`. That is an
+`ISignedObject` from `signObjectWithSecretKey` in `@peers-app/peers-sdk`.
+A challenge is consumed by the first attempt that uses it.
 
-- **Proof of possession** – the *new* key signs
-  `{ purpose: "peers-key-proof", subjectId, publicKey, nonce }`.
-- **Authorization** – a key that is already active for the subject signs
-  `{ purpose: "peers-key-authorization", subjectId, publicKey, nonce }` (add)
-  or `{ purpose: "peers-key-status", subjectId, publicKey, status, reason, nonce }`
-  (status change). A key may revoke itself.
+**A user's first key** is registered by that proof alone. This is what a
+device does the first time it reaches `peers-services`. A user who already
+has a key cannot add or retire one over HTTP: both calls return 403. An
+operator records a rotation with the seed tool, passing the previous key's
+succession signature. An account factor that can do the same write comes
+later.
 
-Both are `ISignedObject`s from `signObjectWithSecretKey` in
-`@peers-app/peers-sdk`. A challenge is consumed by the first attempt that uses
-it, so a failed request has to start again.
+**Packages, groups, and devices** cannot self-register a first key. An
+operator seeds it. A later key is authorized by a key that is already active
+for that subject, signing
+`{ purpose: "peers-key-authorization", subjectId, publicKey, nonce }`. The
+same kind of signature, with purpose `peers-key-status`, retires or revokes
+it. A user's key is not in that rule.
 
-**First key.** A user with no keys yet registers its first key simply by
-proving possession; this is what a device does when it connects to
-`peers-services` for the first time. Packages, groups, and devices cannot
-self‑register their first key: an operator seeds it, after which the normal
-authorization rule applies.
+Stored rows still use `active`, `retired`, and `revoked`. Revoked is final.
+The anchor document only lists keys that are active. Signing in
+(`/api/v1/auth/authenticate`) accepts an active key and refuses any other.
 
 ## How peers-services uses it
 
@@ -99,13 +134,13 @@ and rotated.
 
 ## User key rotation
 
-A different key in a handshake is refused. The key on record stays the key on
-record until an **anchor** the user controls confirms a successor. Possession
-of the current key is not authority to replace it, so **Identity → Account**
-and `peers keys rotate` both say that rotation needs an anchor that accepts
-writes. That publisher is not installed yet.
+A different key in a handshake is accepted only when the anchors on record
+confirm it as a rotation. Otherwise the handshake is `Untrusted` and the
+stored key stays. **Identity → Account** and `peers keys rotate` still say
+that rotation needs an anchor that accepts writes: publishing the new key is
+the next step, and nothing local changes until an anchor lists it.
 
-What is already in place, so the rotation can land without re-encrypting
+What is already in place, so that publish can land without re-encrypting
 databases:
 
 - The host credential record stores `dbSecret` separately from `secretKey`.
@@ -114,11 +149,22 @@ databases:
   keeps `dbSecret` and appends the old public key to `previousPublicKeys`.
 - Secret persistent variables can be re-wrapped from the old signing key to
   the new one before anything is written.
+- A new user whose services URL is configured starts with one on-record
+  anchor, the peers-services document for their user id. With services off,
+  the list is empty.
 - `peers keys show` and the Signing key card report the current key, previous
   keys, and what the registry lists when it can be reached.
-- The registry client can read a signed subject document and register a
-  subject's first key (proof of possession). It does not authorize a later
-  key with the current one.
 
-Groups and package authors are unchanged. A handshake whose signing or box
-key does not match the stored user is `Untrusted`.
+An operator records a rotation the registry will not accept over HTTP:
+
+```bash
+node dist/keys/seed-subject-key.js \
+  --subject <userId> --type user \
+  --public-key <new base64url> --status active \
+  --issued-at <ISO> \
+  --authorized-by <previous publicKey> \
+  --succession-signature <sig>
+```
+
+The signature is checked before it is stored. A signature that does not
+verify is refused.

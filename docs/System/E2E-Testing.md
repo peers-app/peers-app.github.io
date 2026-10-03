@@ -330,12 +330,11 @@ reads the `subject_keys` collection the same way.
 
 `key-registry.e2e.test.ts` drives the [key registry](./Key-Registry.md) over
 HTTP with one real device: the device's startup registration seeds the
-registry; the test verifies the service-signed read against
-`fleet.services.publicKey`, adds a second key (proof by the new key,
-authorization by the first), checks that challenges are single-use and that
-unauthorized or non-user first claims are refused, revokes the first key with
-the second key's authority, and asserts `/auth/authenticate` now rejects the
-revoked key and accepts the new one.
+registry; the test verifies the service-signed anchor document against
+`fleet.services.publicKey`, checks that a second key and a status change are
+refused for a user who already has a key, that a used challenge cannot be
+replayed, and that a non-user first claim is refused. The original key still
+authenticates.
 
 There is no user-key-rotation scenario yet. Rotation is refused until an
 anchor accepts the new key; the scenario comes back with that flow.

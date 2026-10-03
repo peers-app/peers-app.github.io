@@ -84,6 +84,26 @@ are moved aside as `<file>.stale-<timestamp>` rather than deleted.
 with the same message. See [CLI](./CLI.md#keys) and
 [Key Registry](./Key-Registry.md#user-key-rotation).
 
+### How peers decide which key is yours
+
+The key on your personal `Users` row is the key on record. The `anchors` on
+that same row are the places peers ask before they believe a different key.
+A new user with Peers Services configured starts with that service as the
+only anchor. With services off, the list is empty and a different key is
+never confirmed.
+
+A handshake, or a profile row from another device, that presents a new key
+is checked against those anchors. One confirming answer and no veto accepts
+a rotation immediately: the previous key co-signed the new one. Anything
+else — a veto, no answer, or a new key nobody co-signed — leaves the old key
+in place. A row that tries to replace the anchor list at the same time is
+ignored; the list changes only when an anchor you already trust publishes
+the new list.
+
+Your own device, holding the old key, learns it has been replaced when an
+anchor confirms the new one. It does not adopt that key. It has to be paired
+again.
+
 ## Host-only operations
 
 The System Identity and System Invites contracts control sensitive local-host
