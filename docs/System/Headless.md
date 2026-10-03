@@ -59,8 +59,8 @@ identity.
 | `previousPublicKeys` | Public keys this identity used before, newest last, with when and why each was replaced. Informational; `peers keys show` prints it. |
 
 A bare `userId::secretKey` string, or a file with only `userId` and
-`secretKey`, is still accepted and upgraded in memory. `peers keys rotate` is
-refused until an anchor accepts writes; it does not rewrite the file. When
+`secretKey`, is still accepted and upgraded in memory. `peers keys rotate --manual`
+rewrites the file only after an on-record anchor lists the new key. When
 the identity is given only by `--secret-key` or `USER_ID`/`SECRET_KEY`, the
 host also cannot persist a new secret, because there is no file to rewrite.
 
@@ -72,8 +72,8 @@ the caller, and then **exits with code 0**. The process does not re-exec
 itself. Run the host under a supervisor that restarts it (systemd
 `Restart=always`, a container restart policy, `pm2`, …) or start it again by
 hand. The log line is
-`Key rotated; exiting so the next start uses the new key`. That path is not
-reachable from `peers keys rotate` until an anchor publisher is installed.
+`Key rotated; exiting so the next start uses the new key`. `peers keys rotate --manual`
+reaches it once an anchor lists the new key.
 
 ## Pair instead of copying a secret
 

@@ -72,16 +72,21 @@ The **Signing key** card on Identity → Account shows the current public key,
 any earlier keys this host replaced (with when and why), and what the key
 registry on Peers Services reports when it can be reached.
 
-Replacing the key needs an anchor outside the key itself. Until one accepts
-writes, the card says **Rotation needs an anchor that accepts writes** and
-does not offer a rotate action. A handshake that presents a different key is
-refused. The database key is already stored separately from the signing key,
-so a later rotation does not re-encrypt the database. When a device is paired
-again onto an account whose old database files it cannot open, those files
-are moved aside as `<file>.stale-<timestamp>` rather than deleted.
+**Prepare manual rotation** prints a document. Place it at an anchor already
+on the profile (or give it to an operator who seeds peers-services). **I've
+published this** waits until an anchor lists the new key, then rotates and
+restarts. Until then the current key keeps working. A handshake that presents
+a different key is accepted only when those anchors confirm it. The database
+key is stored separately from the signing key, so a rotation does not
+re-encrypt the database. When a device is paired again onto an account whose
+old database files it cannot open, those files are moved aside as
+`<file>.stale-<timestamp>` rather than deleted.
 
-`peers keys show` prints the same information. `peers keys rotate` is refused
-with the same message. See [CLI](./CLI.md#keys) and
+A device that still holds the old key shows **This device holds an old key**
+once an anchor has confirmed the new one. Pair that device again.
+
+`peers keys show` prints the key and the anchors. `peers keys rotate --manual`
+does the same publish-and-wait as the card. See [CLI](./CLI.md#keys) and
 [Key Registry](./Key-Registry.md#user-key-rotation).
 
 ### How peers decide which key is yours
@@ -90,7 +95,8 @@ The key on your personal `Users` row is the key on record. The `anchors` on
 that same row are the places peers ask before they believe a different key.
 A new user with Peers Services configured starts with that service as the
 only anchor. With services off, the list is empty and a different key is
-never confirmed.
+never confirmed. A contact invite carries that list, and the new contact
+stores it with the key. That is the list later checks use.
 
 A handshake, or a profile row from another device, that presents a new key
 is checked against those anchors. One confirming answer and no veto accepts

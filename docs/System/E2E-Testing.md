@@ -336,8 +336,8 @@ refused for a user who already has a key, that a used challenge cannot be
 replayed, and that a non-user first claim is refused. The original key still
 authenticates.
 
-There is no user-key-rotation scenario yet. Rotation is refused until an
-anchor accepts the new key; the scenario comes back with that flow.
+`peers keys rotate --manual` waits until an on-record anchor lists the new
+key. The rotation scenario that drives that path is `key-rotation.e2e.test.ts`.
 
 ## What is deliberately not covered
 

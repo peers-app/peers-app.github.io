@@ -178,14 +178,17 @@ process as the new device.
 Show the signing key of the account the connected host is signed in to.
 
 ```bash
-peers keys                               # current key, previous keys, registry status
+peers keys                               # current key, previous keys, anchors, registry status
 peers keys show --json
+peers keys rotate --manual               # print a document, then wait for an anchor
 peers --auth-file ~/peers/cli/headless-auth.json keys show
 ```
 
-`peers keys rotate` (with or without `--compromised`, `--lost`, or `--yes`) exits non-zero
-and prints `Rotation needs an anchor that accepts writes`. The current key cannot authorize
-its own replacement. See
+`peers keys rotate --manual` prints an anchor document. Publish it at an anchor
+already on the account, or give it to an operator. The command waits, and the
+host rotates only after an anchor lists the new key. `peers keys rotate`
+without `--manual` needs an installed writer and otherwise exits non-zero with
+`Rotation needs an anchor that accepts writes`. See
 [Key Registry › User key rotation](./Key-Registry.md#user-key-rotation).
 
 ### `peers tools` — Tools

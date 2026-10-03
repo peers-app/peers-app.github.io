@@ -136,9 +136,17 @@ and rotated.
 
 A different key in a handshake is accepted only when the anchors on record
 confirm it as a rotation. Otherwise the handshake is `Untrusted` and the
-stored key stays. **Identity → Account** and `peers keys rotate` still say
-that rotation needs an anchor that accepts writes: publishing the new key is
-the next step, and nothing local changes until an anchor lists it.
+stored key stays.
+
+`peers keys rotate --manual` (and **Prepare manual rotation** on Identity →
+Account) prints an anchor document signed by the current key. Place that
+document at an `https` anchor on record, or hand it to an operator who seeds
+peers-services with `--authorized-by` and `--succession-signature`. The
+command then waits. The local key, the wrapped secrets, and the profile row
+change only after an on-record anchor lists the new key. A timeout changes
+nothing. `peers keys rotate` without `--manual` uses an installed writer;
+none is installed until an account factor exists, so that form still reports
+that rotation needs an anchor that accepts writes.
 
 What is already in place, so that publish can land without re-encrypting
 databases:
