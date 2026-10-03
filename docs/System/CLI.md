@@ -190,6 +190,9 @@ peers keys contest --pending <publicKey>
 peers keys email session --user <userId> --code <code>
 peers keys recover --user <userId>
 peers keys recover --user <userId> --manual
+peers keys anchors list
+peers keys anchors add --url https://example.com/.well-known/peers-identity.json
+peers keys anchors remove --url https://example.com/.well-known/peers-identity.json
 peers --auth-file ~/peers/cli/headless-auth.json keys show
 ```
 
@@ -204,7 +207,11 @@ removes the mailbox. `peers keys contest --pending` objects to a recovery
 with the key this host still holds. `peers keys recover --user` runs on a
 signed-out host after a recovery-email session for that user, or with
 `--manual` after an operator has published the document. Groups need a new
-invite, and secrets wrapped under the lost key stay unreadable. See
+invite, and secrets wrapped under the lost key stay unreadable.
+`peers keys anchors add` and `remove` publish the full list at the anchors
+already on record. An https anchor has to be serving that list first. A
+passkey, added from the account screen, opens the same session as the
+recovery email. See
 [Key Registry › User key rotation](./Key-Registry.md#user-key-rotation) and
 [Identity › Lost your key](./Identity.md#lost-your-key).
 

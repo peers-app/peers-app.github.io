@@ -345,7 +345,10 @@ mail transport, opens an anchor-write session, and rotates with
 contest signed by the old key keeps the contact on that key past the delay;
 without a contest the contact adopts the new key once the delay elapses. The
 scenario sets `PEERS_RECOVERY_DELAY_MS` before the fleet starts so the wait
-is a few seconds. That variable is for this test only. The fleet forces
+is a few seconds. That variable is for this test only.
+`key-anchors.e2e.test.ts` publishes an extra https anchor through the open
+session. A contact adopts it after the peers-services document lists it.
+The fleet forces
 `PEERS_EMAIL_TRANSPORT=console` so a developer `RESEND_API_KEY` cannot send
 real mail.
 

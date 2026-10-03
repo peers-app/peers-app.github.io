@@ -68,6 +68,16 @@ posted to `POST /api/v1/account/contest` and listed by
 `GET /api/v1/account/contest?userId=`. It stays pending until a peer accepts
 the new key. A key that is no longer on the personal row is not accepted.
 
+An anchor list changes the same way. The anchors already on record must
+publish the new list: one confirming document and no veto. peers-services
+stores that list when an anchor-write session `POST`s
+`/api/v1/account/anchors`. Until a user sets one, a user document lists this
+registry itself. An empty stored list is an opt-out. A browser that cannot
+fetch an arbitrary https anchor reads it through
+`GET /api/v1/account/anchor-fetch?url=`. That proxy returns the bytes. It does
+not decide whether the document is trusted, and it refuses addresses that are
+not public https hosts.
+
 ## API
 
 Base path: `https://peers.app/api/v1/keys`. Reads are public; everything is

@@ -97,8 +97,19 @@ key there. The session lasts about ten minutes. Without a mailbox, Peers
 Services refuses the write and the key on this device stays as it is. Manual
 rotation still works when another anchor is on the profile. If the signing
 key is lost and no mailbox is bound, there is no way back into the account.
-Removing the mailbox opts out of that factor. See
+Removing the mailbox opts out of that factor. A **passkey** on the same
+screen opens the same kind of session. See
 [Writing to the peers-services anchor](./Key-Registry.md#writing-to-the-peers-services-anchor).
+
+### Anchors
+
+The **Anchors** card lists the places peers already trust for this account.
+**Add** publishes the new list at those places, then stores it here. An https
+address has to be serving the new list before the command finishes. **Remove**
+does the same with the shorter list. With no anchors left, a lost key cannot
+be recovered. `peers keys anchors list`, `add --url`, and `remove --url` do
+the same from a signed-in host. A contact adopts the new list only after an
+anchor already on record publishes it.
 
 ### How peers decide which key is yours
 
