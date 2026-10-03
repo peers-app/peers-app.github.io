@@ -126,6 +126,13 @@ op run --env-file ~/.config/peers/release.env -- node scripts/publish-peers-core
 when it does not equal `peersCorePublishPublicKey` or when it appears in
 `peersCoreRevokedPublishPublicKeys`.
 
+The signed payload includes `createdBy`. Set `PEERS_CORE_CREATED_BY` (or
+`USER_ID`) to record a specific peer; otherwise the peers-core package id is
+signed. The installer stores that same value, and a client rejects the version
+when it does not match the signature. `0.25.12` and `0.25.13` omitted
+`createdBy`; do not add a verifier exception for those historical artifacts.
+Publish a newer version with the complete signed payload instead.
+
 **Rotate** when the key is compromised or on schedule:
 
 1. Generate the new pair as above and store the secret in a *new* 1Password
