@@ -59,10 +59,12 @@ identity.
 | `previousPublicKeys` | Public keys this identity used before, newest last, with when and why each was replaced. Informational; `peers keys show` prints it. |
 
 A bare `userId::secretKey` string, or a file with only `userId` and
-`secretKey`, is still accepted and upgraded in memory. `peers keys rotate --manual`
-rewrites the file only after an on-record anchor lists the new key. When
-the identity is given only by `--secret-key` or `USER_ID`/`SECRET_KEY`, the
-host also cannot persist a new secret, because there is no file to rewrite.
+`secretKey`, is still accepted and upgraded in memory. `peers keys rotate` and
+`peers keys rotate --manual` rewrite the file only after an on-record anchor
+lists the new key. The plain form needs a recovery-email session
+(`peers keys email`). When the identity is given only by `--secret-key` or
+`USER_ID`/`SECRET_KEY`, the host also cannot persist a new secret, because
+there is no file to rewrite.
 
 ### Restart after a key rotation
 

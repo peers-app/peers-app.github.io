@@ -89,6 +89,17 @@ once an anchor has confirmed the new one. Pair that device again.
 does the same publish-and-wait as the card. See [CLI](./CLI.md#keys) and
 [Key Registry](./Key-Registry.md#user-key-rotation).
 
+### Recovery email
+
+The **Recovery email** card binds a mailbox at Peers Services. **Send rotation
+code**, then **Open session**, then **Rotate signing key** publishes the new
+key there. The session lasts about ten minutes. Without a mailbox, Peers
+Services refuses the write and the key on this device stays as it is. Manual
+rotation still works when another anchor is on the profile. If the signing
+key is lost and no mailbox is bound, there is no way back into the account.
+Removing the mailbox opts out of that factor. See
+[Writing to the peers-services anchor](./Key-Registry.md#writing-to-the-peers-services-anchor).
+
 ### How peers decide which key is yours
 
 The key on your personal `Users` row is the key on record. The `anchors` on

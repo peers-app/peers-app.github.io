@@ -144,9 +144,48 @@ document at an `https` anchor on record, or hand it to an operator who seeds
 peers-services with `--authorized-by` and `--succession-signature`. The
 command then waits. The local key, the wrapped secrets, and the profile row
 change only after an on-record anchor lists the new key. A timeout changes
-nothing. `peers keys rotate` without `--manual` uses an installed writer;
-none is installed until an account factor exists, so that form still reports
-that rotation needs an anchor that accepts writes.
+nothing.
+
+`peers keys rotate` without `--manual` publishes through a writer installed
+for an on-record anchor. The peers-services writer is installed when services
+are configured. It accepts the new key only during a short-lived session
+opened with the recovery email (see below). Without that session the registry
+refuses the write and nothing on the device changes. With services off, no
+writer is installed and the command reports that rotation needs an anchor
+that accepts writes.
+
+## Writing to the peers-services anchor
+
+Holding the current key does not authorize a write. A user's first key is
+still a self-registration. A later key, or a status change, needs a session
+whose token carries `scope: anchor-write`. A normal sign-in token does not.
+
+The recovery email lives in `account_auth`, separate from the public key
+records. Binding it is signed by a current key, and the one-time code goes to
+that mailbox. Opening a session mails a code to the verified address and does
+not require the signing key, so the same step is what recovery uses. The
+session lasts about ten minutes. A rotation sent during it includes the
+previous key's succession signature when the device still holds that key.
+
+Codes are stored as hashes. Production mail goes through Resend when
+`RESEND_API_KEY` is set (`PEERS_EMAIL_FROM` overrides the from address,
+default `Peers <noreply@peers.app>`). `PEERS_EMAIL_TRANSPORT=console`, or a
+missing API key, prints the code instead and keeps the last one for dev and
+end-to-end tests. That last-code route answers 404 when Resend is the
+transport.
+
+Opting out means leaving the mailbox unbound. Peers Services then refuses
+every later key. Another anchor you already listed can still confirm a
+manual publish. If the signing key is lost and no mailbox is bound, the
+account cannot be recovered.
+
+```bash
+peers keys email bind --email you@example.com
+peers keys email verify --email you@example.com --code 123456
+peers keys email session
+peers keys email session --code 123456
+peers keys rotate
+```
 
 What is already in place, so that publish can land without re-encrypting
 databases:

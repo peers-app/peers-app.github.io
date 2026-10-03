@@ -338,6 +338,11 @@ authenticates.
 
 `peers keys rotate --manual` waits until an on-record anchor lists the new
 key. The rotation scenario that drives that path is `key-rotation.e2e.test.ts`.
+`key-rotation-email.e2e.test.ts` binds a recovery email through the console
+mail transport, opens an anchor-write session, and rotates with
+`publish: "anchors"`. A contact then sees the new key. The fleet forces
+`PEERS_EMAIL_TRANSPORT=console` so a developer `RESEND_API_KEY` cannot send
+real mail.
 
 ## What is deliberately not covered
 

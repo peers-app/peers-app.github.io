@@ -181,14 +181,22 @@ Show the signing key of the account the connected host is signed in to.
 peers keys                               # current key, previous keys, anchors, registry status
 peers keys show --json
 peers keys rotate --manual               # print a document, then wait for an anchor
+peers keys email bind --email you@example.com
+peers keys email verify --email you@example.com --code 123456
+peers keys email session --code 123456
+peers keys rotate                        # publish through the open session
+peers keys email unbind
 peers --auth-file ~/peers/cli/headless-auth.json keys show
 ```
 
 `peers keys rotate --manual` prints an anchor document. Publish it at an anchor
 already on the account, or give it to an operator. The command waits, and the
 host rotates only after an anchor lists the new key. `peers keys rotate`
-without `--manual` needs an installed writer and otherwise exits non-zero with
-`Rotation needs an anchor that accepts writes`. See
+without `--manual` publishes to peers-services when a recovery-email session
+is open. Without that session the registry refuses the write and the command
+exits non-zero; nothing local changes. With services off it reports
+`Rotation needs an anchor that accepts writes`. `peers keys email unbind`
+removes the mailbox. See
 [Key Registry › User key rotation](./Key-Registry.md#user-key-rotation).
 
 ### `peers tools` — Tools
