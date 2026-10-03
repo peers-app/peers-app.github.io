@@ -173,6 +173,21 @@ is wrong, the ceremony is rejected, or it fails. See
 [Headless host](./Headless.md#pair-instead-of-copying-a-secret) for pairing a headless
 process as the new device.
 
+### `peers keys` — Signing key {#keys}
+
+Show the signing key of the account the connected host is signed in to.
+
+```bash
+peers keys                               # current key, previous keys, registry status
+peers keys show --json
+peers --auth-file ~/peers/cli/headless-auth.json keys show
+```
+
+`peers keys rotate` (with or without `--compromised`, `--lost`, or `--yes`) exits non-zero
+and prints `Rotation needs an anchor that accepts writes`. The current key cannot authorize
+its own replacement. See
+[Key Registry › User key rotation](./Key-Registry.md#user-key-rotation).
+
 ### `peers tools` — Tools
 
 List, inspect, and execute [tools](./Tools).

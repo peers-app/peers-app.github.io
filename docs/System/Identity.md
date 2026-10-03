@@ -66,6 +66,24 @@ diagnostics but are not needed in normal lists.
 device, and host-specific sign out. The app version appears in the persistent
 Settings footer.
 
+### Signing key
+
+The **Signing key** card on Identity → Account shows the current public key,
+any earlier keys this host replaced (with when and why), and what the key
+registry on Peers Services reports when it can be reached.
+
+Replacing the key needs an anchor outside the key itself. Until one accepts
+writes, the card says **Rotation needs an anchor that accepts writes** and
+does not offer a rotate action. A handshake that presents a different key is
+refused. The database key is already stored separately from the signing key,
+so a later rotation does not re-encrypt the database. When a device is paired
+again onto an account whose old database files it cannot open, those files
+are moved aside as `<file>.stale-<timestamp>` rather than deleted.
+
+`peers keys show` prints the same information. `peers keys rotate` is refused
+with the same message. See [CLI](./CLI.md#keys) and
+[Key Registry](./Key-Registry.md#user-key-rotation).
+
 ## Host-only operations
 
 The System Identity and System Invites contracts control sensitive local-host

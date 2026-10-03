@@ -32,12 +32,48 @@ npx peers-headless --new-user --db ~/peers/headless/alice --name Alice
 npx peers-headless --db ~/peers/headless/alice
 ```
 
-With an on-disk `--db`, `--new-user` writes `{ userId, secretKey }` to
+With an on-disk `--db`, `--new-user` writes the credential record to
 `<db>/credentials.json` (mode 0600) and refuses to overwrite an existing file.
 Explicit `--user-id`/`--secret-key`, `--credentials <file>`, or
 `USER_ID`/`SECRET_KEY` override it. `--name` only applies on first boot; a
 rename from another device is kept. `peers app restart` re-execs as the same
 identity.
+
+### The credential record
+
+```json
+{
+  "userId": "00mabc…",
+  "secretKey": "…",
+  "dbSecret": "…",
+  "previousPublicKeys": [
+    { "publicKey": "…", "replacedAt": "2026-10-02T18:04:11.000Z", "reason": "compromised" }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `userId`, `secretKey` | The identity. `secretKey` is the current Ed25519 signing key; the X25519 encryption key is derived from it. |
+| `dbSecret` | The SQLCipher key for the on-disk databases. It is independent of the signing key so a key rotation never has to re-encrypt the database. `--new-user` mints a random one; a file that predates this field derives it from the secret key the way older hosts did, and keeps that value from then on. `DB_SECRET` overrides it in the environment. |
+| `previousPublicKeys` | Public keys this identity used before, newest last, with when and why each was replaced. Informational; `peers keys show` prints it. |
+
+A bare `userId::secretKey` string, or a file with only `userId` and
+`secretKey`, is still accepted and upgraded in memory. `peers keys rotate` is
+refused until an anchor accepts writes; it does not rewrite the file. When
+the identity is given only by `--secret-key` or `USER_ID`/`SECRET_KEY`, the
+host also cannot persist a new secret, because there is no file to rewrite.
+
+### Restart after a key rotation
+
+When a rotation does complete, the host rewrites `credentials.json` (same
+`dbSecret`, new `secretKey`, one more `previousPublicKeys` entry), replies to
+the caller, and then **exits with code 0**. The process does not re-exec
+itself. Run the host under a supervisor that restarts it (systemd
+`Restart=always`, a container restart policy, `pm2`, …) or start it again by
+hand. The log line is
+`Key rotated; exiting so the next start uses the new key`. That path is not
+reachable from `peers keys rotate` until an anchor publisher is installed.
 
 ## Pair instead of copying a secret
 
@@ -71,7 +107,13 @@ npx peers-headless --pair --db /srv/peers --pair-url https://peers.example.com
 
 `--pair` refuses to run when `<db>/credentials.json`, explicit credentials, or
 `USER_ID`/`SECRET_KEY` already provide an identity, and it needs a
-`--services-url` (not `none`) for the rendezvous. Each line of progress is
+`--services-url` (not `none`) for the rendezvous. If the `--db` directory still
+holds `personal/` or `group_*/` databases from an earlier identity on this host
+(typically a device whose key was rotated away elsewhere, after its
+`credentials.json` was removed), pairing renames them to
+`<name>.stale-<timestamp>` before it boots and logs each move; the new identity
+mints its own `dbSecret` and could not have opened them. Nothing is deleted;
+remove the `.stale-*` directories yourself once you are sure they are not needed. Each line of progress is
 printed; `PAIRING_CODE <code>` is a machine-readable marker for scripts. A
 failed attempt rotates to a new code; if the runtime had already initialized
 when the failure happened, the process exits non-zero and should be started

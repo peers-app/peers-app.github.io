@@ -97,15 +97,28 @@ key is `revoked:compromised` and whose current key is `active`. See
 [Releasing](./Releasing.md#signing-key) for how the key is generated, stored,
 and rotated.
 
-## What is coming
+## User key rotation
 
-The registry is the foundation for user key rotation. Devices will cache
-registry records, peers will accept a signed "key A is succeeded by key B"
-attestation in the handshake so a rotation works offline, Identity › Account
-will offer *Rotate key* and *Report compromised*, and an optional passwordless
-`peers.app` account (verified email, passkeys) will act as a recovery
-authority when every device is lost. Until then, the registry is used by the
-service itself and by the peers-core trust anchor.
+A different key in a handshake is refused. The key on record stays the key on
+record until an **anchor** the user controls confirms a successor. Possession
+of the current key is not authority to replace it, so **Identity → Account**
+and `peers keys rotate` both say that rotation needs an anchor that accepts
+writes. That publisher is not installed yet.
 
-See also [Key Transfer & Recovery](../Roadmap/key-transfer-and-recovery.md)
-and [Device-Specific Keys](../Roadmap/device-keys.md).
+What is already in place, so the rotation can land without re-encrypting
+databases:
+
+- The host credential record stores `dbSecret` separately from `secretKey`.
+  New identities mint a random database key. A record that predates the field
+  derives it once from the secret key and keeps that value. A later rotation
+  keeps `dbSecret` and appends the old public key to `previousPublicKeys`.
+- Secret persistent variables can be re-wrapped from the old signing key to
+  the new one before anything is written.
+- `peers keys show` and the Signing key card report the current key, previous
+  keys, and what the registry lists when it can be reached.
+- The registry client can read a signed subject document and register a
+  subject's first key (proof of possession). It does not authorize a later
+  key with the current one.
+
+Groups and package authors are unchanged. A handshake whose signing or box
+key does not match the stored user is `Untrusted`.

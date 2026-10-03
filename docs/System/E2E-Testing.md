@@ -88,10 +88,11 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
   (`npm run build` in each), and `webrtc.e2e.test.ts` needs a `peers-webrtc`
   binary (`cd peers-webrtc && make local`, requires Go); without one it prints
   a warning and skips rather than failing. `pairing.e2e.test.ts`,
-  `invites-services.e2e.test.ts`, and `key-registry.e2e.test.ts` need
+  `invites-services.e2e.test.ts` and `key-registry.e2e.test.ts` need
   `peers-services/dist` and a Mongo and skip the same way; also run them after
   touching `peers-services` (`auth`, `keys`, `mailbox`, `device-pairing`,
-  `connection-*`), `peers-device` `invites/`, or `MailboxClient`.
+  `connection-*`), `peers-device` `invites/`, `MailboxClient`, the trust path
+  (`get-trust-level-fn`, `UsersTable`), or any host's credential store.
 - **Tier 2** when touching `connection-manager*`, `network-manager`, `sync-group`,
   `websocket-client`, or device election: the 32-device cap scenario is where
   shedding and redial policy show their real behaviour. Compare
@@ -307,8 +308,8 @@ available from the CLI: the proxies live in the process that created them.
 
 ## Pairing, invites, and the key registry against the real service
 
-`pairing.e2e.test.ts`, `invites-services.e2e.test.ts`, and
-`key-registry.e2e.test.ts` are the only scenarios that run `peers-services`. The service is the production
+`pairing.e2e.test.ts`, `invites-services.e2e.test.ts`, and `key-registry.e2e.test.ts`
+are the only scenarios that run `peers-services`. The service is the production
 `dist/server.js` started with `PORT=0`, a fresh identity, a per-run Mongo, and
 the test-fleet env vars documented in the `peers-services` README (no dial to
 `peers.app`, advertises only `127.0.0.1`). `invites-services` runs with
@@ -335,6 +336,9 @@ authorization by the first), checks that challenges are single-use and that
 unauthorized or non-user first claims are refused, revokes the first key with
 the second key's authority, and asserts `/auth/authenticate` now rejects the
 revoked key and accepts the new one.
+
+There is no user-key-rotation scenario yet. Rotation is refused until an
+anchor accepts the new key; the scenario comes back with that flow.
 
 ## What is deliberately not covered
 
