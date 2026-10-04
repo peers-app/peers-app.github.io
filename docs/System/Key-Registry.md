@@ -74,7 +74,12 @@ An anchor list changes the same way. The anchors already on record must
 publish the new list: one confirming document and no veto. peers-services
 stores that list when an anchor-write session `POST`s
 `/api/v1/account/anchors`. Until a user sets one, a user document lists this
-registry itself. An empty stored list is an opt-out. A browser that cannot
+registry itself. That default URL is the first `PEERS_SERVICES_PUBLIC_URLS`
+origin, or the request host when that variable is unset. A public hostname is
+advertised as `https` even when a TLS terminator leaves the process speaking
+plain HTTP, so production lists `https://peers.app`. Loopback and private
+addresses keep the request's scheme, which is how a local fleet stays on
+`http`. An empty stored list is an opt-out. A browser that cannot
 fetch an arbitrary https anchor reads it through
 `GET /api/v1/account/anchor-fetch?url=`. That proxy returns the bytes. It does
 not decide whether the document is trusted, and it refuses addresses that are
