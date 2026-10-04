@@ -72,11 +72,14 @@ The **Signing key** card on Identity → Account shows the current public key,
 any earlier keys this host replaced (with when and why), and what the key
 registry on Peers Services reports when it can be reached.
 
-**Prepare manual rotation** prints a document. Place it at an anchor already
-on the profile (or give it to an operator who seeds peers-services). **I've
-published this** waits until an anchor lists the new key, then rotates and
-restarts. Until then the current key keeps working. A handshake that presents
-a different key is accepted only when those anchors confirm it. The database
+**Rotate signing key** publishes a new key through every anchor on the profile
+that can be written to (Peers Services, during a recovery-email session). An
+https anchor cannot be written to from here, so when one is on the profile the
+card shows a document instead; place it at every https anchor, then **I've
+published this** waits until every anchor lists the new key. Only then does
+the host rotate and restart. Until then the current key keeps working. A
+handshake that presents a different key is accepted only when those anchors
+confirm it. The database
 key is stored separately from the signing key, so a rotation does not
 re-encrypt the database. When a device is paired again onto an account whose
 old database files it cannot open, those files are moved aside as
@@ -85,8 +88,8 @@ old database files it cannot open, those files are moved aside as
 A device that still holds the old key shows **This device holds an old key**
 once an anchor has confirmed the new one. Pair that device again.
 
-`peers keys show` prints the key and the anchors. `peers keys rotate --manual`
-does the same publish-and-wait as the card. See [CLI](./CLI.md#keys) and
+`peers keys show` prints the key and the anchors. `peers keys rotate` does the
+same as the card. See [CLI](./CLI.md#keys) and
 [Key Registry](./Key-Registry.md#user-key-rotation).
 
 ### Recovery email
@@ -94,8 +97,8 @@ does the same publish-and-wait as the card. See [CLI](./CLI.md#keys) and
 The **Recovery email** card binds a mailbox at Peers Services. **Send rotation
 code**, then **Open session**, then **Rotate signing key** publishes the new
 key there. The session lasts about ten minutes. Without a mailbox, Peers
-Services refuses the write and the key on this device stays as it is. Manual
-rotation still works when another anchor is on the profile. If the signing
+Services refuses the write and the key on this device stays as it is, because
+every anchor on the profile must list the new key. If the signing
 key is lost and no mailbox is bound, there is no way back into the account.
 Removing the mailbox opts out of that factor. A **passkey** on the same
 screen opens the same kind of session. See
@@ -124,9 +127,12 @@ A handshake, or a profile row from another device, that presents a new key
 is checked against those anchors. One confirming answer and no veto accepts
 a rotation immediately: the previous key co-signed the new one. Anything
 else — a veto, no answer, or a new key nobody co-signed — leaves the old key
-in place. A row that tries to replace the anchor list at the same time is
-ignored; the list changes only when an anchor you already trust publishes
-the new list.
+in place. A row that tries to replace the anchor list at the same time keeps
+the list already on record; the rest of the row (name, picture) still
+applies. The list changes only when an anchor you already trust publishes the
+new list. A contact row that arrives with no anchors on record yet accepts
+the first list it is given with the key already on record; that is a trust
+decision made once, when the contact is added, the same as the key itself.
 
 Your own device, holding the old key, learns it has been replaced when an
 anchor confirms the new one. It does not adopt that key. It has to be paired

@@ -60,8 +60,8 @@ identity.
 
 A bare `userId::secretKey` string, or a file with only `userId` and
 `secretKey`, is still accepted and upgraded in memory. `peers keys rotate` and
-`peers keys rotate --manual` rewrite the file only after an on-record anchor
-lists the new key. The plain form needs a recovery-email session
+`peers keys rotate --manual` rewrite the file only after every on-record
+anchor lists the new key. The plain form needs a recovery-email session
 (`peers keys email`). A lost key is `peers keys recover --user <userId>` on a
 signed-out host, after that session, or `--manual` when an operator publishes
 the document. When the identity is given only by `--secret-key` or
@@ -76,8 +76,8 @@ the caller, and then **exits with code 0**. The process does not re-exec
 itself. Run the host under a supervisor that restarts it (systemd
 `Restart=always`, a container restart policy, `pm2`, …) or start it again by
 hand. The log line is
-`Key rotated; exiting so the next start uses the new key`. `peers keys rotate --manual`
-reaches it once an anchor lists the new key.
+`Key rotated; exiting so the next start uses the new key`. `peers keys rotate`
+reaches it once every anchor on record lists the new key.
 
 ## Pair instead of copying a secret
 

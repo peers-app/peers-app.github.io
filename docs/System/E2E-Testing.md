@@ -336,8 +336,12 @@ refused for a user who already has a key, that a used challenge cannot be
 replayed, and that a non-user first claim is refused. The original key still
 authenticates.
 
-`peers keys rotate --manual` waits until an on-record anchor lists the new
+`peers keys rotate --manual` waits until every on-record anchor lists the new
 key. The rotation scenario that drives that path is `key-rotation.e2e.test.ts`.
+It also checks that the write retired the old key on the registry: a device
+started with Alice's old secret is refused by a contact (its `KeyResolutions`
+row is `vetoed`), and that a profile row with the same key and an unconfirmed
+anchor list keeps the list already on record.
 `key-rotation-email.e2e.test.ts` binds a recovery email through the console
 mail transport, opens an anchor-write session, and rotates with
 `publish: "anchors"`. A contact then sees the new key.

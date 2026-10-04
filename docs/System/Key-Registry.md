@@ -54,8 +54,8 @@ Each anchor answers in one of three ways:
 | Answer | When |
 |---|---|
 | Confirm | the document is for this user and lists the presented key |
-| Veto | 404, the wrong user, a document that omits the key, or a body that is not a document |
-| Abstain | timeout, network error, or a 5xx |
+| Veto | 404, the wrong user, a document that omits the key, or a body that is not a document (including one over the size cap) |
+| Abstain | timeout, network error, a redirect, a 408 or 429, or a 5xx |
 
 The presented key is confirmed only when at least one anchor confirms and
 none veto. Any veto refuses it. No anchors, or every anchor abstaining,
@@ -65,8 +65,10 @@ row immediately. A confirmed key without that co-signature is a **recovery**.
 Peers wait 72 hours from when they first saw it, then adopt it if nobody who
 holds the key on record has contested it. A contest is a signed statement
 posted to `POST /api/v1/account/contest` and listed by
-`GET /api/v1/account/contest?userId=`. It stays pending until a peer accepts
-the new key. A key that is no longer on the personal row is not accepted.
+`GET /api/v1/account/contest?userId=`. The registry accepts it from an active
+key or from the key the recovery retired as lost; a key its holder rotated
+away from, or a revoked key, cannot contest. It stays pending until a peer
+accepts the new key. A key that is no longer on the personal row is not accepted.
 
 An anchor list changes the same way. The anchors already on record must
 publish the new list: one confirming document and no veto. peers-services
@@ -76,7 +78,11 @@ registry itself. An empty stored list is an opt-out. A browser that cannot
 fetch an arbitrary https anchor reads it through
 `GET /api/v1/account/anchor-fetch?url=`. That proxy returns the bytes. It does
 not decide whether the document is trusted, and it refuses addresses that are
-not public https hosts.
+not public https hosts. It maps what it saw onto the three answers: a body
+that is not JSON, or one over 64 KiB, returns 422 so the browser vetoes; a
+redirect, a timeout, or no answer returns 502 so the browser abstains. Fetching
+an `https` anchor directly applies the same bounds: 8 seconds, 64 KiB, and
+redirects are not followed.
 
 ## API
 
@@ -99,10 +105,11 @@ A challenge is consumed by the first attempt that uses it.
 
 **A user's first key** is registered by that proof alone. This is what a
 device does the first time it reaches `peers-services`. A user who already
-has a key cannot add or retire one over HTTP: both calls return 403. An
-operator records a rotation with the seed tool, passing the previous key's
-succession signature. An account factor that can do the same write comes
-later.
+has a key can add a later one only during an anchor-write session opened with
+the recovery email (see [Writing to the peers-services anchor](#writing-to-the-peers-services-anchor));
+without that session both calls return 403. An operator records a rotation
+with the seed tool, passing the previous key's succession signature. Either
+write retires the user's previous keys.
 
 **Packages, groups, and devices** cannot self-register a first key. An
 operator seeds it. A later key is authorized by a key that is already active
@@ -151,21 +158,29 @@ A different key in a handshake is accepted only when the anchors on record
 confirm it as a rotation. Otherwise the handshake is `Untrusted` and the
 stored key stays.
 
-`peers keys rotate --manual` (and **Prepare manual rotation** on Identity →
-Account) prints an anchor document signed by the current key. Place that
-document at an `https` anchor on record, or hand it to an operator who seeds
-peers-services with `--authorized-by` and `--succession-signature`. The
-command then waits. The local key, the wrapped secrets, and the profile row
-change only after an on-record anchor lists the new key. A timeout changes
-nothing.
+Peers refuse a key that any anchor on record vetoes, so a rotation commits
+only once **every** anchor on record lists the new key. One holdout changes
+nothing: the local key, the wrapped secrets, and the profile row stay as they
+were, and the command reports which anchor did not list the key.
 
-`peers keys rotate` without `--manual` publishes through a writer installed
-for an on-record anchor. The peers-services writer is installed when services
-are configured. It accepts the new key only during a short-lived session
-opened with the recovery email (see below). Without that session the registry
-refuses the write and nothing on the device changes. With services off, no
-writer is installed and the command reports that rotation needs an anchor
-that accepts writes.
+`peers keys rotate` (and **Rotate signing key** on Identity → Account) writes
+through a writer for each on-record anchor that has one and polls the rest.
+The peers-services writer is installed when services are configured. It
+accepts the new key only during a short-lived session opened with the recovery
+email (see below); without that session the registry refuses the write. An
+`https` anchor has no writer, so when one is on record the command first
+prints the anchor document, signed by the current key, for you to place at
+every `https` anchor on record, then waits until all anchors list the key. A
+timeout changes nothing. With services off and no anchors on record, the
+command reports that rotation needs an anchor.
+
+`peers keys rotate --manual` writes nowhere. It prints the same document and
+polls every anchor on record, including peers-services, which an operator
+seeds with `--authorized-by` and `--succession-signature`.
+
+A session write to peers-services replaces the key on record: the previous
+keys are retired in the same operation, so the document lists one key and a
+device that still presents the old one is refused.
 
 ## Writing to the peers-services anchor
 
@@ -183,9 +198,23 @@ previous key's succession signature when the device still holds that key.
 Codes are stored as hashes. Production mail goes through Resend when
 `RESEND_API_KEY` is set (`PEERS_EMAIL_FROM` overrides the from address,
 default `Peers <noreply@peers.app>`). `PEERS_EMAIL_TRANSPORT=console`, or a
-missing API key, prints the code instead and keeps the last one for dev and
-end-to-end tests. That last-code route answers 404 when Resend is the
-transport.
+missing API key outside production, prints the code instead and keeps the
+last one for dev and end-to-end tests. With `NODE_ENV=production` and no
+key the service refuses to start rather than fall back to the console, since
+that transport serves codes over `/email/last-code`; set the key, or set
+`PEERS_EMAIL_TRANSPORT=console` deliberately. That last-code route answers
+404 when Resend is the transport. Five wrong codes burn the code, and a code
+expires after ten minutes.
+
+A **passkey** opens the same kind of session. Registering one is signed by a
+current key; a later assertion needs no key at all, which is what recovery
+relies on. Set `PEERS_WEBAUTHN_RP_ID` to the registry's host (for example
+`peers.app`) in production: the browser binds the credential to that relying
+party, and the server accepts ceremonies only from that host and its
+subdomains, plus any exact origins listed in `PEERS_WEBAUTHN_ORIGINS`
+(comma-separated, for a dev UI on another host). With `PEERS_WEBAUTHN_RP_ID`
+unset the relying party is taken from the request's origin, which is only
+acceptable for local development.
 
 Opting out means leaving the mailbox unbound. Peers Services then refuses
 every later key. Another anchor you already listed can still confirm a

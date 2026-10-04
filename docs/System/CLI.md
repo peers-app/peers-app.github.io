@@ -180,11 +180,11 @@ Show the signing key of the account the connected host is signed in to.
 ```bash
 peers keys                               # current key, previous keys, anchors, registry status
 peers keys show --json
-peers keys rotate --manual               # print a document, then wait for an anchor
 peers keys email bind --email you@example.com
 peers keys email verify --email you@example.com --code 123456
 peers keys email session --code 123456
-peers keys rotate                        # publish through the open session
+peers keys rotate                        # publish through the open session; prints a document for any https anchor
+peers keys rotate --manual               # write nowhere: print the document, then wait for every anchor
 peers keys email unbind
 peers keys contest --pending <publicKey>
 peers keys email session --user <userId> --code <code>
@@ -196,13 +196,15 @@ peers keys anchors remove --url https://example.com/.well-known/peers-identity.j
 peers --auth-file ~/peers/cli/headless-auth.json keys show
 ```
 
-`peers keys rotate --manual` prints an anchor document. Publish it at an anchor
-already on the account, or give it to an operator. The command waits, and the
-host rotates only after an anchor lists the new key. `peers keys rotate`
-without `--manual` publishes to peers-services when a recovery-email session
-is open. Without that session the registry refuses the write and the command
-exits non-zero; nothing local changes. With services off it reports
-`Rotation needs an anchor that accepts writes`. `peers keys email unbind`
+`peers keys rotate` publishes the new key to peers-services when a
+recovery-email session is open. If an https anchor is also on the account it
+first prints the anchor document for you to publish there, then waits. The
+host rotates only after every anchor on record lists the new key; if any
+anchor refuses or the registry rejects the write, the command exits non-zero
+and nothing local changes. With no anchors on record it reports
+`Rotation needs an anchor that accepts writes`. `peers keys rotate --manual`
+writes nowhere: it prints the document and waits for every anchor, including
+peers-services, which an operator seeds. `peers keys email unbind`
 removes the mailbox. `peers keys contest --pending` objects to a recovery
 with the key this host still holds. `peers keys recover --user` runs on a
 signed-out host after a recovery-email session for that user, or with
