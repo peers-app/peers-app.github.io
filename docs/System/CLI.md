@@ -207,8 +207,11 @@ writes nowhere: it prints the document and waits for every anchor, including
 peers-services, which an operator seeds. `peers keys email unbind`
 removes the mailbox. `peers keys contest --pending` objects to a recovery
 with the key this host still holds. `peers keys recover --user` runs on a
-signed-out host after a recovery-email session for that user, or with
-`--manual` after an operator has published the document. Groups need a new
+signed-out desktop after a recovery-email session for that user, or with
+`--manual` after an operator has published the document; a headless host is
+never signed out (see
+[Headless › Recovering a lost key](./Headless.md#recovering-a-lost-key)).
+Groups need a new
 invite, and secrets wrapped under the lost key stay unreadable.
 `peers keys anchors add` and `remove` publish the full list at the anchors
 already on record. An https anchor has to be serving that list first. A

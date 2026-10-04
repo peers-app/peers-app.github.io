@@ -81,12 +81,16 @@ the host rotate and restart. Until then the current key keeps working. A
 handshake that presents a different key is accepted only when those anchors
 confirm it. The database
 key is stored separately from the signing key, so a rotation does not
-re-encrypt the database. When a device is paired again onto an account whose
+re-encrypt the database. Secret values (group keys, service tokens) are
+re-encrypted under the new key; the old key stays in the credential store
+until that finishes, so a crash mid-way is picked up at the next start rather
+than leaving a value nothing can open. When a device is paired again onto an account whose
 old database files it cannot open, those files are moved aside as
 `<file>.stale-<timestamp>` rather than deleted.
 
 A device that still holds the old key shows **This device holds an old key**
-once an anchor has confirmed the new one. Pair that device again.
+once an anchor has confirmed the new one. Pair that device again; the notice
+clears on its next start, once the device holds the confirmed key.
 
 `peers keys show` prints the key and the anchors. `peers keys rotate` does the
 same as the card. See [CLI](./CLI.md#keys) and
@@ -101,7 +105,9 @@ Services refuses the write and the key on this device stays as it is, because
 every anchor on the profile must list the new key. If the signing
 key is lost and no mailbox is bound, there is no way back into the account.
 Removing the mailbox opts out of that factor. A **passkey** on the same
-screen opens the same kind of session. See
+screen opens the same kind of session. A passkey belongs to a website, so the
+card works in the web app; the desktop window is not served from a site and
+says so. See
 [Writing to the peers-services anchor](./Key-Registry.md#writing-to-the-peers-services-anchor).
 
 ### Anchors
@@ -123,6 +129,12 @@ only anchor. With services off, the list is empty and a different key is
 never confirmed. A contact invite carries that list, and the new contact
 stores it with the key. That is the list later checks use.
 
+Your signature on the row covers your name and keys, not the anchor list.
+The list on record is the anchors' decision, not the row author's, so a peer
+that keeps its own list beside your profile still holds a row you signed,
+and a peer on an older release that does not store the list at all still
+verifies it.
+
 A handshake, or a profile row from another device, that presents a new key
 is checked against those anchors. One confirming answer and no veto accepts
 a rotation immediately: the previous key co-signed the new one. Anything
@@ -136,7 +148,12 @@ decision made once, when the contact is added, the same as the key itself.
 
 Your own device, holding the old key, learns it has been replaced when an
 anchor confirms the new one. It does not adopt that key. It has to be paired
-again.
+again. The reverse case is handled at startup: when a device holds a key its
+own profile row does not (a rotation that stored the new key but stopped
+before re-signing the row, or credentials an operator replaced after
+publishing the key), the row follows the device key once the anchors on
+record confirm it. If they do not, the row is left as it is and the device
+does not publish its key over it.
 
 ### Lost your key
 
@@ -149,14 +166,16 @@ posted where Peers Services can be reached. A contest holds the new key until
 someone who can see the notice accepts it. An attacker who controls an anchor
 but not the old key cannot produce that contest.
 
-On a signed-out host, `peers keys email session --user <userId>` opens a
+On a signed-out desktop, `peers keys email session --user <userId>` opens a
 session from the recovery mailbox, and `peers keys recover --user <userId>`
 publishes the new key and signs this host in. `peers keys recover --user
-<userId> --manual` prints a document for an operator instead. Groups do not
-follow the recovered key; a member invites the device again. Values wrapped
-under the lost key stay unreadable. The account screen shows the same notice,
-with **Contest** on your own account and **Accept the new key** for a
-contact.
+<userId> --manual` prints a document for an operator instead. A headless host
+is never signed out; see
+[Headless › Recovering a lost key](./Headless.md#recovering-a-lost-key).
+Groups do not follow the recovered key; a member invites the device again.
+Values wrapped under the lost key stay unreadable. The account screen shows
+the same notice, with **Contest** on your own account and **Accept the new
+key** for a contact.
 
 ## Host-only operations
 

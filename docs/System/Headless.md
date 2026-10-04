@@ -57,16 +57,29 @@ identity.
 | `userId`, `secretKey` | The identity. `secretKey` is the current Ed25519 signing key; the X25519 encryption key is derived from it. |
 | `dbSecret` | The SQLCipher key for the on-disk databases. It is independent of the signing key so a key rotation never has to re-encrypt the database. `--new-user` mints a random one; a file that predates this field derives it from the secret key the way older hosts did, and keeps that value from then on. `DB_SECRET` overrides it in the environment. |
 | `previousPublicKeys` | Public keys this identity used before, newest last, with when and why each was replaced. Informational; `peers keys show` prints it. |
+| `rewrapFrom` | Present only while a rotation is unfinished: the key just retired (`publicKey` and `secretKey`). The new key is written as soon as the anchors accept it; the secrets in the personal database are then re-encrypted one by one and the field is removed last. If the process dies in between, the next start finishes the re-encryption with this key and drops it. Do not remove it by hand. |
 
 A bare `userId::secretKey` string, or a file with only `userId` and
 `secretKey`, is still accepted and upgraded in memory. `peers keys rotate` and
 `peers keys rotate --manual` rewrite the file only after every on-record
 anchor lists the new key. The plain form needs a recovery-email session
-(`peers keys email`). A lost key is `peers keys recover --user <userId>` on a
-signed-out host, after that session, or `--manual` when an operator publishes
-the document. When the identity is given only by `--secret-key` or
+(`peers keys email`). When the identity is given only by `--secret-key` or
 `USER_ID`/`SECRET_KEY`, the host also cannot persist a new secret, because
 there is no file to rewrite.
+
+### Recovering a lost key
+
+A headless host is never signed out, so `peers keys recover` (which runs on
+a signed-out desktop) does not apply to it. To bring a headless host back
+after its key is lost, publish the new key first — from a signed-out desktop
+with `peers keys recover --user <userId>`, or by seeding the registry with
+the operator tool — then start the host with the new secret: a fresh `--db`
+with `--user-id` and `--secret-key`, or a `credentials.json` holding the new
+`secretKey`. Keeping the old `--db` and `dbSecret` is also fine: at startup
+the host asks the anchors on record about the key it now holds and re-signs
+its profile row with it once they confirm it — at once when the old key
+co-signed the new one, after the recovery delay otherwise. Groups do not
+follow a recovered key; a member invites the host again.
 
 ### Restart after a key rotation
 

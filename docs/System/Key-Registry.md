@@ -214,7 +214,12 @@ party, and the server accepts ceremonies only from that host and its
 subdomains, plus any exact origins listed in `PEERS_WEBAUTHN_ORIGINS`
 (comma-separated, for a dev UI on another host). With `PEERS_WEBAUTHN_RP_ID`
 unset the relying party is taken from the request's origin, which is only
-acceptable for local development.
+acceptable for local development. An origin that names no host (a page loaded
+from a file, such as the desktop window) is refused. Each ceremony is held
+for five minutes under its own challenge, so a sign-in started for a user by
+someone else does not cancel the one that user has in flight, and a challenge
+is accepted once. The four `passkey/*` routes share the per-user, per-IP
+limit of the mailed-code routes (ten a minute).
 
 Opting out means leaving the mailbox unbound. Peers Services then refuses
 every later key. Another anchor you already listed can still confirm a
@@ -236,8 +241,12 @@ databases:
   New identities mint a random database key. A record that predates the field
   derives it once from the secret key and keeps that value. A later rotation
   keeps `dbSecret` and appends the old public key to `previousPublicKeys`.
-- Secret persistent variables can be re-wrapped from the old signing key to
-  the new one before anything is written.
+- Once every anchor lists the new key, the host stores it at once and keeps
+  the retired secret beside it (`rewrapFrom`) while it re-encrypts secret
+  persistent variables one by one and re-signs the profile row; the retired
+  secret is dropped last. A host that dies in between finishes the
+  re-encryption at its next start, so no secret is left under a key nobody
+  holds.
 - A new user whose services URL is configured starts with one on-record
   anchor, the peers-services document for their user id. With services off,
   the list is empty.
