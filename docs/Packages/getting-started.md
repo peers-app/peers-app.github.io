@@ -94,8 +94,8 @@ Every package-owned table schema belongs once at
 `manifest.tables`. Authors declare a package-local name, primary key, fields, and
 optional schema version; they do not provide a table ID or physical name. The host
 stores each table as `${logicalTableName}_${packageId}`, and guest code reads or
-writes copied records through `getOwnedTableRecord(tableName, recordId)` and
-`saveOwnedTableRecord(tableName, record)` during an active tool invocation. A
+writes copied records through `getOwnedTableRecord`, `saveOwnedTableRecord`,
+`listOwnedTableRecords`, and `deleteOwnedTableRecord` during an active tool invocation. A
 provided contract can expose selected schemas using name-only table references;
 unreferenced schemas stay private. Contracts can also expose typed, optionally
 writable observables backed by package-prefixed pvars. Normal contract consumers
@@ -205,6 +205,13 @@ isolated guest API `registerContractTool`.
 
 `appNavs` declares the navigation items that appear in the Apps launcher. The
 `navigationPath` corresponds to the route path registered in `src/routes.ts`.
+Omit `appNavs` when the package should appear only as a widget, which is how Weather stays out of
+the Apps list.
+
+Optional `manifest.network` names the HTTPS hosts an isolated package may call through
+[System HTTP](../System/HTTP.md). [System Scheduler](../System/Scheduler.md) wakes one of the
+package's own tools on this device. Packages that want Voice Hub to call them provide the shared
+[Voice Skill](./voice-skills) contract instead of being linked into Voice Hub at build time.
 
 Legacy packages may still build a CommonJS `src/package.ts` with `definePackage()`. That format
 is supported for compatibility but is no longer the default scaffold.
@@ -225,6 +232,9 @@ Keys are created when a package is first registered (create or import) if `publi
 - **[Routes and UI](./routes-and-ui)** — how routes and UI bundles work, how to author them, and why to prefer route-based rendering.
 - **[Package lifecycle](./package-lifecycle)** — develop, release, and run versions (dev / beta / stable).
 - **[Package contracts](./contracts)** — versioned interfaces, isolated manifests, validation, and the registry.
+- **[Voice skills](./voice-skills)** — how a package becomes voice-addressable and contributes a widget.
+- **[System HTTP](../System/HTTP)** — host-mediated HTTPS, allowlists, and credential refs.
+- **[System Scheduler](../System/Scheduler)** — device-local wake-ups of a package's own tool.
 - **[Package lifecycle design](../Roadmap/package-lifecycle)** — design doc and shipped vs planned work.
 - **[System: Tables](../System/Tables)** — how Peers models data with tables and reactivity.
 - **[System: Workflows](../System/Workflows)** — how tools run in workflow runs (often used together with package tools).

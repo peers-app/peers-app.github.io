@@ -22,13 +22,11 @@ Voice Hub does not run as a hidden background service. Closing its screen releas
 
 1. Install or update the official Voice Hub package, then open **Voice Hub** from app navigation.
 2. Open **Settings** in the Voice Hub header.
-3. Add an OpenAI API key. Speech-to-text, voice-turn responses, and the default action assistant
-   require it.
+3. Add an OpenAI API key. Speech-to-text, voice-turn responses, and skill calls require it. The
+   key is a package secret. Voice Hub's worker never receives it.
 4. Leave **Browser** selected for free, device-provided speech output, or select **OpenAI** for
-   cloud voices.
+   cloud voices. The default cloud voice is Fable at 1.2x.
 5. On desktop, enable wake listening if desired and allow microphone access when prompted.
-6. Select the assistant that should receive actions such as “add milk to groceries.” The bundled
-   **Voice Hub Agent** is the default.
 
 The default wake phrase is **Sterling**. You can also select **Operator**, **Duchess**, **Hey
 Duchess**, **Hey Operator**, or **Hey Woodhouse** for side-by-side testing. The detection threshold
@@ -86,15 +84,36 @@ Voice Hub handles three kinds of turns:
 
 - Short conversational questions receive a concise response and optional spoken output.
 - Acknowledgements can produce a quiet emoji response.
-- Requests that change Peers data are delegated to the selected action assistant and linked to the
-  resulting thread. The default **Voice Hub Agent** uses a package-owned OpenAI runner and includes
-  grocery, timer, and task tools directly, so those actions do not require Peers Services.
+- Requests that match an installed voice skill call that package on this device. Timers, Groceries,
+  Tasks, Weather, and News are current examples. Voice Hub does not know those packages at build
+  time. A skill can also contribute a contextual widget.
 
-The **Action assistant** selection includes that assistant's runner, prompts, and tool policy. To
-use a different runner or tool set, create or import an assistant configured that way and select it
-in Voice Hub. Custom assistants can have their own credential and service requirements.
+See [Voice skills](./Packages/voice-skills) for how a package registers itself.
 
 Use **Cancel** to stop recording, an in-flight request, or speech playback.
+
+## Adaptive workspace
+
+Voice Hub opens on **Overview**, where installed skills can show compact summaries. Tap a context
+such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News** to open its complete touch
+controls. After a successful voice skill action, Voice Hub opens the widget owned by the skill that
+handled the request. A skill alert, such as an expired timer, can also bring its widget forward and
+mark it as needing attention. Voice Hub uses skill activity and alerts for this selection; it does
+not guess from transcript text or hard-code package identities.
+
+The layout follows the space available to the Voice Hub tab:
+
+- On phones, the context picker scrolls horizontally, one widget fills the workspace, and
+  **Conversation** and **Settings** open as full-height panels.
+- On tablets, including the primary 10-inch layout, the workspace and conversation remain visible
+  together and Overview uses compact summary cards.
+- On wide displays, contexts move to a side rail, the workspace width is capped for readable
+  controls, and conversation remains beside it.
+
+The microphone dock stays at the bottom in every layout. Its microphone, wake/manual toggle,
+cancel action, context buttons, and focused widget actions are designed for touch use without a
+keyboard. Widget contents still belong to their packages, so installing or removing a Voice Skill
+updates the workspace without a Voice Hub release.
 
 ## Providers and privacy
 
@@ -102,15 +121,13 @@ Wake-word inference, Silero neural voice activity detection, adaptive room-noise
 browser speech synthesis run on the device. The wake classifiers, VAD model, and ONNX runtime are
 bundled with the package; they do not require an API key or a model download.
 
-Recorded utterances are sent to OpenAI when you request transcription. Transcribed text and recent
-Voice Hub context are sent to OpenAI for response and action classification. When the bundled Voice
-Hub Agent executes an action, its instruction, fixed-tool definitions, and tool results are sent to
-OpenAI for the tool-calling loop. OpenAI speech output also sends response text to OpenAI. The API
-key is stored in Peers' existing encrypted secret persistent variable. Voice Hub performs these
-requests in the trusted local host, so the decrypted key is not returned to the Electron renderer.
+Recorded utterances are sent to OpenAI when you request transcription. Transcribed text, recent
+Voice Hub context, and the catalogs of installed voice skills are sent to OpenAI for the voice
+turn. OpenAI speech output also sends response text to OpenAI. The API key is a package secret.
+System HTTP injects it on the host, so neither the renderer nor the isolated worker receives it.
 
-Conversation history is stored in a local-only package table. Existing history from the earlier
-built-in voice implementation is copied into that table the first time the updated package opens.
+Conversation history is stored in a device-local persistent variable. Existing history from the
+earlier Voice Hub table is copied into that variable the first time the updated package opens.
 Device tuning values are stored in a separate device-local persistent variable and do not sync.
 
 ## Troubleshooting
@@ -157,10 +174,9 @@ transcription model only when the default `gpt-4o-mini-transcribe` path is unsui
 
 ### A voice action fails
 
-The bundled Voice Hub Agent uses the OpenAI key saved in Voice Hub settings and does not require
-Peers Services. Confirm the key has available API usage and that the requested package tool is
-installed in the active group. If you selected a custom action assistant, check that assistant's
-runner, credentials, and tool policy.
+Voice Hub calls a voice skill installed in the active group. Confirm that package is installed and
+that the OpenAI key has available API usage. Skill calls stay on this device and do not require
+Peers Services.
 
 ### Browser speech is silent
 

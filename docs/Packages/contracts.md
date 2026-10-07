@@ -313,6 +313,11 @@ own package's contract code through a proxy, and that package code should forwar
 other contracts via its `consumes` handle. Direct renderer access to arbitrary system
 tools is a temporary seam, not the long-term boundary.
 
+Provider tools that opt into host call context (`toolContext` or
+`forwardCallContext`) receive exactly one input argument followed by the trusted context.
+The provider rejects calls carrying more than one input argument so a caller cannot
+shadow `callerPackageId` or another host-only context field positionally.
+
 ### Device connections
 
 Verified device connections use one provider router per connection. A consumer wraps its `Connection` with `connectionContractTransport`; the remote `ConnectionManager` routes all `contractCall` requests through the router. The router:
@@ -388,9 +393,9 @@ helper for isolated providers. Production connection routing does not use it.
 `connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
 
 Still deferred are installed-package provider resolver registration, precise generic
-`createContractConsumer<T>()` typing, granular per-package UI permissions, payload
-quotas/codecs, and remote access to tables, observables, and events (remote consumers are
-tools-only).
+`createContractConsumer<T>()` typing, granular per-package UI permissions, and remote
+access to tables, observables, and events (remote consumers are tools-only). Desktop and
+headless hosts raise the isolated wire cap to 16 MB. The PWA worker stays at 64 KB.
 
 ## Isolated contract packages (Electron)
 
@@ -407,6 +412,12 @@ outside the Electron host process. The host never evaluates provider source. Leg
   **fails closed** and never falls back to `new Function`. Older table-less
   and tool-only artifacts remain valid. Earlier schema-bearing
   `provides[].tables` entries are rejected rather than migrated.
+  Optional `manifest.network` declares HTTPS hostnames and credential refs.
+  See [System HTTP](../System/HTTP.md).
+- **Providers.** A guest addresses one provider with
+  `callConsumedTool(contractId, version, toolName, args, { providerPackageId })`.
+  The local UI router honors the same field. Remote routers ignore it.
+  `listContractProviders` on the System Contract Catalog returns every installed provider.
 - **Host.** Electron registers an `IIsolatedPackageRuntime` factory before
   `initializePeerDevice`. `PackageLoader` installs the manifest into the per-data-context
   `ContractRegistry` and stores source for a supervised Node `worker_threads` + SES
@@ -426,14 +437,16 @@ outside the Electron host process. The host never evaluates provider source. Leg
   logical name must be unique among that package's tables. The
   host derives an internal 25-character table ID for `TableDefinitions` and stores
   the table as `${logicalTableName}_${packageId}`. Guest code receives copied
-  records through `getOwnedTableRecord(tableName, recordId)` and
-  `saveOwnedTableRecord(tableName, record)` only during an authorized tool
+  records through `getOwnedTableRecord`, `saveOwnedTableRecord`,
+  `listOwnedTableRecords`, and `deleteOwnedTableRecord` only during an authorized tool
   invocation. The host binds package identity, route context, and authority;
   guessed physical or system table names are not declarations. A provided
   contract can expose a schema with `{ name }` in `provides[].tables`; the host
   then serves standard table CRUD against the trusted provider package and
-  logical table name. Unreferenced tables remain private. Custom methods and
-  table `dataChanged` subscriptions are not exposed. These guarantees apply to
+  logical table name. Unreferenced tables remain private. The owning worker can
+  also `listOwnedTableRecords` and `deleteOwnedTableRecord`. Custom table methods
+  are not exposed, and a guest still cannot subscribe to table `dataChanged`.
+  These guarantees apply to
   isolated packages; legacy
   host-evaluated packages can still import tables directly.
   The host validates the package's complete declaration batch before publishing
@@ -456,8 +469,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
   column. `device`, `user`, `group`, `groupDevice`, and
   `groupUser` are supported; group-dependent scopes append the trusted route
   context. Guest-supplied package, context, or authority fields cannot redirect
-  access. Shared/global pvars, secrets, and owned-pvar subscriptions are
-  deliberately deferred.
+  access. Secret rows are explicitly denied to guest pvar helpers; System HTTP
+  may inject a package's declared credential without exposing its value.
+  Shared/global pvars and owned-pvar subscriptions are deliberately deferred.
 - **Contract observables.** A provided contract may bind an observable to a
   package-owned pvar by declaring its scope, logical pvar name,
   JSON-compatible default, value type, and `writable` flag. Normal renderer/host
