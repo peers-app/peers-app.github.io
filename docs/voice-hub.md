@@ -187,3 +187,22 @@ button interaction before audio playback; use **Test speech** from Voice Hub set
 
 Disable or remove the package through Peers package management to remove its voice UI and runtime
 behavior. Base Peers components do not contain a second wake-word or speech service.
+
+## Turn completion and upgrades
+
+Voice Hub can look up a task and then update it within the same request. Skill-provided speech
+is a suggested response; the model receives the result and can continue with the required action.
+A turn permits four rounds of skill calls, followed by a response-only summary. If a later model
+request fails after a skill succeeds, Voice Hub reports that the whole request was not completed.
+
+Cancel stops further discovery, model requests, and skill calls, and aborts active Voice Hub HTTP.
+An already-running skill may finish; cancellation does not undo changes it has made.
+
+The isolation upgrade copies legacy preferences only when no package-scoped settings record exists.
+If an earlier upgrade reset your preferences, open Settings, choose **Load pre-upgrade preferences**,
+review the draft, and select **Save**. Existing device tuning and the API key are preserved by this
+recovery action. The recovery button appears only while legacy preferences are available.
+
+Legacy conversation history imports once per device, retaining the newest 200 entries. Clearing
+history also records that migration is complete, so reopening Voice Hub cannot restore old turns.
+A failed migration remains retryable and does not prevent microphone initialization.

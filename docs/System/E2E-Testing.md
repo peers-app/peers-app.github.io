@@ -84,8 +84,9 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
 
 - **Tier 0/1** after touching `peers-sdk` sync or connection code, `peers-device`,
   `peers-headless`, `peers-e2e`, or an official package. The scenarios in Tier 1
-  need `official-packages/isolation-smoke` and `isolation-consumer` built
-  (`npm run build` in each), and `webrtc.e2e.test.ts` needs a `peers-webrtc`
+  need `official-packages/isolation-smoke`, `isolation-consumer`, and `timers` built
+  (`npm run build` in each); a missing package build fails its scenario.
+  `webrtc.e2e.test.ts` needs a `peers-webrtc`
   binary (`cd peers-webrtc && make local`, requires Go); without one it prints
   a warning and skips rather than failing. `pairing.e2e.test.ts`,
   `invites-services.e2e.test.ts` and `key-registry.e2e.test.ts` need
@@ -101,8 +102,8 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
 
 `full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
 smoke tests) as Step 2b before anything is versioned or published, and aborts
-the release on failure. It builds `isolation-smoke` and `isolation-consumer`
-first so the packages scenario has bundles, without versioning or publishing
+the release on failure. It builds `isolation-smoke`, `isolation-consumer`, and `timers`
+first so the package and scheduler scenarios have bundles, without versioning or publishing
 those packages. It runs `make local` in `peers-webrtc` so the
 WebRTC scenario cannot silently skip on the release machine, and sets
 `PEERS_E2E_REQUIRE_SERVICES=1` so the pairing and invites scenarios fail instead
@@ -211,6 +212,8 @@ it("a row written on one device reaches the others", async () => {
   a process restart. Reading the historical v4 bundle while the devices are
   partitioned verifies eager all-version bundle caching rather than an
   on-demand fetch.
+- `scheduler.e2e.test.ts` installs `timers`, creates a timer, and restarts its
+  persistent headless host; the timer expires without a widget or scheduler call.
 - `fleet.resourceReport()` (RSS per child), `fleet.describe()`, `fleet.stop()`.
 
 `startFleet({ maxConnections })` starts every device with

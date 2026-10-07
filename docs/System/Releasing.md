@@ -223,9 +223,9 @@ Official packages (`official-packages/`) are not part of this release. Each
 one is versioned, built, and promoted on its own through the package
 [lifecycle](../Packages/package-lifecycle.md) (dev, then Promote to beta or
 stable). A host release does not bump their `@peers-app/*` pins or push the
-`official-packages` repo. Step 2b still builds `isolation-smoke` and
-`isolation-consumer` so the Tier 1 packages scenario can install them; that
-build does not commit or publish those packages.
+`official-packages` repo. Step 2b still builds `isolation-smoke`,
+`isolation-consumer`, and `timers` so the Tier 1 package and scheduler scenarios
+can install them; that build does not commit or publish those packages.
 
 ## After the script
 

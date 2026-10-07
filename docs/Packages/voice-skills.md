@@ -70,7 +70,7 @@ domain UI and writes.
 
 ## Invoke
 
-`invoke` takes `{ tool, args }` and returns `{ result, speech? }`. `result` is JSON the model can read. `speech`, when set, is text Voice Hub may speak instead of summarizing `result`. The tool's suggested access level is Writer. The call runs as the person who spoke.
+`invoke` takes `{ tool, args }` and returns `{ result, speech? }`. `result` is JSON the model can read. `speech`, when set, is suggested wording returned to the model alongside `result`. It does not end the turn: the model can use a lookup result to perform a subsequent action before replying. The tool's suggested access level is Writer. The call runs as the person who spoke.
 
 Map `tool` onto the package's own contract tools. Do not trust a tool name that is not in the catalog.
 
@@ -99,3 +99,9 @@ Timers, Groceries, Weather, and News in `official-packages/` provide this contra
 provides it from its `peers-core` package boundary so the contribution can move with Tasks when
 that app is extracted. Weather omits `appNavs`, so it appears as a widget and voice skill without an
 Apps-list entry.
+
+## Turn cancellation
+
+Voice Hub checks cancellation before each model request and skill invocation. A skill already
+running may finish, but no subsequent skill in that turn is started. Cancellation does not roll
+back package changes. Keep mutations atomic within the skill where appropriate.
