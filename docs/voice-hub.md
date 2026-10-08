@@ -101,7 +101,9 @@ keep their card layout. Cards pack beneath shorter neighbors without forcing equ
 Tap a context such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News**
 to open its complete touch
 controls. After a successful voice skill action, Voice Hub opens the widget owned by the skill that
-handled the request. A skill alert, such as an expired timer, can also bring its widget forward and
+handled the request. About 60 seconds after the last voice turn or touch, that skill returns to
+Overview. A voice turn, an open conversation, or an alert sound such as a timer chime keeps the
+skill in front until it finishes. A skill alert, such as an expired timer, can also bring its widget forward and
 mark it as needing attention. If the alert includes a detail sentence and voice output is enabled,
 Voice Hub speaks it once. Alerts wait for an active voice turn and queue in order. Timer finish
 speech plays before a short rising three-note pluck that repeats about every 3 seconds.
