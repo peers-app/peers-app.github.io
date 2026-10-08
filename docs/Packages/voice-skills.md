@@ -74,6 +74,16 @@ domain UI and writes.
 
 Map `tool` onto the package's own contract tools. Do not trust a tool name that is not in the catalog.
 
+Current runtime limitation: isolated consumers calling host-owned Writer skills, including
+Groceries and Tasks, can fail with `Permission denied: missing caller identity for tool 'invoke'`.
+The runtime must supply authenticated user context. Keep Writer access; accepting a caller id
+from skill arguments is not an authorization fix.
+
+Mutations normally return `{ result }` without `speech`; Voice Hub confirms them with a tone and
+emoji and does not invent a spoken confirmation. Omit the key entirely: the isolate codec rejects
+`speech: undefined`. Lookups can suggest a short spoken answer. Skill failures use the failed tone,
+retain a recent explanation, and normalize transport-added `Error:` prefixes to one.
+
 After `invoke` succeeds, Voice Hub records the provider package, skill slug, and tool name as
 private runtime activity and focuses that skill's widget. Failed calls do not report successful
 activity. This does not add fields to the public Voice Skill response.
@@ -82,8 +92,21 @@ activity. This does not add fields to the public Voice Skill response.
 
 Emit `alert` when a skill needs immediate user attention. Payload fields are `kind`, `title`, and
 optional `detail`. Voice Hub focuses the provider's widget, marks its context, and ranks it first on
-Overview until the user opens it. Alerts are generic; Voice Hub does not interpret package-specific
-payloads.
+Overview until the user opens it. When `detail` is set and voice output is enabled, Voice Hub speaks
+that string once, with no preceding completion tone. Alerts queue behind active voice turns and
+each other.
+It does not branch on `kind` or any other package-specific field. Package-specific wording stays
+in the provider's detail sentence.
+
+An alert without spoken detail uses the done tone instead.
+
+Official Timers uses the shared renderer helper `official-packages/alert-audio.ts` for sound
+ownership. Voice Hub registers before widgets mount and records completed playback by provider
+and alert title. Timers registers due sounds with the matching title and expiry time, so its first
+chime waits for actual speech completion, even when table reads or focus remounts arrive later.
+Voice-off and detail-free alerts release sounds without TTS. This helper is separate from the frozen
+Voice Skill v1 contract; `invoke` and `alert` gain no fields. UI bundles currently share a renderer
+window through UILoader; the helper does not coordinate separate application windows.
 
 Use alerts sparingly for time-sensitive state such as an expired timer. Do not emit one for routine
 data refreshes or every successful voice invocation.

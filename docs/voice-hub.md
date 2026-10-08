@@ -98,7 +98,17 @@ Voice Hub opens on **Overview**, where installed skills can show compact summari
 such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News** to open its complete touch
 controls. After a successful voice skill action, Voice Hub opens the widget owned by the skill that
 handled the request. A skill alert, such as an expired timer, can also bring its widget forward and
-mark it as needing attention. Voice Hub uses skill activity and alerts for this selection; it does
+mark it as needing attention. If the alert includes a detail sentence and voice output is enabled,
+Voice Hub speaks it once. Alerts wait for an active voice turn and queue in order. Timer finish
+speech plays before a short rising three-note pluck that repeats about every 3 seconds.
+Say “stop” to dismiss all alarming timers, or use the widget's Dismiss control. Other running timers
+continue. With voice output off, no spoken line delays the chime.
+Successful changes that do not need an answer are a tone and an emoji, not a spoken confirmation.
+The screen aims to minimize listening and searching: speech answers questions and announces
+time-sensitive events, while completed actions use the done tone. A failed action uses the failed
+tone and keeps its explanation in recent conversation context; ask “what happened?” for an answer.
+Error messages have a single `Error:` prefix.
+Voice Hub uses skill activity and alerts for this selection; it does
 not guess from transcript text or hard-code package identities.
 
 The layout follows the space available to the Voice Hub tab:
@@ -177,6 +187,10 @@ transcription model only when the default `gpt-4o-mini-transcribe` path is unsui
 Voice Hub calls a voice skill installed in the active group. Confirm that package is installed and
 that the OpenAI key has available API usage. Skill calls stay on this device and do not require
 Peers Services.
+
+`Permission denied: missing caller identity for tool 'invoke'` on Groceries or Tasks is a known
+runtime identity-propagation issue. It can occur even when timer writes succeed; it is not fixed
+by changing the OpenAI key or relaxing the skill's access level.
 
 ### Browser speech is silent
 
