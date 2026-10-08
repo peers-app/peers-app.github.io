@@ -21,7 +21,7 @@ Voice Hub does not run as a hidden background service. Closing its screen releas
 ## Set up Voice Hub
 
 1. Install or update the official Voice Hub package, then open **Voice Hub** from app navigation.
-2. Open **Settings** in the Voice Hub header.
+2. Open **Settings** in the bottom-right dock.
 3. Add an OpenAI API key. Speech-to-text, voice-turn responses, and skill calls require it. The
    key is a package secret. Voice Hub's worker never receives it.
 4. Leave **Browser** selected for free, device-provided speech output, or select **OpenAI** for
