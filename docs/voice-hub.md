@@ -188,9 +188,12 @@ Voice Hub calls a voice skill installed in the active group. Confirm that packag
 that the OpenAI key has available API usage. Skill calls stay on this device and do not require
 Peers Services.
 
-`Permission denied: missing caller identity for tool 'invoke'` on Groceries or Tasks is a known
-runtime identity-propagation issue. It can occur even when timer writes succeed; it is not fixed
-by changing the OpenAI key or relaxing the skill's access level.
+Groceries and Tasks voice writes run as the person signed in on this device. The package loader
+supplies the isolate runtime with a host-only resolver for that user's identity and data context.
+Writer checks are unchanged: confirm the signed-in user has Writer access in the active group.
+Without a known signed-in identity, calls still fail with
+`Permission denied: missing caller identity for tool 'invoke'`. Guest payloads and skill arguments
+cannot supply trusted identity.
 
 ### Browser speech is silent
 

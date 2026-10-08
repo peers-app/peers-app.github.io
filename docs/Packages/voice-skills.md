@@ -70,14 +70,15 @@ domain UI and writes.
 
 ## Invoke
 
-`invoke` takes `{ tool, args }` and returns `{ result, speech? }`. `result` is JSON the model can read. `speech`, when set, is suggested wording returned to the model alongside `result`. It does not end the turn: the model can use a lookup result to perform a subsequent action before replying. The tool's suggested access level is Writer. The call runs as the person who spoke.
+`invoke` takes `{ tool, args }` and returns `{ result, speech? }`. `result` is JSON the model can read. `speech`, when set, is suggested wording returned to the model alongside `result`. It does not end the turn: the model can use a lookup result to perform a subsequent action before replying. The tool's suggested access level is Writer. The call runs as the person signed in on this device.
 
 Map `tool` onto the package's own contract tools. Do not trust a tool name that is not in the catalog.
 
-Current runtime limitation: isolated consumers calling host-owned Writer skills, including
-Groceries and Tasks, can fail with `Permission denied: missing caller identity for tool 'invoke'`.
-The runtime must supply authenticated user context. Keep Writer access; accepting a caller id
-from skill arguments is not an authorization fix.
+Isolated consumers calling host-owned skills, including Groceries and Tasks, receive authenticated
+local user identity and the owning data context from the runtime's host-only resolver supplied by
+the package loader. Writer access remains required and is checked against that user's actual role.
+Missing signed-in identity still fails closed with “missing caller identity”. User ids in guest
+payloads or skill arguments never become caller identity.
 
 Mutations normally return `{ result }` without `speech`; Voice Hub confirms them with a tone and
 emoji and does not invent a spoken confirmation. Omit the key entirely: the isolate codec rejects
