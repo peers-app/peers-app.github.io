@@ -94,8 +94,12 @@ Use **Cancel** to stop recording, an in-flight request, or speech playback.
 
 ## Adaptive workspace
 
-Voice Hub opens on **Overview**, where installed skills can show compact summaries. Tap a context
-such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News** to open its complete touch
+Voice Hub opens on **Overview**, where populated skills show summary cards with a header and
+content body: several grocery items, current weather conditions, or several news headlines.
+Only empty skills use a single row with an icon, name, and quiet status; skills needing attention
+keep their card layout. Cards pack beneath shorter neighbors without forcing equal heights.
+Tap a context such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News**
+to open its complete touch
 controls. After a successful voice skill action, Voice Hub opens the widget owned by the skill that
 handled the request. A skill alert, such as an expired timer, can also bring its widget forward and
 mark it as needing attention. If the alert includes a detail sentence and voice output is enabled,
