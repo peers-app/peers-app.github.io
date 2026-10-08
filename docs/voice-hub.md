@@ -120,9 +120,9 @@ The layout follows the space available to the Voice Hub tab:
 - On wide displays, contexts move to a side rail, the workspace width is capped for readable
   controls, and conversation remains beside it.
 
-The microphone dock stays at the bottom in every layout. Its microphone, wake/manual toggle,
-cancel action, context buttons, and focused widget actions are designed for touch use without a
-keyboard. Widget contents still belong to their packages, so installing or removing a Voice Skill
+The microphone dock stays at the bottom in every layout. Its microphone, the cancel button beside
+it, the wake/manual toggle, context buttons, and focused widget actions are designed for touch use
+without a keyboard. Settings stays at the right end of the dock. Widget contents still belong to their packages, so installing or removing a Voice Skill
 updates the workspace without a Voice Hub release.
 
 ## Providers and privacy
