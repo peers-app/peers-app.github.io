@@ -14,6 +14,10 @@ The desktop app and `peers-headless` provide it by importing `@peers-app/peers-d
 
 A package can schedule only a tool on a contract it provides. The host invokes that tool using the signed-in user's current access level, starting the worker if it is stopped. Normal tool authorization still applies. The payload is capped at 32,000 characters. `at` must fall within 366 days.
 
+Official Timers' `fire-timer` and News' `refresh-feeds` require Writer (40), matching their
+ordinary write/refresh operations. Writers may call these tools directly as well. Losing
+Writer access can stop their scheduled callbacks; scheduling does not grant Self authority.
+
 ## Device local
 
 Schedules live in the device persistent variable `system:scheduler`. They do not sync. A timer created on another device gets a local alarm on this device only when something on this device schedules it, or when a screen or widget on this device is open and does the work itself.
