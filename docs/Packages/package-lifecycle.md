@@ -64,7 +64,7 @@ Routes and UI bundles reload when you change the active version on this device (
 ## Releasing to the group
 
 1. In **Versions**, use **Promote** on a dev version: **dev → beta** or **dev → stable** (or **beta → stable**).
-2. Promotion updates the version’s `versionTag`, refreshes `packageAuthorSignature` when a package signing key is available (and clears a stale signature if not), and appends to the version’s signed `history` audit trail. Editing the semver on a version row does the same for the signature.
+2. Promotion updates the version’s `versionTag`, refreshes `packageAuthorSignature` when a package signing key is available (and clears a stale signature if not), and appends to the version’s signed `history` audit trail. The version number itself is not editable. It is the version baked into the built bundle, and changing only the label makes an isolated package fail to load.
 3. If you promote the version this device is **already running**, and the new tag matches the group’s follow policy (default: `stable`; `beta` only when the group follows beta), the group `activePackageVersionId` advances automatically (admin, device follow override off, group not pinned) — same rules as **Activate**. Otherwise use **Activate** on the promoted beta/stable release; devices following the group pick it up on their next resolve/sync.
 
 **Today:** promotion and activation are done in the **package Versions UI**.
