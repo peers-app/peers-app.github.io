@@ -92,6 +92,18 @@ See [Voice skills](./Packages/voice-skills) for how a package registers itself.
 
 Use **Cancel** to stop recording, an in-flight request, or speech playback.
 
+Transcription, responses, skill-aware turns, synthesis, and cancellation require Reader (20).
+Clearing local voice history requires Owner (80). Anyone speaking acts as the signed-in user,
+using the configured OpenAI credential and installed skills admitted by their own access checks.
+The wake word is not a second login.
+
+Skill `invoke` is Reader and requests authority preservation, as does
+`voice-hub-run-action`. Ordinary action tools cap subsequent calls at their own effective level.
+A delegated Reader cannot dispatch a Writer action even for a Writer user; this path does not
+use assistant approvals. Delegated remote-device action calls fail closed. Weather and news
+answers use cached data only; explicit refresh remains Writer. These checks cover the migrated
+tool paths, not general table or observable writes.
+
 ## Adaptive workspace
 
 Voice Hub opens on **Overview**, where populated skills show summary cards with a header and
@@ -196,9 +208,9 @@ Peers Services.
 
 Groceries and Tasks voice writes run as the person signed in on this device. The package loader
 supplies the isolate runtime with a host-only resolver for that user's identity and data context.
-Writer checks are unchanged: confirm the signed-in user has Writer access in the active group.
+Grocery/task/timer writes and weather/news refresh require Writer (40); their reads are Reader. Voice Hub shows only actions authorized for the current turn and rechecks at dispatch. Grocery screen/widget controls and the Tasks widget/list controls use the same gate.
 Without a known signed-in identity, calls still fail with
-`Permission denied: missing caller identity for tool 'invoke'`. Guest payloads and skill arguments
+a missing-identity permission denial. Guest payloads and skill arguments
 cannot supply trusted identity.
 
 ### Browser speech is silent
@@ -229,3 +241,5 @@ recovery action. The recovery button appears only while legacy preferences are a
 Legacy conversation history imports once per device, retaining the newest 200 entries. Clearing
 history also records that migration is complete, so reopening Voice Hub cannot restore old turns.
 A failed migration remains retryable and does not prevent microphone initialization.
+
+Voice Hub's `voice-hub-run-action` and each skill provider's `invoke` declare `authorityPropagation: "preserve"`, which the runtime honors like a declared access level (see [Authority propagation and dynamic dispatch](./System/Tools.md#authority-propagation-and-dynamic-dispatch)). Installing the package into a group is the trust decision; there is no separate approval step. Admission and propagation are independent; selected targets and catalogs use the caller's live group role and inherited ceiling, and an ordinary Reader tool upstream still caps the chain at Reader.

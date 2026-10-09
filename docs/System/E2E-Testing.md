@@ -214,6 +214,7 @@ it("a row written on one device reaches the others", async () => {
   on-demand fetch.
 - `scheduler.e2e.test.ts` installs `timers`, creates a timer, and restarts its
   persistent headless host; the timer expires without a widget or scheduler call.
+  It covers both a personal context and a group Writer (40), with group membership asserted.
 - `fleet.resourceReport()` (RSS per child), `fleet.describe()`, `fleet.stop()`.
 
 `startFleet({ maxConnections })` starts every device with
@@ -378,3 +379,7 @@ real mail.
   credentials `peers.app` hands out. Every other scenario runs `--no-webrtc`.
 - Multi-host latency and NAT. The loopback proxy adds delay, not packet loss or
   NAT behaviour.
+
+`kitchen-tool-access.e2e.test.ts` exercises group Reader/Writer voice and touch envelopes, catalog filtering, argument spoofing, and context-bound Grocery/Tasks/Timers actions. Build Voice Hub, Timers, Weather, News, Groceries, and peers-core before running it. It installs into disposable fleet hosts, never the kitchen device.
+
+The `authority-dispatch.e2e.test.ts` scenario uses a generated non-Voice isolated package with Reader, Writer, and Admin group devices. It checks that the declared `authorityPropagation: "preserve"` is honored on every host directly after install, role and ordinary-tool caps, and persistence across a host restart through real headless package loading. `kitchen-tool-access.e2e.test.ts` relies on the same declared mode in the installed Voice packages when testing shared touch/voice gates; no operator grant step exists.

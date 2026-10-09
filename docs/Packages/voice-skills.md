@@ -129,3 +129,7 @@ Apps-list entry.
 Voice Hub checks cancellation before each model request and skill invocation. A skill already
 running may finish, but no subsequent skill in that turn is started. Cancellation does not roll
 back package changes. Keep mutations atomic within the skill where appropriate.
+
+## Authority propagation
+
+Voice Skill v1 `invoke` retains Reader admission and declares `authorityPropagation: "preserve"`. The runtime honors that declaration like the declared level (see [Authority propagation and dynamic dispatch](../System/Tools.md#authority-propagation-and-dynamic-dispatch)): installing the skill into a group is the trust decision, and there is no separate operator grant. A direct Writer invoking the Reader wrapper can dispatch the skill's Writer mutations; a Reader cannot, and a Writer arriving through an ordinary Reader tool remains capped at Reader. Preservation never raises an inherited or consume ceiling; private canonical actions remain package-owned and are checked live. Admission and propagation are independent.
