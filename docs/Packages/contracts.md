@@ -232,9 +232,10 @@ package's `provides` declaration) to the minimum group access level a caller nee
 the same 0–100 scale as `accessLevel` (`AccessLevel.Reader` = 20, `Writer` = 40, `Admin` =
 60, `Owner` = 80). Omit it to keep the tool local-only. The ordinary `accessLevel` check
 still runs on the executing device as well. Isolated packages also need
-`suggestedAccessLevel` at or below that same floor — it is the worker's default
-effective level until install-time approval exists. A tool that sets only
-`remoteAccessLevel` still defaults to Self in the isolated worker.
+`suggestedAccessLevel` at or below that same floor when that level is supplied,
+because the supplied value is the worker's effective admission level. A tool
+that sets only `remoteAccessLevel` remains Self in the isolated worker unless
+it declares `preserve`, in which case omitted admission is None.
 
 ```typescript
 const pingTool: ITool = {
@@ -395,7 +396,10 @@ helper for isolated providers. Production connection routing does not use it.
 Still deferred are installed-package provider resolver registration, precise generic
 `createContractConsumer<T>()` typing, granular per-package UI permissions, and remote
 access to tables, observables, and events (remote consumers are tools-only). Desktop and
-headless hosts raise the isolated wire cap to 16 MB. The PWA worker stays at 64 KB.
+headless hosts raise the isolated wire cap to 16 MB. The codec default is 64 KB.
+Browser worker infrastructure exists (`createBrowserWorkerPort` in
+`peers-isolate/src/container/browser-worker.ts`), but the PWA does not register
+a production isolated runtime, so that default is not a PWA production worker limit.
 
 ## Isolated contract packages (Electron)
 
@@ -418,8 +422,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `callConsumedTool(contractId, version, toolName, args, { providerPackageId })`.
   The local UI router honors the same field. Remote routers ignore it.
   `listContractProviders` on the System Contract Catalog returns every installed provider.
-- **Host.** Electron registers an `IIsolatedPackageRuntime` factory before
-  `initializePeerDevice`. `PackageLoader` installs the manifest into the per-data-context
+- **Host.** Electron and peers-headless each register an `IIsolatedPackageRuntime`
+  factory before `initializePeerDevice` (registration sites are under
+  **Compatibility** below). `PackageLoader` installs the manifest into the per-data-context
   `ContractRegistry` and stores source for a supervised Node `worker_threads` + SES
   worker. The worker starts lazily on the first tool call. Each data context
   constructs its table container before the package loader so isolated
@@ -524,9 +529,12 @@ outside the Electron host process. The host never evaluates provider source. Leg
   boundary with collision-safe tags and retain their Peers table/pvar types.
   Functions, unsupported objects, non-finite numbers, cycles, oversized values,
   and excessive nesting are rejected.
-- **Access.** A tool's `suggestedAccessLevel` is the default effective level
-  until install-time approval exists. Omit it to keep the fail-closed **Self**
-  default. Direct user calls use the trusted local `DataContext` access level.
+- **Access.** When a tool supplies `suggestedAccessLevel`,
+  `IsolatedAccessPolicy.getEffectiveToolLevel` uses that value. Omit admission
+  on a `preserve` tool and the level is None; omit it on any other tool and the
+  level remains Self. Preserve is still capped by the trusted incoming
+  authority. There is no operator grant machinery. Direct user calls use the
+  trusted local `DataContext` access level.
   Persistent approval storage/UI is a later tools-system milestone; the first
   smoke path runs in the personal context.
 - **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
@@ -535,11 +543,16 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `dataChanged` subscriptions, owned-pvar subscriptions, mesh events, or global
   pvar grants. Host and system contract events are subscribable; see
   **Contract events** above.
-  Electron is currently the only isolated
-  execution host. PWA safely skips valid isolated provider artifacts instead of
+  Electron and peers-headless register the production isolated runtime.
+  Electron calls `registerElectronIsolatedPackageRuntime` from
+  `peers-electron/src/server/peers-init.ts` (factory in
+  `peers-electron/src/server/isolated-package-runtime.ts`). peers-headless calls
+  `registerHeadlessIsolatedPackageRuntime` from `peers-headless/src/start.ts`
+  (factory in `peers-headless/src/isolated-runtime.ts`). Browser worker
+  infrastructure exists, but the PWA does not register a production isolated
+  runtime. PWA safely skips valid isolated provider artifacts instead of
   failing device startup; those providers and their contract tools remain
-  unavailable there. PWA browser Workers are a follow-up that can reuse the same
-  SDK factory seam. Malformed artifacts and package-ID mismatches still fail
+  unavailable there. Malformed artifacts and package-ID mismatches still fail
   closed on every host. When a package changes between legacy and isolated
   execution on a supporting host, the replacement becomes active only after it
   is ready; a failed replacement leaves the prior provider active. A device
