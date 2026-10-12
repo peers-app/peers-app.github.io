@@ -53,10 +53,12 @@ If the target directory already exists and contains a valid `package.json` with 
 1. Validates the manifest package ID
 2. Creates or updates the `Packages` row (name, description, optional `remoteRepo`)
 3. Persists `packageLocalPath_<packageId>` for that data context
-4. Provisions a signing keypair **only when** `publishPublicKey` is missing (never silently rotates an established key; a readable secret that disagrees with `publishPublicKey` fails clearly)
+4. Reuses the established signing public key. If the target `Packages` row is absent, it searches your personal context, then groups, for the same package ID's first nonblank `publishPublicKey`. A new keypair is created only when both the public key and signing secret are missing; established keys are never silently rotated.
 5. Installs the on-disk `dev` bundles
 
 This is the supported path for monorepo apps under `official-packages/` (for example Groceries).
+
+Importing the same local package by name into Personal or another group reuses that public key. An unreadable signing secret is not replaced automatically; without an established public key, the import fails.
 
 ### Project structure
 
@@ -225,7 +227,9 @@ Each package has an Ed25519 **author** keypair used to sign non-dev publish arti
 - **Public key** — stored on the `Packages.publishPublicKey` field (TOFU anchor for verifiers).
 - **Secret key** — stored as a secret user pvar named `packageSigningKey_<packageId>` in your personal data context. Do not commit it or paste it into chat/logs.
 
-Keys are created when a package is first registered (create or import) if `publishPublicKey` is empty. Re-importing the same directory reuses the established public key.
+Keys are created when a package is first registered (create or import) if both the established public key and signing secret are missing. Re-importing the same directory reuses the target's established public key. When the target `Packages` row is absent, importing reuses the same package ID's first nonblank public key from your personal context or groups.
+
+An unreadable secret (for example, encrypted at rest) can be retained when an established public key is available. It is never replaced automatically. If no public key can be found, restore it or replace the unreadable secret before importing. A readable secret that disagrees with the established public key causes the import to fail.
 
 ## Related topics
 
