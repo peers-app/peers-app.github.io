@@ -12,7 +12,7 @@ When a **package version record** syncs to a device, Peers also downloads that v
 At a high level, a package contributes:
 
 - **Runtime manifest and provider** — isolated table, contract, tool, and navigation declarations,
-  plus provider source that Electron can run in a supervised worker.
+  plus provider source that Electron and headless can run in a supervised container.
 - **Routes** — small bundle that registers URL paths before UI loads.
 - **UI** — lazy-loaded React components registered by `peersUIId`.
 
@@ -90,8 +90,8 @@ The build produces three output bundles:
 | `uis.bundle.js` | `src/uis.ts` | React components (loaded lazily on navigation) |
 
 New packages use an **isolated** `PEERS_ISOLATED_PACKAGE_V1` JSON envelope for
-`package.bundle.js`. Electron runs that provider source in a supervised worker instead of
-evaluating it in the host. Existing legacy `definePackage()` bundles remain supported.
+`package.bundle.js`. Electron and headless run that provider source in a supervised sandbox
+worker by default, or a separate privileged Node process when explicitly declared. Existing legacy `definePackage()` bundles remain supported.
 Every package-owned table schema belongs once at
 `manifest.tables`. Authors declare a package-local name, primary key, fields, and
 optional schema version; they do not provide a table ID or physical name. The host
@@ -201,9 +201,10 @@ one tool, table, or observable. The starter's writable observable gives UI-first
 small reactive persistence path without starting a worker. Prefer declared tables for
 record-oriented data.
 
-`provider-source.js` is plain JavaScript stored inside the artifact. It cannot import Node
-modules or the SDK. Declare tools in the manifest and register matching handlers with the
-isolated guest API `registerContractTool`.
+`provider-source.js` is JavaScript stored inside the artifact. In the default sandbox it
+cannot import Node modules or the host SDK. Declare tools in the manifest and register matching
+handlers with the guest API `registerContractTool`. Privileged providers can use Node built-ins
+as described below.
 
 `appNavs` declares the navigation items that appear in the Apps launcher. The
 `navigationPath` corresponds to the route path registered in `src/routes.ts`.
@@ -220,7 +221,76 @@ is supported for compatibility but is no longer the default scaffold.
 
 Note: `versionTag` and contract `devTag` are **not** set in code. The platform assigns these based on the package's promotion state.
 
-### Author signing keys
+### Provider execution modes
+
+`manifest.executionMode` accepts exactly `"sandbox"` or `"privileged"`. Omission keeps the
+SES sandbox: no ambient `process`, `require`, filesystem, or subprocess access. The field
+applies only to provider code; routes and UI do not gain Node access. Privileged providers
+are supported in Electron and headless. Browser/PWA provider execution remains unsupported.
+
+A privileged provider is **trusted device code**. It runs in its own Node process as the same
+OS account as Peers, without root/admin elevation. It inherits Peers' environment and working
+directory and can access the filesystem, network, and subprocesses directly. Existing host
+bridge checks still apply to ordinary contract, table, pvar, and event calls, but direct OS
+access bypasses sandbox and network-policy confinement. There are no granular permissions or
+additional consent gate in this mode.
+
+To use a Node built-in, bundle a provider as CommonJS with `platform: "node"`:
+
+```js
+// src/provider-source.js — use your existing generated contract ID.
+import { platform } from "node:os";
+import ids from "./ids.json";
+
+registerContractTool(ids.contractId, 1, "platform", () => ({ platform: platform() }));
+```
+
+```js
+// In build-package.mjs, after creating your normal manifest (including the platform tool):
+import { build } from "esbuild";
+import { serializeIsolatedPackageArtifact } from "@peers-app/peers-sdk";
+import { mkdir, writeFile } from "node:fs/promises";
+
+const built = await build({
+  entryPoints: ["src/provider-source.js"],
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node20",
+  write: false,
+});
+manifest.executionMode = "privileged";
+await mkdir("dist", { recursive: true });
+await writeFile("dist/package.bundle.js", serializeIsolatedPackageArtifact({
+  manifest,
+  providerSource: built.outputFiles[0].text,
+}));
+```
+
+Both IIFE and bundled CommonJS providers work, including bundles whose entrypoint has a
+leading `#!/usr/bin/env node` shebang. Node provides `require`, `module`, `exports`,
+`__filename`, and `__dirname`; the synthetic filename is `.peers-isolate-provider.cjs` under
+Peers' inherited working directory. It is not the author's package directory. Bundle dependencies
+into the source: the artifact format does not distribute package-directory assets or
+`node_modules`. Native modules and external files are not automatically installed on devices.
+The provider uses the Node version shipped with its host (Electron's embedded Node on desktop).
+Standard output and standard error go to the host's output streams; bridge traffic uses a
+separate IPC channel, so provider logging does not interfere with contract replies.
+
+Startup stays lazy, with one session per package/data context. Normal deadlines still apply:
+Electron and headless allow 30 seconds for startup/evaluation and, by default, each tool call;
+a tool can declare `timeoutMs` up to 120 seconds. A timeout or crash terminates the session,
+and the next invocation starts a fresh one. Switching modes requires normal version
+replacement, which stops the previous session. Invalid replacements retain the old registration.
+
+Activation follows existing device/group version selection, pin, and follow rules. A version
+that becomes active on several devices can therefore run privileged code on each of them.
+Downloading a version does not activate it. Termination kills only the provider process and
+cannot undo filesystem, network, or other OS side effects. Any spawned descendants, including
+ordinary subprocesses created without `detached: true`, may survive timeouts, replacement, or
+shutdown. Providers must manage descendant cleanup; the runtime does not guarantee it.
+
+## Author signing keys
 
 Each package has an Ed25519 **author** keypair used to sign non-dev publish artifacts:
 

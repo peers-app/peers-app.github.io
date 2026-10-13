@@ -401,7 +401,31 @@ Browser worker infrastructure exists (`createBrowserWorkerPort` in
 `peers-isolate/src/container/browser-worker.ts`), but the PWA does not register
 a production isolated runtime, so that default is not a PWA production worker limit.
 
-## Isolated contract packages (Electron)
+## Isolated contract packages (Electron and headless) {#isolated-contract-packages-electron}
+
+The isolated artifact's optional `manifest.executionMode` selects `"sandbox"` (the default
+when omitted) or `"privileged"`. Both modes use the same contract registry, consumed-contract
+declarations, host-owned tables/pvars/events, caller identity, access policy, and bridge codec
+(including `Date` and `Uint8Array`). Ordinary bridge calls retain their checks in both directions
+between sandbox and privileged packages. Arguments and bridge messages cannot select a mode.
+
+Privileged **provider code only** runs in a separate ordinary Node process, with the host's OS
+account, environment, working directory, filesystem, network, and subprocess access. It is
+trusted device code, not root/admin elevation. Direct OS access bypasses sandbox/network
+confinement, so bridge checks are not a security boundary against it. Browser/PWA provider
+execution remains unsupported. Existing activation/version rules apply without an extra
+consent gate; replacing the active version switches modes and terminates the prior session.
+Normal startup and invocation deadlines remain in force. Termination kills only the provider
+process and cannot undo OS side effects. Any spawned descendants, including ordinary subprocesses
+created without `detached: true`, may survive timeouts, replacement, or shutdown. Providers must
+manage descendant cleanup; the runtime does not guarantee it.
+Host shutdown drains scheduled invocations before disposing provider sessions, including
+privileged processes. Provider crashes or IPC disconnections reject pending bridge calls;
+a later invocation starts a fresh session for the same installed version.
+
+See [Provider execution modes](./getting-started#provider-execution-modes) for a Node built-in
+import/build example using bundled CommonJS (`platform: "node"`). Bundle dependencies: the
+artifact carries source, not a package directory, assets, or `node_modules`.
 
 The default new-package scaffold uses an **isolated package** artifact so contract providers run
 outside the Electron host process. The host never evaluates provider source. Legacy
@@ -425,8 +449,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
 - **Host.** Electron and peers-headless each register an `IIsolatedPackageRuntime`
   factory before `initializePeerDevice` (registration sites are under
   **Compatibility** below). `PackageLoader` installs the manifest into the per-data-context
-  `ContractRegistry` and stores source for a supervised Node `worker_threads` + SES
-  worker. The worker starts lazily on the first tool call. Each data context
+  `ContractRegistry` and stores source for a supervised SES worker or privileged
+  Node process. The provider starts lazily on the first tool call. Each data context
   constructs its table container before the package loader so isolated
   package-owned tables receive a host gateway. Local-dev isolated packages
   prefer `dist/package.bundle.js` from the stored checkout path over a stale
@@ -451,9 +475,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   logical table name. Unreferenced tables remain private. The owning worker can
   also `listOwnedTableRecords` and `deleteOwnedTableRecord`. Custom table methods
   are not exposed, and a guest still cannot subscribe to table `dataChanged`.
-  These guarantees apply to
-  isolated packages; legacy
-  host-evaluated packages can still import tables directly.
+  These guarantees apply to bridge operations. Privileged providers have direct OS
+  access, while legacy host-evaluated packages can still import tables directly.
   The host validates the package's complete declaration batch before publishing
   any new table binding.
   All peers that sync a group must be upgraded before that group uses isolated
