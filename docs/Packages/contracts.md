@@ -474,7 +474,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   then serves standard table CRUD against the trusted provider package and
   logical table name. Unreferenced tables remain private. The owning worker can
   also `listOwnedTableRecords` and `deleteOwnedTableRecord`. Custom table methods
-  are not exposed, and a guest still cannot subscribe to table `dataChanged`.
+  are not exposed. Guests can subscribe to contract-exposed table `dataChanged`
+  as described below.
   These guarantees apply to bridge operations. Privileged providers have direct OS
   access, while legacy host-evaluated packages can still import tables directly.
   The host validates the package's complete declaration batch before publishing
@@ -528,16 +529,54 @@ outside the Electron host process. The host never evaluates provider source. Leg
   unsubscribe, package replacement, or uninstall, and each delivery wakes the
   consumer worker (starting it when that generation is not running). There is
   no replay. The delivery waits for promises returned by the guest handlers, so
-  a handler can finish an owned-table write before the invocation ends. Guest
-  subscriptions to host observables and to table `dataChanged` inside the worker
-  are still deferred.
+  a handler can finish an owned-table write or `callConsumedTool` before the
+  invocation ends. Guest subscriptions to observables are still deferred.
 - **Table `dataChanged`.** Consumers may call
   `consumer.tables[name].dataChanged.subscribe(handler)` on a contract-exposed
   isolated table. The host attaches to the real `Table.dataChanged` event, so
   writes through the contract proxy, the provider's `saveOwnedTableRecord`, and
   device sync all notify with the usual `{ dataObject, op, source }` payload.
   Private tables are rejected exactly like CRUD; `dataChanged` is the only
-  table event supported.
+  table event supported. An isolated guest uses
+  `subscribeConsumedTableEvent(contractId, version, tableName, eventName, handler)`:
+
+  ```js
+  const unsubscribe = await subscribeConsumedTableEvent(
+    itemsContractId, 1, "Items", "dataChanged", async ({ dataObject, op, source }) => {
+      await callConsumedTool(auditContractId, 1, "recordChange", { dataObject, op, source });
+    },
+  );
+  // When the consumer no longer needs notifications:
+  await unsubscribe();
+  ```
+
+  The helper supports isolated providers through the host table gateway and
+  host/legacy providers through a live provider endpoint. It forwards the complete
+  `{ dataObject, op, source }` payload unchanged, including `source: "local"` and
+  `source: "remote"`. Here `remote` means a change applied by device sync; this
+  does not add a remote subscription transport or mesh events.
+
+  The consumer must declare the contract in `consumes` (or provide it itself),
+  and provider selection respects its allowlist. Only tables exposed by that
+  contract are available; private or undeclared tables and events other than
+  `dataChanged` are rejected. Registration may run during worker evaluation or
+  between tool invocations, but the worker must already be running through
+  `startProvider` or a first tool call. Subscribing does not activate a dormant
+  package and does not replay earlier changes.
+
+  The returned promise resolves to an idempotent unsubscribe function. Local
+  handlers for the same table event share one host subscription, which detaches
+  after the last handler unsubscribes. Raw `contract.consume` registrations reserve
+  their subscription ID while attachment is pending; concurrent duplicates are
+  rejected. Unsubscribe or teardown cancels pending registrations too, and any
+  attachment that finishes afterward is detached. Delivery awaits promises returned
+  by the handlers, so consumed-tool calls and owned-table writes can finish under the
+  delivery's trusted invocation. Source writes do not wait for these callbacks.
+  Failed consumer worker startup (including evaluation timeouts), worker teardown,
+  replacement, or uninstall detaches subscriptions and disposes retained host endpoints;
+  isolated provider replacement or uninstall also detaches its guest table
+  subscribers. Detached subscriptions receive no further callbacks and are not
+  automatically reattached.
 - **Routing.** For package-registered contracts,
   `createLocalUserContextContractProviderRouter` resolves an isolated or
   resolver-backed endpoint only for the provider selected by that context's
@@ -562,10 +601,10 @@ outside the Electron host process. The host never evaluates provider source. Leg
   smoke path runs in the personal context.
 - **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
   are unchanged. Isolated packages do not yet expose custom table methods or
-  table events other than `dataChanged`, isolated-guest observable or
-  `dataChanged` subscriptions, owned-pvar subscriptions, mesh events, or global
-  pvar grants. Host and system contract events are subscribable; see
-  **Contract events** above.
+  table events other than `dataChanged`, isolated-guest observable
+  subscriptions, owned-pvar subscriptions, mesh events, or global pvar grants.
+  Guests can subscribe to contract events and table `dataChanged` from isolated
+  and host/legacy providers; see the sections above.
   Electron and peers-headless register the production isolated runtime.
   Electron calls `registerElectronIsolatedPackageRuntime` from
   `peers-electron/src/server/peers-init.ts` (factory in
