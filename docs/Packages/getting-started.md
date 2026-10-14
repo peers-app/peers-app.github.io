@@ -51,14 +51,14 @@ directory to import it.
 If the target directory already exists and contains a valid `package.json` with `peers.packageId`, create/import **does not** re-clone the template. It:
 
 1. Validates the manifest package ID
-2. Creates or updates the `Packages` row (name, description, optional `remoteRepo`)
-3. Persists `packageLocalPath_<packageId>` for that data context
-4. Reuses the established signing public key. If the target `Packages` row is absent, it searches your personal context, then groups, for the same package ID's first nonblank `publishPublicKey`. A new keypair is created only when both the public key and signing secret are missing; established keys are never silently rotated.
+2. Recovers the signing public key before saving the package. The target `Packages` row takes precedence; if it is absent, Peers searches your personal context, then groups, for the same package ID's first nonblank `publishPublicKey`. It can also recover the key from metadata cached alongside your personal signing secret, or through host decryption of an older encrypted secret. A new keypair is created only when both the public key and signing secret are missing; established keys are never silently rotated.
+3. Creates or updates the `Packages` row (name, description, optional `remoteRepo`)
+4. Persists `packageLocalPath_<packageId>` for that data context
 5. Installs the on-disk `dev` bundles
 
 This is the supported path for monorepo apps under `official-packages/` (for example Groceries).
 
-Importing the same local package by name into Personal or another group reuses that public key. An unreadable signing secret is not replaced automatically; without an established public key, the import fails.
+Importing the same local package by name into Personal or another group reuses its publisher identity. Deleting the package leaves your personal signing secret and its cached public key intact, so re-importing after uninstall also preserves that identity. Import fails without changing keys if the available public keys disagree, or if an existing secret has no recoverable public key.
 
 ### Project structure
 
@@ -294,12 +294,16 @@ shutdown. Providers must manage descendant cleanup; the runtime does not guarant
 
 Each package has an Ed25519 **author** keypair used to sign non-dev publish artifacts:
 
-- **Public key** — stored on the `Packages.publishPublicKey` field (TOFU anchor for verifiers).
+- **Public key** — stored on the `Packages.publishPublicKey` field (TOFU anchor for verifiers), with a recovery copy in the signing pvar's description. The versioned `peers-package-signing-key:v1:<packageId>:<publicKey>` marker is bound to that package ID and validated before use; the human-readable description is retained.
 - **Secret key** — stored as a secret user pvar named `packageSigningKey_<packageId>` in your personal data context. Do not commit it or paste it into chat/logs.
 
 Keys are created when a package is first registered (create or import) if both the established public key and signing secret are missing. Re-importing the same directory reuses the target's established public key. When the target `Packages` row is absent, importing reuses the same package ID's first nonblank public key from your personal context or groups.
 
-An unreadable secret (for example, encrypted at rest) can be retained when an established public key is available. It is never replaced automatically. If no public key can be found, restore it or replace the unreadable secret before importing. A readable secret that disagrees with the established public key causes the import to fail.
+Uninstalling from any or all contexts leaves the personal signing pvar intact. Its cached public key lets a later import restore the same publisher identity even when every `Packages` row has been deleted. Imports lazily add this metadata to older pvars without changing or re-encrypting their stored secret value.
+
+For legacy encrypted secrets without metadata, Node hosts (Electron and headless) use their existing user-secret decryption to recover only the public key for the importer. SDK hosts can supply the optional `resolveSigningPublicKey(encryptedSecret)` create/import callback for this recovery. If decryption is unavailable or fails, an established or cached public key can still be reused. A disagreement between established, cached, or recovered keys fails the import before any signing-key or package writes. An existing unreadable secret is never replaced automatically; if no public key is recoverable, restore `publishPublicKey` or unlock the secret before importing.
+
+Explicitly deleting `packageSigningKey_<packageId>` removes your local author signing secret. If every installed copy of the package is also deleted, the next import generates a **new publisher identity** and restores the pvar's deterministic ID even if it was previously deleted. If an established public key remains in another context, Peers retains that identity without generating replacement keys; restore the matching secret to publish under it.
 
 ## Related topics
 
