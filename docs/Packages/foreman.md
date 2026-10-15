@@ -7,6 +7,12 @@ the same group and run one Foreman daemon for that group. Post a comment whose e
 text is `foreman` (case-insensitive; surrounding whitespace is allowed). The resulting
 draft keeps the task's title and body unchanged and credits the comment author.
 Review the draft and choose Plan or Implement before any agent work starts.
+Plan asks which planner to use and defaults to Sol. Implement asks which implementer
+to use. The choices are Grok, Sol, Opus, Astra, and Fable. Opus and Fable run through
+Claude Code on the daemon machine's Claude subscription. Those runs stay on that
+login: Foreman does not pass API keys or Claude settings, loads no MCP servers, read-only calls
+cannot edit or run commands, and the calls do not write into the interactive Claude
+session. An unknown model blocks the job.
 
 After the daemon activates Foreman at startup, local comment inserts are handled
 immediately. Every 30 seconds the daemon also sweeps all pending comments, covering
