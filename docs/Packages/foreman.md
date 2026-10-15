@@ -52,3 +52,42 @@ and reject extra arguments that could impersonate another author or IDs from oth
 **Use one daemon per group.** Deterministic job IDs prevent duplicate records but do
 not prevent two daemons from executing the same job. Multiple active daemons require
 a future lease/leader-election design. The local PID file is not a distributed lock.
+
+## Sequential child batches
+
+On a job that has only draft children, Children can stay on **Review each child**
+or switch to **Run sequentially, review once**. Start is available from a draft
+or a plan that is ready for review. Every direct child must still be a draft,
+and no child may depend on a later sibling, even through an outside job.
+The parent cannot depend on its own snapshot children, and a child cannot
+depend on the parent. An unfinished outside job waits for the batch to merge,
+so a child also cannot reach an earlier sibling or the parent through one. Parent dependencies must
+finish before children start and before combined review opens; a canceled
+dependency blocks the run. Other outside dependency waits keep the parent in
+Needs You.
+
+Foreman then plans and implements those children one at a time. It still runs
+checks and model review for each child, and it does not stop for a human plan
+or implementation review. Successful children are collected onto one parent
+branch. When the last child finishes, the parent opens a single review. Stage
+for review, approve, and merge work the same way as any other job.
+
+If a child fails, asks an open question during planning or implementation, or
+tries to split again, the batch pauses. Earlier children stay included. Repair
+that child and use Retry plan or Retry implementation, or cancel the run.
+Canceling the parent, including from the combined review, also cancels children
+that are not already done. A child reopened as a draft after that cancel can
+run on its own through later planning and implementation, including automatic
+merge when eligible. A merging child prevents cancellation before any other
+child is saved as canceled. Interrupted cancellations finish after restart.
+A child in the run cannot be deleted, moved to another parent,
+started ahead of the child Foreman is waiting on, or turned into its own
+sequential run. An included child is canceled only by canceling the batch. If
+a snapshotted child goes missing, the batch pauses; restore that child and
+press Resume sequential run, or cancel the batch. Empty or unreadable snapshots
+permit only Cancel. Once all children are included, failures during the parent’s
+own work offer the normal Retry plan, Retry implementation, and Retry merge
+actions. Direct or indirect later sibling dependencies added after the run
+starts are rejected. A paused batch does not offer a partial subset as the
+final review. The fixed snapshot can start again from
+draft or plan-review only when every direct child is a draft again.
