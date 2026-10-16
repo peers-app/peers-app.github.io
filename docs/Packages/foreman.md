@@ -66,15 +66,40 @@ finish before children start and before combined review opens; a canceled
 dependency blocks the run. Other outside dependency waits keep the parent in
 Needs You.
 
+**Start sequential run** asks which planner and implementer every child should use,
+defaulting to the parent's choices. Foreman writes those models onto each child before
+the run begins, so a model changed later on one child cannot send that child to a
+different agent mid-run. The parent's conversation records the models each child was
+routed to.
+
 Foreman then plans and implements those children one at a time. It still runs
 checks and model review for each child, and it does not stop for a human plan
-or implementation review. Successful children are collected onto one parent
+or implementation review. The reviewer asks for another round on any `must`
+finding, and on `should` findings when it judges the change not ready; the
+implementer fixes each one or explains why it rejects it, and a new review
+confirms the result. A child is never included on an unreviewed fix.
+Successful children are collected onto one parent
 branch. When the last child finishes, the parent opens a single review. Stage
 for review, approve, and merge work the same way as any other job.
 
-If a child fails, asks an open question during planning or implementation, or
-tries to split again, the batch pauses. Earlier children stay included. Repair
-that child and use Retry plan or Retry implementation, or cancel the run.
+If a child fails, raises a blocking open question during planning or implementation,
+or tries to split again, the batch pauses. Earlier children stay included. A blocking
+question is a product or scope decision only a person can make, or a problem that keeps
+the work from being trustworthy. Checks the agent could not run, such as live device or
+hardware verification, an environment or permission it did not have, or a failure that
+is unrelated or pre-existing, are recorded as verification notes instead. They stay in
+the child's summary for the reviewer and for you, and they do not pause the run.
+
+A child paused on blocking questions shows them in its header and offers two ways on.
+**Continue without changes** keeps the implementation already on the branch, records your
+optional reason, and runs checks and review on that work; use it when the answer does
+not change the code. **Retry implementation** runs the implementer again; add a note
+first when the answer should change the code. If a change request arrives during checks,
+review, or a repair, Foreman runs the implementer with that feedback and checks and reviews
+the result before including the child. A withdrawn decision requires implementation again,
+even after a restart; the saved acceptance line alone cannot approve continuation.
+Retry plan replans the child, or cancel the run. A retry can select a new model; an omitted or null
+model keeps the frozen route and an invalid model is rejected.
 Canceling the parent, including from the combined review, also cancels children
 that are not already done. A child reopened as a draft after that cancel can
 run on its own through later planning and implementation, including automatic
