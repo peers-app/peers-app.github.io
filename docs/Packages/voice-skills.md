@@ -62,21 +62,28 @@ Voice Hub calls a contributed widget with these props:
 `active` is true for the focused widget. `host` lets a reusable UI make small host-specific choices
 without importing Voice Hub.
 
-A summary should be quick to mount, compact, and useful from cached/local state. Do not start an
-unconditional network refresh merely because an inactive summary mounted. A focus view should
-provide the package's common touch actions with at least 44-pixel targets and no keyboard-only or
+A summary should be quick to mount, compact, and useful from cached/local state. A package can
+own conditional freshness scheduling while mounted, independently of `active`: Weather displays
+its saved-city cache first and checks Writer access before an overdue hourly refresh, including
+on Overview. Do not start an unconditional network refresh on every summary mount. Stop package
+scheduling when its final view unmounts; visibility/focus resume can check for overdue work.
+Weather's **°F / °C** control also waits for Writer (40) access before saving the shared
+preference. Readers keep the current unit and see a save error.
+A focus view should provide the package's common touch actions with at least 44-pixel targets and no keyboard-only or
 hover-only behavior. Voice Hub owns the card header and context selection; the package owns all
 domain UI and writes.
 
 ## Invoke
 
-`invoke` takes `{ tool, args }` and returns `{ result, speech? }`. `result` is JSON the model can read. `speech`, when set, is suggested wording returned to the model alongside `result`. It does not end the turn: the model can use a lookup result to perform a subsequent action before replying. The tool's suggested access level is Writer. The call runs as the person signed in on this device.
+`invoke` takes `{ tool, args }` and returns `{ result, speech? }`. `result` is JSON the model can read. `speech`, when set, is suggested wording returned to the model alongside `result`. It does not end the turn: the model can use a lookup result to perform a subsequent action before replying. The frozen v1 wrapper admits Reader (20). The call runs as the person signed in on this device.
 
 Map `tool` onto the package's own contract tools. Do not trust a tool name that is not in the catalog.
 
 Isolated consumers calling host-owned skills, including Groceries and Tasks, receive authenticated
 local user identity and the owning data context from the runtime's host-only resolver supplied by
-the package loader. Writer access remains required and is checked against that user's actual role.
+the package loader. Read targets admit Reader; mutation and refresh targets require Writer (40),
+checked against that user's actual role and inherited ceiling. Reader admission to `invoke`
+does not grant Writer actions. Weather `get_weather` is cache-only, even when no fresh cache exists.
 Missing signed-in identity still fails closed with “missing caller identity”. User ids in guest
 payloads or skill arguments never become caller identity.
 
@@ -129,6 +136,17 @@ Apps-list entry.
 Voice Hub checks cancellation before each model request and skill invocation. A skill already
 running may finish, but no subsequent skill in that turn is started. Cancellation does not roll
 back package changes. Keep mutations atomic within the skill where appropriate.
+
+Spoken listening cancellation happens earlier: a whole utterance of “never mind”, “nevermind”,
+“cancel listening”, or “stop listening” is checked after endpointing/STT and before assistant or
+skill dispatch. A leading or trailing “please” and the configured wake phrase are supported,
+including “please Sterling, never mind” and “Sterling, please stop listening”. Matching ignores
+case, punctuation, and extra whitespace; underscores in the wake model name are treated as spaces.
+It ends the current recording and any manual conversation without a history entry.
+It cannot interrupt processing/playback or undo a dispatched skill. Bare “stop” and “cancel”,
+“go back to sleep”, timer commands, and longer requests such as “cancel my timer”, “add never mind
+to my list”, or “stop listening now” still reach skill selection. See
+[Voice Hub](../voice-hub#use-voice-input) for the Cancel button for active turns.
 
 ## Authority propagation
 

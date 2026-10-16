@@ -32,9 +32,14 @@ The default wake phrase is **Sterling**. You can also select **Operator**, **Duc
 Duchess**, **Hey Operator**, or **Hey Woodhouse** for side-by-side testing. The detection threshold
 controls the tradeoff between missed activations and false activations: raise it to be more
 conservative, or lower it if your microphone frequently misses the phrase. Each model starts at its
-own recommended real-device threshold; Hey Operator starts at `0.72`. While listening, Voice Hub
-displays the live microphone level, wake-model score, inference time, and skipped frame count
-beside the active threshold. Recording ends after about three-quarters of a second of silence. The
+own recommended real-device threshold; Hey Operator starts at `0.72`. The idle dock is quiet by
+default. To show idle guidance and the live microphone level, wake-model score, inference time, and
+skipped frame count beside the active threshold, enable **Show listening diagnostics** in Settings
+and select **Save**. The preference persists across reopening and works in narrow layouts without
+changing wake inference or device tuning. Active/error status and cancellation remain available
+with diagnostics off. Idle guidance is also hidden during a manual session's re-arm gap.
+The ear/hand dock toggle switches wake listening on or off.
+Recording ends after about three-quarters of a second of silence. The
 **Wake re-arm delay** starts after a turn and its completion tone finish. Its two-second default
 prevents the assistant's own tones, spoken response, or room echo from immediately starting another
 recording.
@@ -91,6 +96,16 @@ Voice Hub handles three kinds of turns:
 See [Voice skills](./Packages/voice-skills) for how a package registers itself.
 
 Use **Cancel** to stop recording, an in-flight request, or speech playback.
+While recording, you can also say **“never mind”**, **“nevermind”**, **“cancel listening”**, or
+**“stop listening”** as the whole utterance. Add “please” at either end, or address the configured
+wake phrase at either end, including “please Sterling, never mind” and “Sterling, please stop
+listening”. Matching ignores case, punctuation, and extra whitespace; underscores in the wake
+model name are treated as spaces. These end listening and any manual conversation
+session without assistant dispatch or a history entry. Spoken cancellation is recognized after
+endpointing and transcription, so the recorded audio still goes through STT. It does not listen for
+interruption during assistant processing or playback, or undo dispatched skills. Bare “stop” and
+“cancel”, “go back to sleep”, timer commands, and requests such as “add never mind to my list” or
+“stop listening now” still reach the assistant.
 
 Transcription, responses, skill-aware turns, synthesis, and cancellation require Reader (20).
 Clearing local voice history requires Owner (80). Anyone speaking acts as the signed-in user,
@@ -101,7 +116,7 @@ Skill `invoke` is Reader and requests authority preservation, as does
 `voice-hub-run-action`. Ordinary action tools cap subsequent calls at their own effective level.
 A delegated Reader cannot dispatch a Writer action even for a Writer user; this path does not
 use assistant approvals. Delegated remote-device action calls fail closed. Weather and news
-answers use cached data only; explicit refresh remains Writer. These checks cover the migrated
+voice answers use cached data only; refresh requires Writer. These checks cover the migrated
 tool paths, not general table or observable writes.
 
 ## Adaptive workspace
@@ -110,6 +125,26 @@ Voice Hub opens on **Overview**, where populated skills show summary cards with 
 content body: several grocery items, current weather conditions, or several news headlines.
 Only empty skills use a single row with an icon, name, and quiet status; skills needing attention
 keep their card layout. Cards pack beneath shorter neighbors without forcing equal heights.
+Weather refreshes its saved city while mounted in Overview as well as in focus. It shows the
+cache first, refreshes missing or hour-old forecasts immediately, and otherwise refreshes one
+hour after the last successful fetch. Each attempt requires Writer access in the current group
+or personal context. Failed or denied attempts wait one hour from completion before retrying
+automatically; **Update** can retry immediately. This wait resets when the saved city or context
+changes, or after closing and reopening Voice Hub. Weather shares requests across mounted views
+and preserves the same city's last-good forecast on failure, with age and stale/last-forecast
+wording (or an unavailable update time). An empty saved city does not refresh, and another
+city's cache is not shown as the selected city's forecast. Automatic refresh never saves an
+edited city draft. **Update** saves the city with Writer access and preserves the latest unit;
+unit switches only change the observable preference. Dirty drafts survive forecast and unit
+updates; changing groups initializes the editor from that group's saved city.
+Background refresh keeps the city and unit controls available; only an explicit **Update**
+temporarily disables them. Changing groups starts a fresh refresh lifecycle.
+Forecast age uses minutes, hours or days.
+Browser suspension can delay refresh timers; returning to a visible/focused window checks
+for one overdue refresh and honors in-flight work and failure cooldowns. Refresh stops when
+Weather unmounts; there is no background runtime schedule. Voice `get_weather` remains a
+Reader cache-only operation, including when the cache is empty, stale or for a different city.
+
 Tap a context such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News**
 to open its complete touch
 controls. After a successful voice skill action, Voice Hub opens the widget owned by the skill that
@@ -128,6 +163,19 @@ tone and keeps its explanation in recent conversation context; ask “what happe
 Error messages have a single `Error:` prefix.
 Voice Hub uses skill activity and alerts for this selection; it does
 not guess from transcript text or hard-code package identities.
+
+Tasks summary and voice results rank all matching tasks in the current personal/group context
+before limiting results: In-Progress, Queued, Backlog, Done, then Canceled; earliest valid due
+date first, followed by descending sort order and task ID. Undated tasks follow dated tasks.
+Overview shows four unsnoozed actionable tasks; focus includes snoozed tasks, with up to 25 per
+section and eight Done tasks ordered by most recent completion. Subtasks remain eligible and
+summary/voice counts include all matching rows; focus badges count displayed rows. Voice defaults
+to In-Progress/Queued. Tap a task title on Overview or in focus to open
+that exact task in Tasks, with its detail view on phones. Complete/Reopen is a separate button.
+After a successful quick create, the title field clears even if the task list refreshes again.
+Failed creates keep the entered title. Focus shows action errors for the current context, but a
+later refresh can clear them; these are not persistent notifications.
+The main Tasks app retains its existing section ordering and All Groups preference.
 
 The layout follows the space available to the Voice Hub tab:
 
@@ -170,7 +218,8 @@ application.
 
 Wake listening works only in the desktop app while Voice Hub is open and enabled. Try push-to-talk
 first to verify microphone access. Speak the complete phrase, reduce the detection threshold in
-small steps, or switch to another bundled phrase. The microphone percentage should rise when you
+small steps, or switch to another bundled phrase. Enable **Show listening diagnostics** in Settings
+and select **Save** before reading the metrics. The microphone percentage should rise when you
 speak; compare the displayed wake score with the threshold to distinguish input problems from model
 tuning. Run **Tune this device** after changing microphones or wake phrases.
 
@@ -241,5 +290,12 @@ recovery action. The recovery button appears only while legacy preferences are a
 Legacy conversation history imports once per device, retaining the newest 200 entries. Clearing
 history also records that migration is complete, so reopening Voice Hub cannot restore old turns.
 A failed migration remains retryable and does not prevent microphone initialization.
+The conversation panel scrolls within its available height and snaps to the newest entry on its
+first visible layout and whenever it reopens. While you are within 48px of the bottom, it follows
+history loading, new entries, in-place edits, replacements at the 200-entry retention cap, text
+reflow, and resizing. Scrolling upward keeps your reading position through those updates until
+you return near the bottom or reopen the panel. Hidden or zero-height panels defer scrolling
+until layout is available. Long messages wrap inside the bounded panel so the microphone dock
+remains reachable; reopening does not reset stored history.
 
 Voice Hub's `voice-hub-run-action` and each skill provider's `invoke` declare `authorityPropagation: "preserve"`, which the runtime honors like a declared access level (see [Authority propagation and dynamic dispatch](./System/Tools.md#authority-propagation-and-dynamic-dispatch)). Installing the package into a group is the trust decision; there is no separate approval step. Admission and propagation are independent; selected targets and catalogs use the caller's live group role and inherited ceiling, and an ordinary Reader tool upstream still caps the chain at Reader.
