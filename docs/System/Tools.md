@@ -91,10 +91,21 @@ system providers before their catalog rows have persisted.
 Unresolved legacy rows retain their historical primary keys and source. They are
 ordinary, deletable rows; deleting one is permanent and never restores it. They
 report unavailable and cannot block provider activation.
-Quarantine cannot be cleared by an ordinary metadata save or sync replay. A bare
-`000tool0…` ID without its canonical target is quarantined rather than claimed by
-the next installed provider. Calls recheck retained identity evidence and current
-provider membership before execution.
+Quarantine cannot be cleared by an ordinary metadata save or sync replay, even if
+the replacement supplies the canonical target. Startup or provider publication may
+restore a bare row only when `code` is the empty string, `catalogIdentity` is unset
+or `deterministic`, and all three target columns are unset. The published target
+must be valid, its `toolName` must exactly match the stored `name`, and its sole
+protocol-selected ID must equal the row ID and start with `000tool0`. Reviewed
+legacy aliases still suppress deterministic allocation and cannot use this repair.
+The catalog patches only identity and state, resolving the row in that same write
+and preserving policy and historical fields, then continues normal publication. That covers a catalog insert whose
+identity columns were dropped before startup reconciliation. Rows with executable
+source, another name or identity, or any stored target cannot be restored this way.
+Any other quarantine stays sticky and blocks publication of that target; a real
+quarantine in the system catalog still aborts readiness before providers activate.
+Calls recheck retained identity evidence and current provider membership before
+execution.
 Ordinary SQLite row updates are checked as replacements: omitting canonical
 fields or quarantine state cannot silently erase them, and omitting an access field
 still clears it. The catalog writes explicitly marked patches instead, which change
