@@ -7,7 +7,7 @@ title: Package contracts
 
 **Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
-The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Newly scaffolded packages declare contracts in an isolated pure-data manifest; legacy packages can still use `definePackage()`. The `PackageLoader` handles registration at install time — including registering each package’s provided contracts into that data context’s in-memory `ContractRegistry` and settling dependencies afterward. Built-in **system contracts** (Logs, Device Operations, System Local Folders, …) self-register via `registerSystemContract` and are installed into every loader registry at construction; adding another system contract is one self-registration call, with no loader changes. System Local Folders is local-only (another device cannot call it) and is documented in [System Local Folders](../System/Local-Folders.md).
+The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Newly scaffolded packages declare contracts in an isolated pure-data manifest; legacy packages can still use `definePackage()`. The `PackageLoader` handles registration at install time — including settling declared dependencies and registering each package’s provided contracts into that data context’s in-memory `ContractRegistry`. Built-in **system contracts** (Logs, Device Operations, System Local Folders, …) self-register via `registerSystemContract` and are installed into every loader registry when its catalog readiness boundary completes; adding another system contract is one self-registration call, with no loader changes. System Local Folders is local-only (another device cannot call it) and is documented in [System Local Folders](../System/Local-Folders.md).
 
 ## Core components
 
@@ -16,9 +16,14 @@ The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` an
 | **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, events, and `alsoImplements` on each `ContractBuilder`. Declare dependencies with `pkg.consumes(...)` and cross-device tool targets with `pkg.remote(...)` on `PackageBuilder`. |
 | **Shape extraction** | Builds pure-data contract shapes from `IField[]` (derived from Zod schemas via `schemaToFields`). |
 | **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables, and event payloads), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
-| **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, select a provider for a `consumes` declaration (`providerPackageIds` / `fallbackToDefaultProvider`), swap providers, unregister, finalize contracts, and check consumer dependencies. Each data context’s `PackageLoader` owns one, seeds it with built-in **system contracts** at construction, and registers package providers when contract packages are installed. SQLite persistence of the registry is still a follow-up. |
+| **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, select a provider for a `consumes` declaration (`providerPackageIds` / `fallbackToDefaultProvider`), swap providers, unregister, finalize contracts, and check consumer dependencies. Each data context’s `PackageLoader` owns one, seeds it with built-in **system contracts** after catalog readiness, and registers package providers when contract packages are installed. SQLite persistence of the registry is still a follow-up. |
 | **Contract proxies** | `createContractConsumer`, `createContractProvider`, `createContractProviderEndpoint`, and `createContractProviderSession` turn the same contract into transport-independent calls, observable mirrors, and subscriptions. |
 | **Provider router** | `createContractProviderRouter` owns one connection's request channel, authorizes before resolution, multiplexes contracts and data contexts, and disposes cached provider endpoints. |
+
+The user-context routers await catalog readiness before selecting a provider,
+including an explicit `providerPackageId`, or checking group remote access metadata.
+Cold-context calls wait for system registration. Failed catalog initialization
+rejects the call without invoking a provider; a later call retries initialization.
 
 ## Declaring a consumed contract
 
@@ -57,7 +62,7 @@ logs.consumer.then(async (consumer) => {
 - `{ optional: true }` may resolve to `undefined` when no matching provider is available.
 - Options (`optional`, `providerPackageIds`, `fallbackToDefaultProvider`) are honored when the package-loader settles the handle after install.
 
-After `installContractPackage` registers the package’s provided contracts, `PackageLoader` settles each `consumes` handle: it selects a provider from the registry, looks up a live `ContractResolver`, builds an in-process consumer proxy, and resolves (or rejects) `handle.consumer`. System contracts such as Logs already ship with resolvers; a package-provided contract without a live resolver is treated as missing (optional → `undefined`, required → reject).
+After activating a host package, `PackageLoader` settles each `consumes` handle against the active providers, including the package’s own contracts: it selects a provider from the registry, resolves its live endpoint, builds a consumer proxy, and resolves (or rejects) `handle.consumer`. System contracts such as Logs already ship with resolvers; a package-provided contract without a live endpoint is treated as missing (optional → `undefined`, required → reject).
 
 ```typescript
 // Outside definePackage — the promise settles after the package finishes installing:
@@ -155,6 +160,88 @@ const myTool: ITool = {
 Contract validation (`validateProviderSatisfiesContract`) checks field-level compatibility — field names, types, optionality, and array flags — between a provider's tools and the contract it claims to implement via `alsoImplements`. If the `IField[]` on your `ITool` doesn't match the target contract's tool signature, registration will fail.
 
 See **[System: Tools](../System/Tools)** for the full tool authoring guide.
+
+### Runtime-owned tool identity
+
+`Tools` is the permanent runtime catalog for public contract members. Installation
+validates and persists catalog metadata before provider publication. Await
+`dataContext.packageLoader.catalogReady` before discovering system providers or
+reading the initial catalog. The coordinator is bound to the loader's shared
+`ContractRegistry`, so host and isolated installs serialize preparation and
+activation in the same context. It never evaluates provider code to build rows.
+Reviewed legacy aliases are rechecked after awaited preparation. Host `remote()` and
+`consumes()` handles settle after guarded activation, so a fresh package can
+reference its own newly registered contracts. Settlement runs outside catalog
+publication; host removal invalidates pending loads, including handle settlement,
+and waits for queued publication. Isolated loads recheck their generation after dev
+version correction and before runtime activation and loader bookkeeping.
+Host resolver registrations made during bundle evaluation stay staged until the
+guarded activation turn; failed replacements preserve the previous context-owned
+resolver. Unload and disposal retire those resolvers along with executable instances.
+Successful replacement invalidates cached host `consumes()` endpoints, allowing the
+same consumer to resolve the new implementation. Retained endpoints reject calls
+after their provider generation or resolver retires, including across awaited
+catalog validation and authorization. Catalog identity and provider lifetime are
+rechecked immediately before the tool function runs; failed replacements keep
+the previous generation usable.
+External routers refresh a retired cached endpoint once when its lifetime guard
+rejects before execution. Provider errors and downstream retirement errors are not
+retried, so refreshing a route cannot replay an already-started tool's effects.
+Direct host resolver lookups supply the owner with
+`getContractResolver(contractId, version, packageId, dataContext)`; system resolvers
+registered outside package evaluation remain process-wide.
+Host and isolated table declarations stay staged until all final catalog writes
+succeed. Isolated gateways then persist the prepared definitions and run guarded
+provider activation synchronously with live table publication. Cancellation or
+storage failure restores the previous stored definitions before queued table calls
+resume, so the old provider remains usable and its artifact can be reinstalled.
+The coordinator also watches the candidate's catalog identities through awaited
+table persistence. Its activation guard rejects newly quarantined or conflicting
+evidence before any provider, worker generation or live binding changes. Host
+contract and legacy table batches validate together before any binding is replaced.
+No worker starts during this process.
+Disposal prevents a prepared isolated install from
+publishing after shutdown. Backfill updates only catalog-owned columns, preserving
+legacy descriptions and access metadata that may arrive concurrently through sync.
+After preparation succeeds, each install or system start refreshes descriptive
+metadata (name, descriptions, IO and config schemas, runner flags) on existing rows,
+so package upgrades and changed development members do not leave tool search, the
+CLI or the UI stale. Catalog writes are explicit column patches that never change
+identity or access policy (`accessLevel`, `remoteAccessLevel`, `authorityPropagation`).
+A package's legacy executable describes the rows it claims with `packageId`; the
+public definition describes every other contract row.
+Validated catalog writes can restore historical deletion tombstones; startup remains
+retryable if storage or SQLite schema initialization fails. System startup guards
+the entire catalog snapshot before publishing any system provider, so a conflict
+in an earlier row during a later save or read rejects readiness. Catalog identities
+are permanent, and reserved aliases and deterministic IDs reject deletes even before
+materialization. Rejected synced writes, including an older runtime's delete of a
+catalog identity, are parked in the recovery queue. Unresolved legacy rows are a
+holdover pending migration to contracts: they may be deleted, are not restored,
+and a deleted or quarantined one never blocks loading its package.
+
+The exact `(contractId, version, toolName)` tuple selects either every reviewed
+legacy alias or one deterministic ID. Aliases have equal status; provider/install
+order never selects a primary ID. `alsoImplements` catalogs the requested older
+definition's members, without adding newer-only members to the older version.
+See [Tools identity protocol](../System/Tools#permanent-runtime-catalog) for the
+frozen encoding and narrow shipped-ID exceptions. This is an explicit exception
+to `newid()`; new contract identities still use `newid()` once, committed as constants.
+
+Catalog rows survive unload, uninstall and mutable member removal. They describe
+identity and history, while the registry describes current availability and the
+live provider enforces authorization. Neither synchronized rows nor catalog
+metadata grant execution rights. Existing host instances remain executable through
+legacy paths when their registered context and provider match the selected catalog
+target. A verified alias without a selected contract provider can also use a uniquely
+owned active legacy bundle, which publishes no contract registrations. Workflow
+arguments use the live instance's schema rather than the historical catalog schema.
+Removing or replacing a host package retires its owned instances; a global
+registration cannot substitute for them. Isolated metadata is never registered as
+an `IToolInstance`.
+Device Operations execution filters for live executables before choosing a name or
+text match. A deterministic metadata row and its same-named legacy host executable
+therefore remain independently inspectable without breaking legacy execution.
 
 ## Consuming a contract through a proxy
 
@@ -393,8 +480,8 @@ helper for isolated providers. Production connection routing does not use it.
 
 `connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
 
-Still deferred are installed-package provider resolver registration, precise generic
-`createContractConsumer<T>()` typing, granular per-package UI permissions, and remote
+Still deferred are precise generic `createContractConsumer<T>()` typing,
+granular per-package UI permissions, and remote
 access to tables, observables, and events (remote consumers are tools-only). Desktop and
 headless hosts raise the isolated wire cap to 16 MB. The codec default is 64 KB.
 Browser worker infrastructure exists (`createBrowserWorkerPort` in
@@ -662,9 +749,10 @@ without relying on Jest fixtures:
    increments the same public values. Private names, guessed physical/system
    names, and undeclared members fail closed.
 
-Isolated contract tools are not yet mirrored into the legacy `Tools` table, so this
-smoke package uses a contract consumer on its screen rather than
-`peers tools run`.
+Isolated public tools are indexed in `Tools` while their workers remain dormant.
+The smoke package still uses a contract consumer on its screen: catalog entries
+are metadata, and the generic `peers tools run` contract-dispatch migration is
+separate work.
 
 ## Related topics
 
