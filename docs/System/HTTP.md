@@ -8,8 +8,11 @@ System HTTP (`system.http`) is the Runtime contract that performs outbound HTTPS
 
 The desktop app and `peers-headless` provide it by importing `@peers-app/peers-device/http`. That entry is not on the package root, so the PWA bundle does not load it.
 
-System HTTP, System Scheduler, and System Contract Catalog are local-only contracts.
+System HTTP, System Scheduler, System Contract Catalog, System Tool Catalog,
+System Host Tools, and System Desktop Tools are local-only contracts.
 Calls arriving from another device are denied, including calls from a Self-trusted device.
+Device Operations `runTool` also excludes Host/Desktop aliases; local callers use
+their contracts or the local CLI catalog instead.
 
 ## Allowlist
 

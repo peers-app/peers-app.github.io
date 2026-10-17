@@ -85,7 +85,10 @@ The SDK exports `runWorkflow()` which creates a run from a `Workflow` template. 
 
 ### 3. Direct tool call (`runToolDirectly()`)
 
-The `peers-device` package exports `runToolDirectly()` for invoking a single tool as a one-off workflow run. It pre-creates the `WorkflowRun` before the synthetic message so that the message processor skips it (no double-processing). Completion is detected via a cross-context subscription.
+The `peers-device` package exports `runToolDirectly()` for invoking a single tool as a one-off workflow run. It pre-creates the `WorkflowRun` before the synthetic message so that the message processor skips it (no double-processing). Completion is detected via a cross-context subscription. The persisted tool ID is
+resolved through the permanent catalog. Workflow-dependent members use this path
+from CLI as well. An explicit Assistant ID applies that Assistant’s ceiling; a
+direct user run uses the user’s role.
 
 ## Execution engine
 
@@ -110,7 +113,7 @@ The processor has two trigger paths:
 
 For each instruction at `currentInstructionIndex`:
 
-- **`directCallToolId`**: loads the tool, gathers args from `vars` using the tool's input schema, initializes a wrapped tool instance with a full `IWorkflowRunContext`, and calls `toolFn(args)`. On success, `currentInstructionIndex` advances and the result is appended to `instructionResults`.
+- **`directCallToolId`**: resolves the catalog target and live input fields, gathers args from `vars`, then executes a workflow tool handle with logging and live authorization. Package contract tools dispatch through the checked catalog. Unresolved historical tool IDs log an error with the catalog’s actionable unavailable message. Only Host Tools and Desktop Tools system contracts are workflow-invocable. On success, `currentInstructionIndex` advances and the result is appended to `instructionResults`.
 - **`markdown` (no directCallToolId)**: resolves an assistant from mentions in the markdown or falls back to the run's default. Inserts a new `directCallToolId` instruction (targeting the assistant's runner tool) at the next index and re-enters.
 
 After each step:
@@ -120,6 +123,11 @@ After each step:
 | **Error** | Sets `inErrorState`, saves, sends error message to parent thread |
 | **More instructions remain** | Saves progress, schedules next step via `setTimeout(fn, 0)` (avoids stack overflow from recursive calls) |
 | **All instructions complete** | Sets `completedAt`, merges run `vars` back into the parent message's thread vars, sends completion message |
+
+The host passes `toolContext.workflow` only to the directly invoked host provider
+when its context matches the run. It strips this capability from nested tool/action
+calls and never sends it to remote or isolated providers. A member declaring
+`requiresWorkflowRun` rejects ordinary catalog calls without this context.
 
 ### Variables and args
 

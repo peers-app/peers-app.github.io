@@ -28,6 +28,15 @@ The platform assigns `versionTag` (dev / beta / stable). Do not set it in an iso
 
 **Metadata vs bundle bytes:** `PackageVersions` (and related `Files` records) sync as group data. As soon as a version record arrives, this device also downloads that version’s package, routes, and UI bundles into the local chunk cache so later activation or UI load does not wait on a peer. A downloaded version is **not** automatically activated. The device waits until the current sync has applied every page and saved its watermark, then evaluates the final package state once using its pin, follow, and device-override rules. An incompatible bundle can fail to load without blocking metadata sync or preventing a newer version from arriving. If a peer cannot provide a bundle yet, metadata sync still succeeds and the missing chunks retry when another peer becomes available.
 
+## Legacy bundle compatibility
+
+Host bundles in the old format with non-empty `toolInstances` are rejected before
+activating tables, staged resolvers or package state; an existing active instance
+stays intact. Tool-free bundles still load. Older `definePackage()` bundles load
+tables and UI but discard executable assignments with a migration warning. Rebuild
+with [contract resolvers](./contracts.md#migrating-from-toolinstances) to restore
+execution; pinned versions otherwise retain actionable unavailable catalog records.
+
 ## Group defaults vs this device
 
 Two layers work together:
@@ -73,7 +82,7 @@ Routes and UI bundles reload when you change the active version on this device (
 
 ## Signed publish artifacts (local)
 
-Use the system tool `publish-package` to build distributable files **on disk** after you have a signing key and built bundles:
+Use the local-only System Desktop Tools v1 member `publish-package` to build distributable files **on disk** after you have a signing key and built bundles:
 
 ```bash
 peers tools run publish-package '{"name":"Groceries","versionTag":"beta"}'
@@ -89,6 +98,12 @@ This writes (by default under `<packageLocalPath>/dist/publish/`):
 - Bundle file hashes in the pointer/payload match the files inside the tarball
 - `packageAuthorSignature` verifies against `Packages.publishPublicKey`
 - Semver in the pointer is what you intend to publish (remote auto-activation requires a **newer** semver than the installed follow candidate)
+
+The Electron resolver binds publication to `dataContext.userContext`, uses the
+existing Self-level admission, and retains catalog ID `000peers0tool000publishpk`.
+Headless hosts list its catalog row but cannot execute it. Its six string inputs
+(`packageId`, `name`, `localPath`, `versionTag`, `version`, `outputDir`) are optional
+in the public shape; the implementation requires either `packageId` or `name`.
 
 **Upload / hosting is a separate step.** `publish-package` does not push to S3 or your `updateUrl`. Point `Packages.updateUrl` at a host only after you have uploaded the tarball and pointer yourself (or via your release tooling).
 

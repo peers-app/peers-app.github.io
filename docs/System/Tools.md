@@ -6,7 +6,7 @@ title: Tools and access
 # Tools and access
 
 Tools are the actions Assistants and users can run: send a message, write a
-task, search workflows, query a device database, and so on. Each tool record
+task, search workflows, query a device database, and so on. Each live tool implementation
 has an integer `accessLevel` from **0–100**. Missing or unclassified tools
 default to **100 (Self)** so a new package tool cannot run until someone
 explicitly lowers it.
@@ -88,36 +88,32 @@ reviewed legacy aliases. It writes a new sync snapshot, preserving the identity 
 superseding the old delete. Failed initialization can be retried without publishing
 system providers before their catalog rows have persisted.
 
-Unresolved legacy rows are a holdover until those tools move to contracts. They
-keep their primary keys through the upgrade but are otherwise ordinary rows:
-local writers and older runtimes may delete them, and a deleted one is not restored.
-Their metadata is best-effort. A deleted or quarantined unresolved row is skipped
-with a warning and never prevents a package or the system from loading; legacy
-execution refuses a quarantined row on its own.
+Unresolved legacy rows retain their historical primary keys and source. They are
+ordinary, deletable rows; deleting one is permanent and never restores it. They
+report unavailable and cannot block provider activation.
 Quarantine cannot be cleared by an ordinary metadata save or sync replay. A bare
 `000tool0…` ID without its canonical target is quarantined rather than claimed by
-the next installed provider. Cached legacy tool references recheck retained
-identity evidence and current provider membership before execution.
+the next installed provider. Calls recheck retained identity evidence and current
+provider membership before execution.
 Ordinary SQLite row updates are checked as replacements: omitting canonical
 fields or quarantine state cannot silently erase them, and omitting an access field
 still clears it. The catalog writes explicitly marked patches instead, which change
 only their own columns and sync only the changed paths. Patches cannot name
-`accessLevel`, `remoteAccessLevel` or `authorityPropagation`.
+`accessLevel`, `remoteAccessLevel`, `authorityPropagation`, `code`,
+`codeRepository` or `packageId`.
 
 Descriptive metadata is refreshed whenever a provider is published or the system
 catalog starts, so tool search, embeddings, CLI `tools get` and the UI follow package
-and system upgrades and changed development members. Each field has one owner, so
-two writers never alternate:
+and system upgrades and changed development members.
 
-| Row | `name`, `usageDescription`, IO schemas | Runner flag, config schema, detailed description, code, repository |
+| Row | `name`, `usageDescription`, IO schemas | Runner flag, config schema, detailed description |
 |---|---|---|
-| Deterministic ID | Public definition | Not written |
-| Alias claimed by a package's legacy executable (`packageId`) | That executable | That executable |
-| Other reviewed alias | Public definition | Legacy executable, if any |
-| Unresolved legacy row | Legacy executable | Legacy executable |
+| Deterministic ID or alias without package provenance | Public definition | Supplemental metadata, if declared |
+| Alias whose provenance matches the publishing provider | Public definition | Supplemental metadata, if declared |
+| Alias with another provider's provenance | Retained | Supplemental metadata, if declared |
 
-Refresh runs only after a provider's preparation succeeds, so a failed replacement
-leaves its rows unchanged. A publication with unchanged metadata writes nothing.
+Refresh runs only after preparation succeeds. Unchanged metadata writes nothing;
+identity, source, provenance and live access policy remain unchanged.
 
 Install/replacement persists catalog rows before publishing a provider. Host and
 isolated replacements keep candidate table declarations staged until the final
@@ -135,26 +131,28 @@ history. Synced metadata
 does not activate a provider. A row proves neither current availability nor
 permission to execute: the contract registry supplies availability and the selected
 live provider supplies authorization. Catalog reconciliation does not overwrite
-provider-specific policy. Legacy search/execution includes only real executable
-instances; isolated catalog entries still require contract consumers until the
-CLI/workflow/assistant dispatch migration is implemented.
-For catalog aliases, a legacy executable must belong to the selected provider in
-that exact data context. If no contract provider is selected, a verified alias can
-still run from a uniquely owned, active legacy bundle; those bundles do not publish
-contract registrations. Multiple legacy owners are ambiguous and fail closed.
-Global registrations or instances retained from another context cannot satisfy
-these checks. Workflow argument gathering and validation use the live owned
-instance's input schema, since the retained catalog schema may describe an older
-implementation.
-Device Operations `getTool` and `listTools` include catalog metadata. `runTool`
-filters candidates for live executability before exact-name or text selection, so
-a catalog-only row cannot shadow a same-named host executable or create a false
-ambiguity. An exact catalog-only ID remains unavailable to legacy execution.
-CLI local `tools run` name/text lookup excludes deterministic metadata and
-quarantined rows before selecting an ID; live ownership and access are still
-checked by the host. With `--device`, the CLI sends the original ID/name/text
-query to Device Operations for executable lookup. `tools get` remains a metadata
-inspection command.
+provider-specific policy.
+
+Workflow and assistant references resolve through the catalog on every invocation.
+They can run package contract tools (host or isolated), and
+system tools only from **Host Tools** or **Desktop Tools**. Tool Access Control,
+Identity, Invites, Device Operations, both catalogs, HTTP, Scheduler, Local Folders
+and Network remain excluded. This prevents a workflow from approving itself or
+entering administrative contracts. Discovery uses live access levels and never
+starts an isolated worker. Equal aliases are deduplicated by target.
+
+Argument gathering uses the current contract member's fields. Tool calls keep their
+logs, timing, errors and runner services in the workflow's own context, even when
+another group is active.
+
+Device Operations keeps `getTool` and `listTools` metadata behavior. Its `runTool`
+uses runnable catalog lookup. Ordinary contract calls execute under the remote
+caller's own user ID and group role, including Self-trusted other accounts.
+`requiresWorkflowRun` members and any `assistantId` require the
+caller to be the host account. Package callers cannot enter the Device Operations
+workflow adapter. Local-only targets are always rejected remotely.
+CLI `--assistant` uses catalog lookup and the workflow path; `--device` sends the
+original lookup query to Device Operations.
 
 Host bundle resolver registrations are staged during evaluation and published in
 the owning context only after successful activation. Failed or invalidated
@@ -172,6 +170,165 @@ previous endpoint generation. Routers owned by external transports refresh a ret
 endpoint once when it rejects before invoking provider code. Errors from inside a
 provider, including a downstream endpoint's retirement, do not replay that provider.
 
+## Contract-owned shipped tools
+
+Ordinary Common, Tasks, Groceries, host and desktop executables now belong to
+context-bound contract resolvers. `Tools` supplies permanent discovery metadata;
+it does not own their code. Their existing IDs remain equal reviewed aliases:
+
+| Catalog ID | Contract v1 → member |
+|---|---|
+| `000peers0tool0000000newid` | Common Tools → `new-id` |
+| `000peers0tool00wrkflwsrch` | Common Tools → `search-workflows` |
+| `00mh0wlipkdbeaw8newtsk001` | Tasks → `new-task` |
+| `00mh0wlipkdbeaw8wrttsk001` | Tasks → `write-task` |
+| `00mh0wlipkdbeaw8wrtcmt001` | Tasks → `write-task-comment` |
+| `00mh0wlipkdbeaw8shopitm01` | Groceries → `add-to-shopping-list` |
+| `000peers0tool0creategroup` | System Host Tools → `create-group` |
+| `000peers0tool00querydb001` | System Host Tools → `query-database` |
+| `000peers0tool00000homedir` | System Desktop Tools → `get-user-home-directory` |
+| `000peers0tool0000peersdir` | System Desktop Tools → `get-peers-data-directory` |
+| `000peers0tool00000showdir` | System Desktop Tools → `open-directory-in-os` |
+| `000peers0tool000000pkgdir` | System Desktop Tools → `get-peers-packages-directory` |
+| `000peers0tool00describdir` | System Desktop Tools → `describe-directory-contents` |
+| `000peers0tool00appversion` | System Desktop Tools → `app-version` |
+| `000peers0tool000publishpk` | System Desktop Tools → `publish-package` |
+
+System Host Tools (`00mvbrni9wjucq4q1jbfe9ep3`) and System Desktop Tools
+(`00mvbrni9w4z58hwoxfe406ru`) are local-only, including for Self-trusted remote
+devices. Headless hosts expose desktop catalog rows but have no desktop resolver,
+so those rows stay unavailable. `query-database` remains Writer-level and distinct
+from Device Operations `queryDatabase`. `create-group` creates for the provider's
+owning user and still seeds bundled peers-core. Tasks and Groceries reject a
+`groupId` outside the authorized context; `write-task` no longer searches other
+groups. Writes require a trusted forwarded actor.
+
+Common's `throw-error`, `set-variable`, `send-message`, `run-a-workflow` and
+`cli_assistant_runner` now execute through its contract provider. The temporary
+alias bridge has been removed. The append-only inventory also maps:
+
+| Catalog ID | Contract v1 → member |
+|---|---|
+| `000peers0tool00000runner1` | System Host Tools → `default_assistant_runner` |
+| `000peers0tool00toolsearch` | System Host Tools → `tool-search` |
+| `000peers0tool0000000dircd` | System Desktop Tools → `cd` |
+| `000peers0tool000000notify` | System Desktop Tools → `send-notification` |
+
+All reviewed shipped IDs have contract targets; the unresolved inventory is empty.
+Runner metadata and configuration remain persisted without executable registration,
+including the Common CLI runner on a fresh package installation.
+
+`requiresWorkflowRun` is host-only invocation policy, separate from contract shape
+identity. It applies to Common's throw/set/run/CLI runner, the default assistant
+runner, tool-search, cd and send-notification. Catalog invocation without a workflow
+rejects these members; CLI routes them through `runToolDirectly`. Host providers
+receive `toolContext.workflow` only for the directly invoked tool, in the same data
+context. Nested tool/action contexts, remote callers and isolated workers never
+receive this capability. `send-message` may run without a workflow when an explicit
+channel/thread/run ID is supplied. It resolves that target and any thread root only
+inside the authorized data context, and records the checked caller as the message
+author. The active UI group and host account do not replace the caller's context or
+identity, including calls from packages and other devices.
+
+Approval requests freeze arguments and the required live level. Approval and the
+host-approved execution both recheck availability, user role and current level.
+A provider switch that raises the level above the approved value fails the request;
+thread/context grants recorded below the current level are ignored. Each subsequent
+workflow call resolves the current compatible provider. A call already executing
+is allowed to finish; an endpoint retired before execution is resolved once again.
+
+Older runtimes do not know the newly appended host/desktop aliases. They park
+resolved rows for those aliases in sync recovery rather than accepting an unknown
+mapping. Keep the append-only inventory intact across upgrades; mixed-version
+peers may alternate descriptive metadata until upgraded.
+
+## System Tool Catalog
+
+`getToolCatalogContractDefinition()` exposes one local API over `Tools` plus the
+current context's registry and provider policy:
+
+| Tool | Input | Result |
+|---|---|---|
+| `listTools` | `{query?, limit?}` | `{tools: IToolCatalogEntry[]}` (default 100, maximum 500) |
+| `getTool` | `{toolIdOrName, runnableOnly?}` | `{tool?: IToolCatalogEntry}` |
+| `invokeTool` | `{toolId, args?, providerPackageId?, fallbackToDefaultProvider?}` | `{result}` |
+
+Entries include `toolId`, all equal `aliases`, descriptive schemas, catalog state
+and identity, the requested `target`, live provider information, `workflowInvocable`,
+and `availability` including `requiresWorkflowRun`.
+`getTool` also projects `access` for contract entries: required level, caller level,
+and `allowed`. Availability does not grant permission. The selected target endpoint
+checks the original caller's live role and inherited authority on every invocation.
+Discovery reads installed policy and may call host resolvers in-process for access;
+it never resolves endpoints or starts isolated workers.
+
+Dispatch classes are:
+
+- `contract`: the active provider has an isolated installation or live host resolver.
+- `unavailable`: for example `no-provider`, `no-implementation`, `member-removed`,
+  `legacy-package-upgrade-required`, `legacy-execution-removed`, `quarantined`,
+  or `invalid-identity`. The entry includes an actionable `availability.message`.
+
+An exact ID identifies that row, including when unavailable for metadata queries. Name and text
+lookup fail on multiple distinct targets; equal aliases form one target. With
+`runnableOnly`, unavailable entries are excluded for IDs as well as name/text selection.
+
+The contract is local-only and rejects package callers for all three tools.
+Invocation also rejects device callers, missing identity, a mismatched data
+context, unresolved/quarantined identities, and targets on the catalog itself.
+Only the four documented invocation keys are accepted: payload `authority`,
+assistant IDs and workflow variables are rejected. The wrapper admits at None and
+preserves authority; it supplies neither a system-package caller nor its own frame
+to the selected target. No delegated sessions or new approvals are introduced.
+
+Invocation accepts a plain argument object (omitted means `{}`), checks required
+fields against the requested version's public schema, and converts top-level Date
+strings to valid Dates. Unknown fields and nested object contents are forwarded
+unchanged; schema defaults are not inserted. Validation failures do not execute code.
+`alsoImplements` may select newer implementation code while validation still uses
+the requested version's definition.
+
+By default the active provider is selected. `providerPackageId` makes selection
+strict; an absent preference fails unless `fallbackToDefaultProvider: true` permits
+the active provider. A selected provider without an implementation fails, and
+contract errors propagate to the caller. Every call disposes its endpoint;
+only retirement of that exact endpoint before execution permits one fresh selection
+and retry. Uninstall retains catalog rows, which then report `no-provider`.
+
+### Legacy execution removed
+
+The executable Tools registry and source execution are removed. Dispatch is either
+`contract` or `unavailable`. An unresolved row with `packageId` reports
+`legacy-package-upgrade-required`: “Package PACKAGE_ID must be upgraded to implement this
+tool through a contract resolver.” Without package provenance it reports
+`legacy-execution-removed`: “Legacy tool execution has been removed; implement this
+tool through a contract resolver.” Both messages link to the
+[migration example](../Packages/contracts.md#migrating-from-toolinstances).
+A provider declaring a member without a resolver reports `no-implementation`,
+names the provider and member, and asks for a version that implements it.
+Missing providers, removed members and quarantined identities remain actionable
+unavailable records; catalog history is retained. Unreviewed custom IDs stay
+unresolved after migration: update saved workflow and Assistant references to the
+resolver’s catalog ID. The old custom row remains deletable.
+
+A legacy-format host bundle with a non-empty `toolInstances` array is rejected
+before tables, staged resolvers or package instances activate. Tool-free legacy
+bundles still load. Older `definePackage()` bundles retain tables and UI; assigning
+`ContractBuilder.toolInstances` warns once per builder and discards executables.
+Their declared members report `no-implementation` until a resolver is registered.
+
+`code` and `codeRepository` remain historical columns at Tools schema version 2.
+Their saved bytes are preserved and never refreshed or executed by this runtime.
+`packageId` is historical provenance, not ownership, availability or permission.
+Supplemental `isAssistantRunner`, `configSchema` and `detailedDescription` metadata
+is keyed by a declared contract target and written only after successful preparation.
+System metadata updates accept only existing resolved system members.
+
+Older runtimes may still execute and describe their own legacy tools, and their
+synced descriptions may alternate with those from newer runtimes. Sync does not
+activate those tools in this runtime. Upgrade every device and the package version
+to use contract implementations consistently.
+
 ### Mixed-version sync
 
 Runtimes that predate the catalog do not know its columns. When one of them writes a
@@ -182,8 +339,9 @@ of a catalog identity; both are parked. Deletes of unresolved legacy rows apply
 normally. Older runtimes reject the
 26-character Scheduler `list` alias in their own peer-ID validation. They park it
 as a schema failure and materialize it from local history once they upgrade.
-Tool mention markup (`<$tool:name:id>`) links only 25-character IDs of live legacy
-executables, so it never links that catalog-only Scheduler alias.
+Tool mention queries show workflow-invocable catalog entries. Browser-only hosts
+without the catalog API fall back to non-quarantined rows. Historical mention IDs
+remain readable even when their provider is unavailable.
 
 ## Policy
 
@@ -291,3 +449,10 @@ The `cap` ceiling from an ordinary tool's own level applies inside the strict di
 Host providers select public tools through `context.dispatchTool({contractId, version, toolName, providerPackageId}, args)`. Checked package aliases use `context.dispatchAction`; isolated providers use `callConsumedTool`. They share the runtime authorizer. Consumed-contract declarations and ceilings still apply; private canonical actions stay pinned to their owner. Target admission levels are read live, separately for each provider. Arguments cannot provide a numeric role, user identity, or propagation mode.
 
 Catalog filtering is advisory and execution rechecks the current role, ceiling, target metadata, and declared propagation mode. Strict calls deny approval-required outcomes and unsupported remote or cross-context forwarding. General table/observable writes remain outside this bounded dispatch scope.
+
+## Tool screens
+
+Tool details and field tables are read-only: identity, aliases, contract member,
+provider, dispatch reason and live access come from the catalog. The code editor,
+Save action, create-on-Enter flow and obsolete Settings Tasks importer are removed.
+The runner dropdown hides unavailable runners when host catalog data is available.

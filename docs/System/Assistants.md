@@ -5,6 +5,12 @@ title: Assistants
 
 # Assistants
 
+Assistant runners and included tools execute through contract providers. Historical
+unresolved tool references remain visible but unavailable; their catalog message
+explains whether to upgrade the package or migrate to a resolver. Runner flags and
+configuration schemas are supplemental metadata, preserved independently of executable
+code. See [Legacy execution removed](./Tools.md#legacy-execution-removed).
+
 Assistants are named workers that reply in normal Peers threads. A user
 @mentions an Assistant, the host creates a workflow run, and the Assistant's
 runner tool (hosted inference or a local CLI) decides what to say and which
@@ -59,12 +65,20 @@ Rules:
   scoped grant before it runs
 
 Direct user calls (CLI `peers tools run`, Device Operations `runTool`, or an
-explicit UI tool call) use the user ceiling only: allow when `T <= U`.
+explicit UI tool call) use the user ceiling only: allow when `T <= U`. An explicit
+CLI `--assistant` uses the Assistant’s ceiling and the existing approval path.
 
 Nested workflows inherit the parent run's Assistant id and do **not** escalate
 authority. The user's role is re-read at approve and execute time. Access
 identity vars are host-owned: `set-variable` cannot write them, and a
 raised `accessAssistantId` is capped at the run's default Assistant.
+
+Tool discovery and execution use the permanent catalog. Package tools may run on
+the host or in isolation; system tools are limited to Host Tools and Desktop Tools.
+Administrative systems, including Tool Access Control, are never offered to a
+workflow. The live tool level must fit the user’s role; explicit skipped mentions
+are logged. Equal aliases become one tool. Inference names are unique, contain
+only letters, digits, `_` or `-`, and fit the 64-character API limit.
 
 ## Step-up approval
 
@@ -88,9 +102,20 @@ tools; Assistants never see them.
 Access levels do **not** sandbox package top-level code. Review of package
 manifests is a separate, later project.
 
+Provider changes are checked again when approving and executing frozen calls.
+If a new provider requires a higher level than the recorded approval, execution
+fails and the thread receives a failure notice. Reusable grants never cover a
+higher live level. Provider switching does not reset or increase the Assistant’s
+ceiling.
+
 ## Configuration
 
-Assistant and tool screens show named presets plus a custom 0–100 editor.
+Assistant configuration shows named access presets plus a custom 0–100 editor.
+Tool screens show read-only live policy and provider metadata. Unavailable runners
+are hidden from runner selection when the host catalog is available. An assistant's
+currently selected unavailable runner stays visible with an unavailable label and a
+disabled option, so its configuration remains understandable until a replacement
+is selected.
 The Assistant list still shows Assistants the current user cannot invoke, with
 a badge explaining the required level.
 

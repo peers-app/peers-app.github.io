@@ -140,7 +140,8 @@ After install, remote updates continue to be checked via the package's `updateUr
 
 ### Publishing packages
 
-Packages are published using the `publish-package` system tool (desktop only):
+Packages are published using the local-only System Desktop Tools v1 member
+`publish-package`, provided by Electron for the owning user context:
 
 ```bash
 peers tools run publish-package '{"name":"peers-core"}'

@@ -161,6 +161,54 @@ Contract validation (`validateProviderSatisfiesContract`) checks field-level com
 
 See **[System: Tools](../System/Tools)** for the full tool authoring guide.
 
+### Context-bound tool providers
+
+Executable ownership belongs to the contract resolver. Author the public shape
+with `contract.tools = [{ tool: myTool }]`, then register a resolver at the top
+level of the package bundle with `{ providerPackageId: packageId }`. The loader
+stages that registration and binds it to the installing data context.
+
+```typescript
+registerContractResolver(contractId, 1, ({ dataContext }) => ({
+  contractId,
+  version: 1,
+  forwardCallContext: true,
+  tools: {
+    add: {
+      tool: { name: "add", usageDescription: "Add an item", accessLevel: AccessLevel.Writer },
+      inputSchema,
+      toolFn: (args, context) => {
+        if (!context.actorUserId) throw new Error("Missing trusted actor");
+        return addItem(dataContext, args, context.actorUserId);
+      },
+    } satisfies IContractToolImplementation,
+  },
+}), { providerPackageId: packageId });
+```
+
+`IContractToolImplementation` requires only `tool.name`, `tool.usageDescription`
+and `toolFn`; schemas and access/authority metadata are optional. It needs no
+`toolId`, persisted `Tools` row or `registerTool` call. The contract member name
+supplies identity. Existing `IToolInstance` values remain assignable. Use the
+supplied `dataContext` for every lookup/write; reject cross-context arguments and
+require the forwarded `actorUserId` for writes instead of falling back to global
+user state. `forwardCallContext: true` appends trusted host context and rejects
+additional positional arguments.
+
+Runner shapes may carry `isAssistantRunner`, `configSchema` and
+`detailedDescription`. The builder emits these as target-keyed `toolMetadata`;
+installation persists them without executable registration or policy changes.
+
+A host member can declare `requiresWorkflowRun`
+(policy, excluded from shape identity). Its forwarded `toolContext.workflow` is
+an in-process `IWorkflowRunContext` in the authorized group. Use
+`requireWorkflowRunContext(toolContext, toolName)` to require and validate it.
+The capability belongs only to the directly invoked host tool: nested
+`dispatchTool`/`dispatchAction`, remote callers and isolated workers never receive
+it. An ordinary catalog call rejects workflow-required members; clients use
+`runToolDirectly`. Isolated packages likewise declare
+public contract members; the runtime materializes their catalog IDs automatically.
+
 ### Runtime-owned tool identity
 
 `Tools` is the permanent runtime catalog for public contract members. Installation
@@ -177,7 +225,7 @@ and waits for queued publication. Isolated loads recheck their generation after 
 version correction and before runtime activation and loader bookkeeping.
 Host resolver registrations made during bundle evaluation stay staged until the
 guarded activation turn; failed replacements preserve the previous context-owned
-resolver. Unload and disposal retire those resolvers along with executable instances.
+resolver. Unload and disposal retire those resolvers.
 Successful replacement invalidates cached host `consumes()` endpoints, allowing the
 same consumer to resolve the new implementation. Retained endpoints reject calls
 after their provider generation or resolver retires, including across awaited
@@ -208,17 +256,16 @@ metadata (name, descriptions, IO and config schemas, runner flags) on existing r
 so package upgrades and changed development members do not leave tool search, the
 CLI or the UI stale. Catalog writes are explicit column patches that never change
 identity or access policy (`accessLevel`, `remoteAccessLevel`, `authorityPropagation`).
-A package's legacy executable describes the rows it claims with `packageId`; the
-public definition describes every other contract row.
+The public definition refreshes descriptions when `packageId` is absent or matches
+the publishing provider. Historical source and provenance are never refreshed.
 Validated catalog writes can restore historical deletion tombstones; startup remains
 retryable if storage or SQLite schema initialization fails. System startup guards
 the entire catalog snapshot before publishing any system provider, so a conflict
 in an earlier row during a later save or read rejects readiness. Catalog identities
 are permanent, and reserved aliases and deterministic IDs reject deletes even before
 materialization. Rejected synced writes, including an older runtime's delete of a
-catalog identity, are parked in the recovery queue. Unresolved legacy rows are a
-holdover pending migration to contracts: they may be deleted, are not restored,
-and a deleted or quarantined one never blocks loading its package.
+catalog identity, are parked in the recovery queue. Unresolved legacy rows
+remain deletable, are never restored and report actionable unavailability.
 
 The exact `(contractId, version, toolName)` tuple selects either every reviewed
 legacy alias or one deterministic ID. Aliases have equal status; provider/install
@@ -231,17 +278,48 @@ to `newid()`; new contract identities still use `newid()` once, committed as con
 Catalog rows survive unload, uninstall and mutable member removal. They describe
 identity and history, while the registry describes current availability and the
 live provider enforces authorization. Neither synchronized rows nor catalog
-metadata grant execution rights. Existing host instances remain executable through
-legacy paths when their registered context and provider match the selected catalog
-target. A verified alias without a selected contract provider can also use a uniquely
-owned active legacy bundle, which publishes no contract registrations. Workflow
-arguments use the live instance's schema rather than the historical catalog schema.
-Removing or replacing a host package retires its owned instances; a global
-registration cannot substitute for them. Isolated metadata is never registered as
-an `IToolInstance`.
-Device Operations execution filters for live executables before choosing a name or
-text match. A deterministic metadata row and its same-named legacy host executable
-therefore remain independently inspectable without breaking legacy execution.
+metadata grant execution rights. Workflow arguments use the current public member
+schema. Device Operations selects only runnable contract targets by ID, name or text.
+
+### Migrating from toolInstances
+
+Replace executable builder assignments with a context-bound resolver. The old API
+is a warning-only compatibility setter; TypeScript assignments are rejected.
+
+Before (old SDK):
+
+```ts
+const items = pkg.contract(contractId, 1, "Items");
+items.tools = [{ tool: addItemTool }];
+items.toolInstances = [{ tool: addItemTool, toolFn: addItem }];
+```
+
+After:
+
+```ts
+const items = pkg.contract(contractId, 1, "Items");
+items.tools = [{ tool: addItemTool }]; // Includes runner/config metadata if present.
+registerContractResolver(contractId, 1, ({ dataContext }) => ({
+  contractId,
+  version: 1,
+  tools: {
+    "add-item": {
+      tool: addItemTool,
+      toolFn: (args) => addItem(dataContext, args),
+    },
+  },
+}), { providerPackageId: packageId });
+```
+
+Use the exact public member name and the supplied data context. Keep shipped IDs
+in the reviewed alias inventory; arbitrary shape `toolId` values cannot allocate
+catalog identities. `IToolInstance` remains deprecated for source compatibility;
+it is never registered or dispatched.
+
+Legacy-format bundles carrying a non-empty `toolInstances` array fail to load.
+Rebuild them with `definePackage()` and resolvers. Older `definePackage()` bundles
+still load tables and UI, discard executable assignments with a warning, and expose
+unimplemented members as unavailable. See [Legacy execution removed](../System/Tools.md#legacy-execution-removed).
 
 ## Consuming a contract through a proxy
 
@@ -750,9 +828,10 @@ without relying on Jest fixtures:
    names, and undeclared members fail closed.
 
 Isolated public tools are indexed in `Tools` while their workers remain dormant.
-The smoke package still uses a contract consumer on its screen: catalog entries
-are metadata, and the generic `peers tools run` contract-dispatch migration is
-separate work.
+The screen uses a contract consumer; local `peers tools run <toolId>` also invokes
+these tools through the [System Tool Catalog](../System/Tools.md#system-tool-catalog).
+The catalog validates the requested version and selects the current provider
+without granting additional caller authority.
 
 ## Related topics
 

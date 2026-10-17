@@ -242,7 +242,36 @@ peers tools list --device <deviceId>
 peers tools run "new-task" '{"title": "Remote task"}' --device <deviceId>
 ```
 
-Tool lookup supports exact ID, exact name, and fuzzy text search. If a fuzzy search matches multiple tools, you'll be prompted to use a more specific name or the tool ID.
+Local `tools list [query]`, `tools get`, and direct `tools run` use the
+[System Tool Catalog](./Tools.md#system-tool-catalog). Omitted `-c` always means
+your personal context, including assistant runs. `personal` and `me`
+are aliases for that context.
+
+Lookup uses exact ID, exact name, then text. Multiple distinct targets are ambiguous
+for both names and text; use the stable tool ID. Contract tools invoke the selected
+provider after schema validation. Unavailable entries print their actionable
+`availability.message` and exit 1. Unknown dispatch values ask you to update Peers.
+Legacy tool execution has been removed; migrate packages to contract resolvers.
+
+The list columns are toolId, name, dispatch/reason, contract@version, and description.
+`list --json` emits one catalog entry per line; `get --json` emits one entry with
+target, availability, providers, and access. `run --json` prints the target result.
+For example, an entry contains `availability: {dispatch: "contract"}` and
+`target: {contractId, version, toolName}`; it is no longer a raw Tools row.
+`--assistant` uses runnable catalog lookup and runs with that Assistant’s ceiling
+through a workflow. Contract members declaring `requiresWorkflowRun`, such as
+`set-variable`, also route through a one-off workflow run:
+
+```bash
+peers tools run set-variable '{"variableName":"x","variableValue":1}'
+```
+
+`--provider` and `--fallback-to-default` are rejected with `--assistant`, with
+`--device`, and for workflow-run tools. Direct catalog calls introduce
+no approval prompts. `--device` retains Device Operations metadata JSON and sends
+the original lookup query to the remote host. Ordinary remote contract calls retain
+the caller’s identity and role; workflow paths require the host’s own account.
+Local-only targets cannot run remotely.
 
 **Options:**
 
@@ -253,6 +282,8 @@ Tool lookup supports exact ID, exact name, and fuzzy text search. If a fuzzy sea
 | `-a, --assistant <id>` | Assistant ID to use as context for the tool run |
 | `-n, --limit <count>` | Max tools to list (default: 100) |
 | `--device <id>` | Query or run tools on a directly connected device |
+| `--provider <packageId>` | Prefer this contract provider; fail if absent |
+| `--fallback-to-default` | Allow the active provider if the preferred provider is absent |
 
 ### `peers logs` — Logs
 
