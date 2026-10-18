@@ -18,7 +18,7 @@ At a high level, a package contributes:
 
 ## Package lifecycle
 
-Packages follow a **three-phase lifecycle**: `dev` → `beta` → `stable`. Disk updates create **dev** versions; promotion to beta or stable is explicit in the **Versions** UI. Dev records sync to the group but **never auto-activate on other devices** unless those devices opt in.
+Packages follow a **three-phase lifecycle**: `dev` → `beta` → `stable`. Disk updates create **dev** versions; promotion to beta or stable is explicit, in the **Versions** UI or with `peers packages promote`. Dev records sync to the group but **never auto-activate on other devices** unless those devices opt in.
 
 When you **activate** a different version on this device, routes and UI bundles reload without a full page refresh.
 
@@ -43,8 +43,8 @@ cd ~/peers/packages/my-app
 npm install && npm run build
 ```
 
-Then open **Packages → Create** in Peers and select the existing package
-directory to import it.
+Then import the directory: open **Packages → Create** in Peers and select it, or run
+`peers packages import ~/peers/packages/my-app`.
 
 ### Importing an existing package directory
 
@@ -59,6 +59,13 @@ If the target directory already exists and contains a valid `package.json` with 
 If those bundles match the package's existing `dev` `PackageVersions` row, import reuses that row instead of writing a new one. If `Packages.activePackageVersionId` is empty, as it is after deleting and re-importing a package, import sets it to that version and activates it on this device. Deleting a package removes only its `Packages` row; its version rows and bundle files remain so a later import can reuse them.
 
 This is the supported path for monorepo apps under `official-packages/` (for example Groceries).
+
+From a terminal, `peers packages import <path>` imports a folder; it fails rather than
+scaffolding when the folder is missing. After a rebuild, `peers packages reload <packageId>`
+installs the new bundles and exits `1` with the load error if the new version does not run,
+while the previous version keeps running. `peers packages get <packageId>` shows the running
+version and the last error, and `peers packages uninstall <packageId>` removes the package.
+See [Packages](../System/Packages.md).
 
 Importing the same local package by name into Personal or another group reuses its publisher identity. Deleting the package leaves your personal signing secret and its cached public key intact, so re-importing after uninstall also preserves that identity. Import fails without changing keys if the available public keys disagree, or if an existing secret has no recoverable public key.
 

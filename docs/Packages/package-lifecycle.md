@@ -19,9 +19,9 @@ dev ──▶ beta ──▶ stable
 
 | Phase | How it is created | Syncs to the group? | Auto-activates on other devices? |
 |-------|-------------------|---------------------|----------------------------------|
-| **dev** | Automatically when code is loaded from disk | Yes (version records sync) | **Never** — unless a device explicitly opts in |
-| **beta** | Promote in the package Versions UI | Yes | Only on devices following `stable,beta` or `*` |
-| **stable** | Promote in the package Versions UI | Yes | On devices using the default follow policy (`stable`) |
+| **dev** | Automatically when code is loaded from disk | Yes (version records sync) | **Never**: each device must activate it, then follows its rebuilds until it switches back to a release |
+| **beta** | Promote in the package Versions UI or with `peers packages promote` | Yes | Only on devices following `stable,beta` or `*` |
+| **stable** | Promote in the package Versions UI or with `peers packages promote` | Yes | On devices using the default follow policy (`stable`) |
 
 The platform assigns `versionTag` (dev / beta / stable). Do not set it in an isolated manifest,
 `definePackage()`, or contract definitions.
@@ -58,17 +58,21 @@ Activation scope depends on the version and override state:
 
 ## Day-to-day development
 
-1. **Edit your package on disk** (local path in Package settings).
-2. **Reload or restart** the app (or use your usual dev workflow). The installer creates or updates a **dev** package version from the bundle on disk.
-3. **Dev versions sync** to the group as `PackageVersions` records, and other devices **download those version files immediately**, but they **do not auto-switch** to dev.
+1. **Edit your package on disk** (local path in Package settings). If a beta or stable release already has the version in `package.json`, bump it first, so the dev build is always the next version. `reload` warns, and `promote` refuses, when a dev build reuses a released version number.
+2. **Reload** the package (**Reload Package** in its menu, or `peers packages reload <packageId>`), reload the page, or restart the app. The installer creates or updates a **dev** package version from the bundle on disk and loads it. A reload whose new version fails to load reports the error and leaves the previous version running; `peers packages get <packageId>` shows it.
+3. **Dev versions sync** to the group as `PackageVersions` records, and other devices **download those version files immediately**, but they **do not auto-switch** to dev. That holds even for a new package whose only version is dev: other devices show it installed but not running ("Only a dev version is selected; activate it on this device to run it") until someone activates it on that device. A device that activates a dev version keeps loading each rebuild of it, until it activates a beta or stable release, follows the group again, or the dev version is promoted.
 4. Open **Packages → your package → Versions** to see versions, hashes, and tags. Use **Activate** on a dev version to run it on **this device** without changing the group active version.
+
+:::warning A failed dev reload leaves old code running
+The broken build is still saved as the dev version, but this device keeps running the previous code. Your edits are not live until a reload succeeds, and after a restart (or on another device in the group) the broken version is the one that loads. Check after each reload: `peers packages reload` exits 1 and prints the error, and the Packages screen shows **Update failed**. A page refresh or `peers ui reload` reloads package folders too, but only logs a failure to the developer console.
+:::
 
 App icons in the apps list come from `appNavs` on the **active PackageVersion** (copied from
 the isolated manifest or legacy package definition when bundles are installed). Startup sync
 always persists `appNavs` onto new versions, including when the group is currently on a stable
 build.
 
-Routes and UI bundles reload when you change the active version on this device (no full page refresh required).
+Routes and UI bundles reload when you change the active version on this device (no full page refresh required). Activating a version (**Activate**, **Use Dev**, **Use Release**, or `peers packages activate`) also loads it on this device's Runtime right away; you do not need to restart.
 
 ## Releasing to the group
 
@@ -76,9 +80,7 @@ Routes and UI bundles reload when you change the active version on this device (
 2. Promotion updates the version’s `versionTag`, refreshes `packageAuthorSignature` when a package signing key is available (and clears a stale signature if not), and appends to the version’s signed `history` audit trail. The version number itself is not editable. It is the version baked into the built bundle, and changing only the label makes an isolated package fail to load.
 3. If you promote the version this device is **already running**, and the new tag matches the group’s follow policy (default: `stable`; `beta` only when the group follows beta), the group `activePackageVersionId` advances automatically (admin, device follow override off, group not pinned) — same rules as **Activate**. Otherwise use **Activate** on the promoted beta/stable release; devices following the group pick it up on their next resolve/sync.
 
-**Today:** promotion and activation are done in the **package Versions UI**.
-
-**Planned:** `promote-package-version` and `set-active-package-version` tools for CI and AI assistants (same behavior as the UI, single code path). See [Package lifecycle design](../Roadmap/package-lifecycle).
+Promotion and activation are also available to agents and scripts, with the same behavior as the UI (one code path on the host): `peers packages promote <packageVersionId> <beta|stable>` and `peers packages activate`. Get version ids from `peers packages get <packageId>`. See [System: Packages](../System/Packages.md).
 
 ## Signed publish artifacts (local)
 
@@ -111,13 +113,17 @@ in the public shape; the implementation requires either `packageId` or `name`.
 
 | Action | Typical role |
 |--------|----------------|
+| List packages, read versions and runtime state | Reader |
 | Create / update dev versions (disk reload) | Writer |
+| Import, create, clone, install, or uninstall a package | Admin |
 | Promote to beta or stable | Admin |
 | Activate beta/stable for the group | Admin |
 | Activate dev or use device override | Local device choice |
 | Pin a device | Local device choice |
 
-Personal space (no group) bypasses group role checks for your own packages.
+Personal space (no group) bypasses group role checks for your own packages. These are the
+[System Packages](../System/Packages.md#system-packages-contract) access levels; the UI and
+`peers packages` both go through them.
 
 ## Package Info Settings
 

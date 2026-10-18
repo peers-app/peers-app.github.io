@@ -147,7 +147,7 @@ provider-specific policy.
 Workflow and assistant references resolve through the catalog on every invocation.
 They can run package contract tools (host or isolated), and
 system tools only from **Host Tools** or **Desktop Tools**. Tool Access Control,
-Identity, Invites, Device Operations, App Updates, both catalogs, HTTP, Scheduler,
+Identity, Invites, Device Operations, App Updates, Packages, both catalogs, HTTP, Scheduler,
 Local Folders and Network remain excluded. This prevents a workflow from approving itself or
 entering administrative contracts. Discovery uses live access levels and never
 starts an isolated worker. Equal aliases are deduplicated by target.
@@ -431,9 +431,9 @@ required level until destructive operations are split.
 | Level | Examples |
 |---|---|
 | 0 | Hosted / voice / CLI runners, `throw-error`, `set-variable`, `new-id` |
-| 20 | `tool-search`, `search-workflows`, `app-version`, `list-timers`, device status / list / get, network diagnostics, App Updates status |
-| 40 | `send-message`, tasks, groceries, timer writes, notifications, `dispatch-voice-action`, `query-database` |
-| 60 | Network control (connect, disconnect, refresh, sync) |
+| 20 | `tool-search`, `search-workflows`, `app-version`, `list-timers`, device status / list / get, network diagnostics, App Updates status, Packages list / get / capabilities / device activation |
+| 40 | `send-message`, tasks, groceries, timer writes, notifications, `dispatch-voice-action`, `query-database`, Packages reload |
+| 60 | Network control (connect, disconnect, refresh, sync), Packages import / create / clone / install / uninstall / promote |
 | 80 | `run-a-workflow`, filesystem path tools, `cd`, `queryDatabase`, device `runTool`, `deleteDevice`, `resetChangeTracking`, voice device-local operations, App Updates `checkForUpdates` |
 | 100 | Unclassified package tools, App Updates update-and-restart |
 

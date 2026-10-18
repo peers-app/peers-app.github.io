@@ -20,7 +20,7 @@ title: "Package lifecycle"
 | Routes/UI bundle reload when device prefs change | Shipped |
 | `PackageVersions` sync triggers re-resolve | Shipped |
 | Promotion UI (dev → beta → stable), `history` on PV records | Shipped |
-| `promote-package-version` / `set-active-package-version` tools | Planned |
+| Promotion and activation tools | Shipped as System Packages `promotePackageVersion` / `activatePackageVersion` (`peers packages promote` / `activate`); see [System: Packages](../System/Packages.md) |
 | Contract finalization on stable promotion | Planned |
 | Full removal of `versionTag` / `devTag` from all package sources | Partial / ongoing |
 
@@ -134,7 +134,7 @@ Personal space (no group context) bypasses role checks entirely — users can do
 
 **New users (personal context):** at startup `ensurePeersCore` installs from the S3 `updateUrl` first and falls back to the bundled copy when offline, so a new user always gets the latest stable peers-core immediately. In **dev (unpackaged) Electron** the bundled `"dev"` copy is preferred first to preserve the local dev loop. In a **packaged** app the bundled copy is tagged `"stable"` for GA releases / `"beta"` for beta releases (the one case where the tag is set at build time).
 
-**New groups:** group creation (both the Group Switcher and the Groups screen) calls the `seedBundledPeersCore` RPC, which runs `ensurePeersCore` with `copyFromContexts` set to the personal context plus the user's other groups. peers-core is copied from the first context that already has it, falling back to the remote `updateUrl`, then the bundle. Copying is preferred because the bundle already exists locally and avoids a network round-trip.
+**New groups:** group creation (both the Group Switcher and the Groups screen) calls System Packages `installDefaultPackages` for the new group, which runs `ensurePeersCore` with `copyFromContexts` set to the personal context plus the user's other groups. peers-core is copied from the first context that already has it, falling back to the remote `updateUrl`, then the bundle. Copying is preferred because the bundle already exists locally and avoids a network round-trip.
 
 After install, remote updates continue to be checked via the package's `updateUrl` (admin-only, after a 60-second delay). Downloaded versions carry a `packageAuthorSignature` verified against the package's `publishPublicKey` (TOFU). Signed versions propagate automatically across groups via `PackageVersions.dataChanged` watchers.
 

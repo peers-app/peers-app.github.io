@@ -249,12 +249,12 @@ other, so both links go down and redial backs off.
   when `--services-url` is not `none`)
 - Registers the Node isolated-package runtime
 - Captures console output into `ConsoleLogs`
-- Serves the same socket.io RPC + system contracts the CLI already uses,
-  including `addOrUpdatePackage`: `peers packages add <name|url|id>` installs,
-  imports, clones, or copies packages exactly as on Electron. The installer
-  itself lives in the Runtime (`peers-device`'s `package-install`); headless
-  gives it plain Node filesystem and shell deps. Remote-repo linking
-  (`--link-remote`) is Electron-only because it needs `git`/`gh`
+- Serves the same socket.io RPC and system contracts the CLI already uses,
+  including [System Packages](./Packages.md): `peers packages import`, `create`,
+  `install`, `reload`, and `uninstall` work exactly as on Electron. The provider
+  lives in the Runtime (`peers-device`'s `packages`); headless gives it plain Node
+  filesystem and shell access. Remote-repo linking (`linkRemoteRepo`) is
+  Electron-only because it needs `git`/`gh`
 - Listens for device connections (`--peer-port`, default 3341) and can dial
   explicit peers (`--peer http://127.0.0.1:3342`)
 - Registers the WebRTC sidecar as a second protocol manager when a

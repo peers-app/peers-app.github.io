@@ -196,8 +196,11 @@ it("a row written on one device reaches the others", async () => {
   edges that share a data context, so assert `perContext` connectivity before
   asserting convergence.
 - `fleet.installOfficialPackage(device, name, { dataContextId })` imports a
-  built `official-packages/<name>` through the host's `addOrUpdatePackage` RPC
-  (the same path as `peers packages add`); `fleet.waitForPackage(devices,
+  built `official-packages/<name>` through System Packages `importPackage`
+  (the same path as `peers packages import`), then releases the build as
+  stable so other devices run it, as an official package would arrive. An
+  import creates a dev version, and a dev version runs only on a device that
+  activated it; pass `release: false` to keep it dev. `fleet.waitForPackage(devices,
   packageId, dataContextId, { probe })` waits until the `Packages` and
   `PackageVersions` rows have arrived and, with `probe`, a local contract tool
   call succeeds on each device, which proves the bundle was downloaded and the
@@ -212,6 +215,12 @@ it("a row written on one device reaches the others", async () => {
   a process restart. Reading the historical v4 bundle while the devices are
   partitioned verifies eager all-version bundle caching rather than an
   on-demand fetch.
+- `packages-cli.e2e.test.ts` drives one headless host entirely through
+  `peers packages`: it imports a fixture copy of `isolation-smoke`, runs its tool,
+  writes a version with a corrupt manifest (`writeVersion({ corruptManifest: true })`)
+  and checks that `reload` exits `1` while `get` shows the error and the old version
+  still serves, reloads a fixed version, writes a provider that throws on its first
+  call and reads `runtime.worker.lastWorkerError`, and finally uninstalls.
 - `scheduler.e2e.test.ts` installs `timers`, creates a timer, and restarts its
   persistent headless host; the timer expires without a widget or scheduler call.
   It covers both a personal context and a group Writer (40), with group membership asserted.
@@ -237,12 +246,18 @@ Timeouts scale with fleet size: `scaledTimeoutMs(n)` is `base + perDevice × n`.
   mesh and the target authorizes it (same account, or a group member meeting
   the tool's `remoteAccessLevel`). `packages.e2e.test.ts` exercises the
   same-account, cross-account, and denied paths.
-- `device.handle.installPackage(input, { dataContextId, packageLocation })` calls
-  the host's `addOrUpdatePackage` RPC directly
+- `device.handle.installPackage(name, { dataContextId, packageLocation })` imports
+  a package folder through System Packages; `installPackage(packageId, { update: true })`
+  reloads it from that folder; `releasePackage(packageId, { dataContextId })` promotes the
+  device's selected dev build to stable (or selects the existing stable build of that
+  version) so other devices run it
 - `device.handle.onEvents(prefix, handler)`, `device.handle.waitForEvent(...)`
 - `device.handle.logs({ sinceMs, level, textSearch })` reads `ConsoleLogs`
 - `device.handle.connectedDevices()`, `verifiedPeers()`, `waitForPeer(deviceId)`
-- `device.handle.cli(["db", "tables"])` runs the real CLI against this device
+- `device.handle.cli(["db", "tables"])` runs the real CLI against this device and
+  returns stdout, rejecting on a non-zero exit; `device.handle.cliResult(args)`
+  returns `{ code, stdout, stderr }` whatever the exit code, for asserting failures.
+  `packages-cli.e2e.test.ts` drives the whole package lifecycle this way
 - `device.stop()` (SIGTERM), `device.kill()` (SIGKILL), `device.restart()` for
   `persistent` devices (same identity, device id, database, and listener port)
 

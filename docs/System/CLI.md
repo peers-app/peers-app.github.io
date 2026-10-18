@@ -53,6 +53,9 @@ peers --auth-file ~/peers/cli/headless-auth.json db tables
 `--auth-file` (or `PEERS_CLI_AUTH_FILE`) points the CLI at any host that wrote
 an auth JSON. When that flag is set, the CLI will not auto-start Electron.
 
+Commands that need the desktop app start it when it is not running. With `--json`,
+that startup progress goes to stderr, so stdout holds only the command's JSON.
+
 ## Commands
 
 ### Messaging
@@ -492,6 +495,34 @@ event still completes the command. `watch` lists the grant first, then prints
 `changed` events until Ctrl+C. `--json` prints JSON for any of these verbs.
 `--mode` is `read` or `readwrite` (the default).
 
+### `peers packages`: Packages
+
+These commands list, inspect, import, reload, activate, and remove packages through the
+[System Packages](./Packages.md) contract. They work against the desktop app and against
+headless (`--auth-file`). The default is your personal context; add `-c <groupId>` for a
+group.
+
+```bash
+peers packages                                  # name, id, running version, status
+peers packages get <packageId> --json           # versions, runtime state, last error
+peers packages import ./my-package              # relative paths resolve against this shell
+peers packages import https://github.com/org/pkg.git
+peers packages create "My Package" --location ~/code/my-package
+peers packages reload <packageId>               # exits 1 if the new version fails to load
+peers packages reload --all
+peers packages activate <packageId> [<packageVersionId>] [--group]
+peers packages promote <packageVersionId> beta  # or stable; prints signed and activated
+peers packages install <packageId> --from personal -c <groupId>
+peers packages uninstall <packageId>
+peers packages capabilities --json
+```
+
+With `--json`, `list` prints one JSON object per line and every other command prints one
+object. A failed operation exits `1` and prints `Error: <message>` to stderr. After a
+failed `reload`, the previous version keeps running; `peers packages get` shows
+`runtime.lastError`. See [Packages](./Packages.md#requested-and-observed-state) for the
+runtime fields.
+
 ## Data contexts
 
 By default, the CLI operates on your personal data. To work with a group's data, pass the `-c` flag with a group ID:
@@ -514,13 +545,14 @@ The CLI makes Peers fully accessible to AI coding assistants and automation scri
 - Query data with `peers db query "..."` and get structured JSON with `--json`
 - Discover direct targets with `peers devices` and add `--device <deviceId>` to remote operations
 - Run tools with `peers tools run` to create tasks, set timers, or trigger workflows
+- Import, reload, and diagnose packages with `peers packages` (JSON output and exit codes)
 - Chat with the built-in assistant via `peers "..."`
 - Inspect and interact with the UI via `peers ui`
 - Tail logs for debugging with `peers logs -f`
 
 ## Architecture
 
-The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. Local operations use the desktop RPC layer. Remote operations use that desktop as a headless bridge to a versioned System Device Operations or System Logs contract over an existing verified device connection.
+The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. Commands for contacts, groups, invites, folders, keys, packages, and tools call versioned system contracts over that socket. A few older commands (`db`, `ui`, `app`, and messaging) still use the desktop RPC bridge, which is being migrated to contracts. Remote operations use that desktop as a bridge to a versioned System Device Operations or System Logs contract over an existing verified device connection.
 
 The remote contract surface is deliberately portable: status, bounded read-only SQL, tool
 listing/lookup/execution, and logs. It does not expose arbitrary shell, filesystem, UI,
@@ -536,4 +568,5 @@ Configuration is stored at `~/peers/cli-config.json`.
 - **[System: Workflows](./Workflows)** — workflows triggered by CLI messages.
 - **[System: Assistants](./Assistants)** — the assistants that respond to CLI messages.
 - **[System: Tables](./Tables)** — the data model behind `peers db`.
+- **[System: Packages](./Packages)**: the contract behind `peers packages`.
 - **[System: Invites](./Invites)** — the invite model behind `peers contacts`, `peers groups`, and `peers invites`.
