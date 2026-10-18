@@ -437,6 +437,11 @@ receiving device sees an ordinary call addressed to itself, signed by the forwar
 Routers that serve *remote* callers reject any call that still carries `targetDeviceId`: one
 device can never relay another device's call under its own identity. Multi-hop delivery
 happens inside `sendDeviceMessage`, not by chaining contract routers.
+Because the receiving device cannot tell that a package made a forwarded call, the
+forwarding host refuses package calls to contracts whose providers refuse packages
+(currently System App Updates). It also refuses package calls to Device Operations
+`runTool`, whose generic dispatch could otherwise bypass the target contract's package
+refusal. Other Device Operations tools and the local user's calls remain available.
 
 On the receiving side the `ConnectionManager` owns one `contract-call` device-message
 handler and lazily builds a per-sender provider router — the same

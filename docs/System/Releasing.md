@@ -201,6 +201,20 @@ Rules of thumb:
 - Do not announce a desktop or npm client until `https://peers.app` is running
   the commit you just pushed.
 
+## Desktop update signal
+
+Desktop apps treat the version `peers-services` reports as the newest release
+(see [How devices hear about a release](./App-Updates.md#how-devices-hear-about-a-release)).
+Each release therefore depends on two things:
+
+- `full-release.js` keeps the `peers-services` version in lockstep with
+  `peers-electron`. Do not bump `peers-services` on its own: desktop apps
+  would treat the new version as a release and check the S3 feed for up to 24
+  hours. The cost is small, but it is pointless.
+- `peers-services` deploys before the installers reach S3. Devices see the new
+  version within minutes, retry the feed while it lags, and pick up each
+  platform's installer within about an hour of its upload.
+
 ## Dependency sync
 
 After every release repo is published, Step 4 pins `peers-headless` to the
@@ -231,6 +245,7 @@ can install them; that build does not commit or publish those packages.
 
 1. Check the published npm packages (`npm view <package-name>`).
 2. Check the desktop artifacts (electron-builder / S3).
-3. Confirm `https://peers.app` is the just-released `peers-services`.
+3. Confirm `https://peers.app` is the just-released `peers-services`. Running
+   desktop apps start checking for the new version as soon as it is.
 4. Commit the `peers-headless` submodule pointer at the monorepo root
    (`git add peers-headless && git commit`).

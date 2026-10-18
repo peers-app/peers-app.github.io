@@ -36,8 +36,13 @@ status mark (and a connection count on desktop):
   are not counted as sync errors.
 - **Loading / unavailable** — spinner or question-mark icon while the local diagnostics
   host is starting or reconnecting.
+- **Update available** — a small yellow up-arrow at the lower left when this desktop app
+  has an update available, downloading, or ready to install, including one whose download
+  failed. It appears in every network state, offline included. See [App updates](./App-Updates.md).
 
 Select the indicator to see connections, groups connected, and the last successful sync.
+When an update is available, the popover starts with its version, download progress, and
+**Update & restart**.
 Syncing contexts, groups offline, and sync errors appear only when their counts are above
 zero. Groups offline is shown in yellow. A simplified list of connected devices (user, device, and shared group count) is
 included for a quick check. **Open Network Viewer** opens the full diagnostics screen.
@@ -176,6 +181,10 @@ connection. Cross-account attempts are sent to the provider so its current Self 
 authoritative; permission denials are shown unchanged. The result is a bounded newest-first
 page. When it says additional matching rows were omitted, narrow the time, level, process,
 or message filter. Console log retention is currently approximately 24 hours.
+
+A connected device's details also show its app version with **Update & restart** when that
+device trusts you as `Self` and can restart itself. See
+[Update another device](./App-Updates.md#update-another-device).
 
 For browser signaling and ICE lifecycle messages, filter to `BrowserWebRTC`. Do not share
 an exported trace without reviewing application-provided log context for private data.

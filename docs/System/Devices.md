@@ -15,7 +15,9 @@ connection diagnostic.
 The current installation is marked **This device**. Every row shows its name,
 online/offline state, latest path when connected, and human-readable last seen
 time. Open a row for its ID and management actions. **Forget** stays on the
-detail screen rather than being a dominant list action.
+detail screen rather than being a dominant list action. For another desktop
+device, the detail screen also shows its app version and **Update & restart**
+(see [Update another device](./App-Updates.md#update-another-device)).
 
 ## Add a device
 
