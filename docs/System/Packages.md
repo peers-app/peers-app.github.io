@@ -133,11 +133,40 @@ calls until a replacement loads successfully.
 | Promote | Moves a stored version from `dev` to `beta` or `stable`, or from `beta` to `stable`; it never demotes. Re-tags the version, re-signs it with the package author key when this device has one (otherwise it is saved unsigned, with a warning, and a signature for the old tag is never kept), and appends `promoted:<tag>` to its history. Only the stored version's own fields are signed. When this device was running that version, the group is not pinned, and the group follows the new tag (default `stable`), the version is also activated: for the group, or only on this device when it overrides group settings. If that activation fails to load, the promotion is kept and the error says so. The Versions screen's **Promote** uses the same tool. Promotion refuses a build whose version number another build already holds as beta or stable; bump the version, rebuild, reload, and promote the new build. |
 | Install defaults | Installs the default packages into the context. The UI and the `create-group` tool call it for every new group. |
 
+## Administering your other devices
+
+Add `--device <deviceId>` to any `peers packages` command to run it on another of your
+devices instead of this one. Your local host forwards the call over the existing
+connection, and the target device runs it with its own folders, signing keys, and runtime,
+so `get` and `list` show that device's running versions and errors, and `activate` without
+`--group` selects a version for that device. Find device ids with `peers devices`.
+
+```bash
+peers packages list --device <deviceId>
+peers packages activate <packageId> <packageVersionId> --device <deviceId> -c <groupId>
+peers packages reload <packageId> --device <deviceId>
+```
+
+- The target device must trust the caller as **Self**: another device of your own account,
+  or an account you have explicitly granted Self trust. Anyone else, including group Admins,
+  is refused: "Device … does not trust this account as Self". An older device that does not
+  accept remote package administration says so.
+- Folder arguments (`import`, `create --location`) must be absolute or `~/` paths on the
+  target device; this shell's working directory means nothing there.
+- Tools only: the live `runtimeStates` observable does not cross devices, so poll `get`.
+- Access is still checked by role on the target device. Your own devices act as you; another
+  account with Self trust gets its own role there, so Admin-level tools need it to be an
+  Admin of that context.
+
 ## System Packages contract
 
 **System Packages** (`packagesContractId`, version 1) is a system contract.
 
-- **Local only.** Reachable over the UI and CLI host transport, never from another device.
+- **Local, plus your own devices.** Reachable over the UI and CLI host transport. Another
+  device may call it only if this device trusts that caller as Self (see
+  [Administering your other devices](#administering-your-other-devices)); every other remote
+  caller is refused, group Admins included. This is the ordinary rule for contract tools
+  without a `remoteAccessLevel`, the same one System App Updates uses.
 - **Not for packages.** It refuses calls that come from package code.
 - **Not for workflows or Assistants.** It is not callable from either.
 

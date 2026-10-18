@@ -512,6 +512,7 @@ peers packages reload <packageId>               # exits 1 if the new version fai
 peers packages reload --all
 peers packages activate <packageId> [<packageVersionId>] [--group]
 peers packages promote <packageVersionId> beta  # or stable; prints signed and activated
+peers packages list --device <deviceId>         # run on another of your devices (Self trust)
 peers packages install <packageId> --from personal -c <groupId>
 peers packages uninstall <packageId>
 peers packages capabilities --json

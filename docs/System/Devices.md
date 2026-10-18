@@ -68,6 +68,10 @@ future release will refuse handshakes from legacy peers.
 `peers devices` ([CLI](./CLI.md#peers-devices--direct-connections)) marks each
 verified connection `encrypted` or `legacy`.
 
+Your own devices trust each other as Self, so you can administer packages on one from
+another: `peers packages … --device <deviceId>` (see
+[Administering your other devices](./Packages.md#administering-your-other-devices)).
+
 ## Pending device invites
 
 Device admission uses the same `Invites` table as [contacts](./Contacts.md) and
