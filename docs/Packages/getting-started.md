@@ -56,6 +56,8 @@ If the target directory already exists and contains a valid `package.json` with 
 4. Persists `packageLocalPath_<packageId>` for that data context
 5. Installs the on-disk `dev` bundles
 
+If those bundles match the package's existing `dev` `PackageVersions` row, import reuses that row instead of writing a new one. If `Packages.activePackageVersionId` is empty, as it is after deleting and re-importing a package, import sets it to that version and activates it on this device. Deleting a package removes only its `Packages` row; its version rows and bundle files remain so a later import can reuse them.
+
 This is the supported path for monorepo apps under `official-packages/` (for example Groceries).
 
 Importing the same local package by name into Personal or another group reuses its publisher identity. Deleting the package leaves your personal signing secret and its cached public key intact, so re-importing after uninstall also preserves that identity. Import fails without changing keys if the available public keys disagree, or if an existing secret has no recoverable public key.
