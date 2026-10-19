@@ -233,6 +233,15 @@ If that sync fails, the release stops before the later publish steps. A
 repeat of the same version skips the commit when those manifests are already
 pinned.
 
+Steps 3 and 4 replace the local `@peers-app/*` links with registry installs,
+because the published builds and the desktop installer must use them. Step 7
+runs `link-deps.js --host-only` after Step 6 to put the links back; a release
+that aborts after Step 3 starts relinks on exit too. Without the links, the dev
+checkout loads two copies of `@peers-app/peers-sdk`: the dev app reports no
+isolated package runtime, and the Tier 1 e2e scenarios fail. If the relink
+fails, the script says so; run `node link-deps.js` before using the dev app or
+running e2e.
+
 Official packages (`official-packages/`) are not part of this release. Each
 one is versioned, built, and promoted on its own through the package
 [lifecycle](../Packages/package-lifecycle.md) (dev, then Promote to beta or

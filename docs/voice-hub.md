@@ -6,15 +6,18 @@ sidebar_position: 8
 # Voice Hub
 
 Voice Hub adds push-to-talk, optional local wake-word activation, speech recognition, spoken
-responses, and voice-triggered Peers actions. It is an official Peers package, so it can be
-installed, updated, disabled, or removed independently of the desktop and PWA applications.
+responses, and voice-triggered Peers actions. Each device can use the **Standard** interface (one
+request at a time) or the **Live** interface (a back-and-forth OpenAI GPT-Live conversation). It is
+an official Peers package, so it can be installed, updated, disabled, or removed independently of
+the desktop and PWA applications.
 
 ## Platform support
 
-- **Desktop (Electron):** push-to-talk and optional wake listening while the Voice Hub screen is
-  open.
-- **PWA and other browsers:** push-to-talk and speech output. Wake listening is disabled because
-  browsers cannot reliably keep microphone work running in the background.
+- **Desktop (Electron):** push-to-talk, optional wake listening while the Voice Hub screen is
+  open, and the Live interface.
+- **PWA and other browsers:** not supported yet. The PWA does not run isolated packages, so Voice
+  Hub's provider (transcription, voice actions, OpenAI speech, and Live) is unavailable there.
+  Browsers also cannot reliably keep wake listening running in the background.
 
 Voice Hub does not run as a hidden background service. Closing its screen releases the microphone.
 
@@ -80,6 +83,33 @@ rolling room-noise estimate and neural recurrent state are never persisted. Thre
 attempts are personal setup evidence, not a release-quality false-activation benchmark, and cannot
 lower the model's benchmark safety threshold.
 
+## Choose a voice interface
+
+Open **Settings → Voice interface**. The choice applies to this device only, so a kitchen hub can
+use Live while a laptop keeps Standard.
+
+| | Standard | Live |
+|---|---|---|
+| How a turn works | You speak, Voice Hub detects the end, transcribes, acts, then replies | One open conversation; GPT-Live listens and speaks at the same time |
+| Interrupting | Tap the mic or Cancel | Talk over it |
+| Speech output | Browser speech (free) or OpenAI speech | GPT-Live's voice (choose it under **Live voice**) |
+| Cost | Per request: transcription, the voice turn, optional OpenAI speech | GPT-Live per second ($0.05 a minute, at least 15 seconds per conversation), plus the voice-turn requests |
+
+With **Live**, the wake phrase or a mic tap opens a conversation, and it stays open until about 15
+seconds of quiet, or until you tap the mic or **Cancel**. It also ends when the conversation
+sounds finished: the assistant decides when you're done (“Thanks, that's all”, “Perfect, thank
+you”) and says a short goodbye, and the conversation closes once that goodbye finishes. A goodbye
+on its own, such as **“goodbye”**, **“that's all”**, or a cancel phrase, always ends it, even with
+fillers around it (“Okay, uh, goodbye for now”). Requests that need an app are handed back to
+Voice Hub and run through the same voice skills and access checks as Standard, one at a time and
+in order. Quiet successes still play Voice Hub's confirmation tone instead of a spoken reply.
+Cancel stops in-flight requests but cannot undo actions that already ran. Timer and other alerts
+are spoken inside the open conversation. Both sides of the conversation appear in history.
+
+Live needs the desktop app and an OpenAI account with GPT-Live access; Free-tier accounts are
+refused. If a conversation cannot start, Voice Hub shows the reason and offers **Use the standard
+voice interface**. It never switches interface or repeats a request by itself.
+
 ## Use voice input
 
 Tap the microphone, speak, and either tap stop or pause for automatic endpoint detection. On the
@@ -107,7 +137,8 @@ interruption during assistant processing or playback, or undo dispatched skills.
 “cancel”, “go back to sleep”, timer commands, and requests such as “add never mind to my list” or
 “stop listening now” still reach the assistant.
 
-Transcription, responses, skill-aware turns, synthesis, and cancellation require Reader (20).
+Transcription, responses, skill-aware turns, synthesis, Live session creation, and cancellation
+require Reader (20).
 Clearing local voice history requires Owner (80). Anyone speaking acts as the signed-in user,
 using the configured OpenAI credential and installed skills admitted by their own access checks.
 The wake word is not a second login.
@@ -202,6 +233,12 @@ Voice Hub context, and the catalogs of installed voice skills are sent to OpenAI
 turn. OpenAI speech output also sends response text to OpenAI. The API key is a package secret.
 System HTTP injects it on the host, so neither the renderer nor the isolated worker receives it.
 
+With **Live**, microphone audio streams to OpenAI for as long as a conversation is open. Wake
+detection still runs on the device and starts the conversation. Voice Hub's isolated worker creates
+each session through System HTTP with the package key, sending recent history and the names of
+installed skills. The UI can only end the session or add context on its channel to OpenAI; anything
+that reads or changes your data goes through Voice Hub's skill dispatch.
+
 Conversation history is stored in a device-local persistent variable. Existing history from the
 earlier Voice Hub table is copied into that variable the first time the updated package opens.
 Device tuning values are stored in a separate device-local persistent variable and do not sync.
@@ -248,6 +285,16 @@ Confirm that the OpenAI key is set, valid, and has available API usage. Voice Hu
 errors in its control panel without including key material. If OpenAI rejects the key, replace it in
 Voice Hub settings and save before using **Test speech**. Select the legacy `whisper-1`
 transcription model only when the default `gpt-4o-mini-transcribe` path is unsuitable.
+
+### Live voice is unavailable
+
+Confirm that the OpenAI key is saved and that the account has GPT-Live access (Free tier accounts
+cannot use it), then try again, or select **Use the standard voice interface**. Live needs the
+desktop app.
+
+To compare the interfaces, run `peers logs -f | grep voice-timing`. Each turn logs how long
+connecting, the first response, and the action took, and each Live conversation logs its end
+reason and billed seconds.
 
 ### A voice action fails
 
