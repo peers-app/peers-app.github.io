@@ -412,6 +412,9 @@ peers app restart
 # Quit the app
 peers app quit
 
+# Restart another of your devices
+peers app restart --device <deviceId>
+
 # Start the development build
 peers app start --dev
 
@@ -426,10 +429,18 @@ peers app config --dev-path ~/peers-app/peers-electron
 | `-d, --dev` | Use development version instead of production |
 | `--dev-path <path>` | Set the path to the peers-electron dev directory |
 | `--prod-path <path>` | Set the path to the production app |
+| `--device <id>` | `restart` or `quit` another of your devices instead of this one |
+
+`restart` and `quit` call the [System Host Shell](./Host-Shell.md) contract, so they also
+work against a headless host (`--auth-file`). With `--device`, the target must trust you as
+Self and have **Allow my other devices to update and restart this device** turned on (see
+[Update another device](./App-Updates.md#update-another-device)).
 
 ### `peers ui` — UI control
 
-Control and inspect the app's UI programmatically.
+Inspect, drive, and screenshot the app's UI programmatically. These commands call the
+[System Host Shell](./Host-Shell.md) contract, so they need the desktop app; a headless host
+answers `System Host Shell <tool> is not supported on this host (headless has no …)`.
 
 ```bash
 # Reload the UI
@@ -437,6 +448,12 @@ peers ui reload
 
 # Hard reload (ignore cache)
 peers ui reload --no-cache
+
+# Save a screenshot of the Peers window and print the file path
+peers ui screenshot
+
+# Scaled-down JPEG at a chosen path; prints {path,width,height,mimeType}
+peers ui screenshot --out ~/Desktop/peers.jpg --jpeg --max-width 1280 --json
 
 # Inspect current UI state
 peers ui inspect
@@ -464,7 +481,35 @@ peers ui scroll --direction down
 
 # Scroll up by 500px
 peers ui scroll --direction up --amount 500
+
+# Run any of these on another of your devices
+peers ui inspect --device <deviceId>
 ```
+
+`screenshot` writes to `~/peers/screenshots/peers-<timestamp>.png` unless you pass `--out`,
+and prints the file path, so an agent can open that file to see the UI (for example after a
+`reload`). `inspect` prints a CSS selector for each element (using `:nth-of-type`) that
+`click`, `set`, and `scroll --selector` accept. `--json` also prints the result of `click`,
+`set`, `scroll`, and `reload`. A failed action exits 1, and an unknown action or option is an
+error. Scroll offsets accept negative values; use `--` before literal text starting with
+`-`, for example `peers ui set '#search' -- '--help'`. `--max-width` must be a positive integer.
+
+`--device <id>` runs the command on another device, which must trust you as Self. Errors
+name the cause:
+
+- `Device <id> does not trust this account as Self, so it refuses UI control from another device`
+- `The requested data context is unavailable on device <id>. Personal calls to another account's device require a direct connection; group calls require that group on the target.`
+- `This Peers host does not support UI control (System Host Shell). Update Peers.` from an
+  older host, or `Device <id> does not support UI control (System Host Shell). Update Peers there.`
+
+In your personal context, a `--device` call to a directly connected device goes over that
+connection and runs in the target's own personal context. That is how another account's
+device that trusts you as Self, such as a Kitchen hub, is reached.
+
+`peers ui` and `peers app` accept but ignore the global `-c/--context` option: Host Shell
+commands always use the personal context. Global flags, including `--auth-file`, are not
+interpreted after `--`; those tokens are literal operands. A context option before `--`
+still requires a nonempty value.
 
 ### `peers fs` — Local folders
 
@@ -524,6 +569,12 @@ failed `reload`, the previous version keeps running; `peers packages get` shows
 `runtime.lastError`. See [Packages](./Packages.md#requested-and-observed-state) for the
 runtime fields.
 
+`--device` targets must trust you as Self. In personal context, another account's device
+with that trust is reached only over a direct connection (for example on the same network),
+and the call runs in that device's own personal context. An explicit `-c <groupId>` keeps
+the call in that shared group and can use the mesh. See
+[Administering your other devices](./Packages.md#administering-your-other-devices).
+
 ## Data contexts
 
 By default, the CLI operates on your personal data. To work with a group's data, pass the `-c` flag with a group ID:
@@ -548,16 +599,18 @@ The CLI makes Peers fully accessible to AI coding assistants and automation scri
 - Run tools with `peers tools run` to create tasks, set timers, or trigger workflows
 - Import, reload, and diagnose packages with `peers packages` (JSON output and exit codes)
 - Chat with the built-in assistant via `peers "..."`
-- Inspect and interact with the UI via `peers ui`
+- Inspect and interact with the UI via `peers ui`, and see it by opening the file `peers ui screenshot` prints
 - Tail logs for debugging with `peers logs -f`
 
 ## Architecture
 
-The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. Commands for contacts, groups, invites, folders, keys, packages, and tools call versioned system contracts over that socket. A few older commands (`db`, `ui`, `app`, and messaging) still use the desktop RPC bridge, which is being migrated to contracts. Remote operations use that desktop as a bridge to a versioned System Device Operations or System Logs contract over an existing verified device connection.
+The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. Commands for contacts, groups, invites, folders, keys, packages, tools, `ui`, and `app restart|quit` call versioned system contracts over that socket. A few older commands (`db` and messaging) still use the desktop RPC bridge, which is being migrated to contracts. Remote operations use that desktop as a bridge to a versioned System Device Operations or System Logs contract over an existing verified device connection.
 
-The remote contract surface is deliberately portable: status, bounded read-only SQL, tool
-listing/lookup/execution, and logs. It does not expose arbitrary shell, filesystem, UI,
-process-lifecycle, or unrestricted table access. Every target call is authorized from the
+The Device Operations surface is deliberately portable: status, bounded read-only SQL, tool
+listing/lookup/execution, and logs. It does not expose arbitrary shell, filesystem, or
+unrestricted table access. UI control and restart/quit go through
+[System Host Shell](./Host-Shell.md) and package administration through
+[System Packages](./Packages.md) instead. Every target call is authorized from the
 connection-authenticated identity and requires exact `TrustLevel.Self` in the target's personal
 context.
 
@@ -570,4 +623,5 @@ Configuration is stored at `~/peers/cli-config.json`.
 - **[System: Assistants](./Assistants)** — the assistants that respond to CLI messages.
 - **[System: Tables](./Tables)** — the data model behind `peers db`.
 - **[System: Packages](./Packages)**: the contract behind `peers packages`.
+- **[System: Host Shell](./Host-Shell)**: the contract behind `peers ui` and `peers app restart|quit`.
 - **[System: Invites](./Invites)** — the invite model behind `peers contacts`, `peers groups`, and `peers invites`.

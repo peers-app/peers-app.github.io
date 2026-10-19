@@ -68,9 +68,11 @@ future release will refuse handshakes from legacy peers.
 `peers devices` ([CLI](./CLI.md#peers-devices--direct-connections)) marks each
 verified connection `encrypted` or `legacy`.
 
-Your own devices trust each other as Self, so you can administer packages on one from
-another: `peers packages … --device <deviceId>` (see
-[Administering your other devices](./Packages.md#administering-your-other-devices)).
+Your own devices trust each other as Self, so you can control one from another (see
+[Trust](./Trust.md)): administer its packages with `peers packages … --device <deviceId>`
+(see [Administering your other devices](./Packages.md#administering-your-other-devices)),
+inspect or screenshot its UI with `peers ui … --device <deviceId>`, and restart it with
+`peers app restart --device <deviceId>` (see [System Host Shell](./Host-Shell.md)).
 
 ## Pending device invites
 

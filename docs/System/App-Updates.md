@@ -96,7 +96,7 @@ action asks for confirmation.
 - Your device relays the request. It uses a direct connection when there is one. Your own
   devices are also reachable through the mesh.
 - The target device accepts only callers it trusts as `Self`: your own devices, and users
-  it has granted Self trust (see [Contacts](./Contacts.md)). It also requires its
+  it has granted Self trust (see [Trust](./Trust.md#self-means-full-control)). It also requires its
   **Allow my other devices to update and restart this device** setting. Installed packages
   cannot make the request, either locally or by targeting another device, including
   indirectly through Device Operations `runTool`.

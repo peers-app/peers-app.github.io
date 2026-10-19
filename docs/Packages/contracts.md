@@ -367,12 +367,11 @@ so any device reachable through the peers mesh works.
 
 ```typescript
 // Inside definePackage(...)
-const logsRemote = pkg.remote<ILogsConsumer>(logsContractId, 1);
+const sessionRemote = pkg.remote<ISessionConsumer>(SESSION_CONTRACT_ID, 1);
 
 // From runtime code, after the package has loaded.
-const remote = await logsRemote.consumer;
-const remoteLogs = remote.device(otherDeviceId);
-await remoteLogs.tools.log({ level: "info", message: "remote" });
+const remote = await sessionRemote.consumer;
+await remote.device(otherDeviceId).tools.join({ sessionId });
 ```
 
 Unlike `consumes`, `remote` needs **no local provider**: the executing device selects
@@ -437,11 +436,18 @@ receiving device sees an ordinary call addressed to itself, signed by the forwar
 Routers that serve *remote* callers reject any call that still carries `targetDeviceId`: one
 device can never relay another device's call under its own identity. Multi-hop delivery
 happens inside `sendDeviceMessage`, not by chaining contract routers.
-Because the receiving device cannot tell that a package made a forwarded call, the
-forwarding host refuses package calls to contracts whose providers refuse packages
-(currently System App Updates). It also refuses package calls to Device Operations
-`runTool`, whose generic dispatch could otherwise bypass the target contract's package
-refusal. Other Device Operations tools and the local user's calls remain available.
+Because the receiving device cannot tell that a package made a forwarded call, it would
+treat the call as the user's, with the user's full Self authority on their own devices.
+So the forwarding host refuses every package call to a **system contract** on another
+device (System Packages, App Updates, Device Operations, Logs, …). Packages reach other
+devices only through package contracts, their own or ones they consume; the user's own
+calls (UI, CLI) reach system contracts as usual.
+
+Legacy `pkg.remote(...)` bindings retain the owning package's identity too. Cached remote
+endpoints select a current verified direct connection for each personal-context call,
+falling back to device messages when none is available. Group-scoped calls keep their
+group context and use device messages. Calls already sent are never automatically retried
+when a connection drops, because they may already have executed.
 
 On the receiving side the `ConnectionManager` owns one `contract-call` device-message
 handler and lazily builds a per-sender provider router — the same

@@ -68,7 +68,9 @@ with no new link: see [Groups](./Groups.md#joining-a-group).
 
 Saving a contact does not grant them anything beyond the ability to address you
 on the Peers network. Trust remains an explicit local choice that you set on the
-contact.
+contact. Setting it to **Self** gives that account full control of your devices; see
+[Trust](./Trust.md) for what that means and when to use it (a shared kitchen or family hub
+signed in to its own account).
 
 To sign in a new installation to your own account, use
 [Add another device](./Device-Pairing.md) instead.

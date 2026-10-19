@@ -147,16 +147,19 @@ peers packages activate <packageId> <packageVersionId> --device <deviceId> -c <g
 peers packages reload <packageId> --device <deviceId>
 ```
 
-- The target device must trust the caller as **Self**: another device of your own account,
-  or an account you have explicitly granted Self trust. Anyone else, including group Admins,
-  is refused: "Device … does not trust this account as Self". An older device that does not
-  accept remote package administration says so.
+- The target device must trust the caller as **Self** (see [Trust](./Trust.md)): another
+  device of your own account, or an account you have explicitly granted Self trust. Anyone
+  else, including group Admins, is refused: "Device … does not trust this account as Self".
+  An older device that does not accept remote package administration says so.
 - Folder arguments (`import`, `create --location`) must be absolute or `~/` paths on the
   target device; this shell's working directory means nothing there.
 - Tools only: the live `runtimeStates` observable does not cross devices, so poll `get`.
-- Access is still checked by role on the target device. Your own devices act as you; another
-  account with Self trust gets its own role there, so Admin-level tools need it to be an
-  Admin of that context.
+- Without `-c`, the command runs in the target device's own personal context, where a
+  Self-trusted caller has full access. Another account's device (a shared hub that trusts
+  you as Self) is reached this way over a direct connection, for example on the same
+  network; otherwise the call fails with a routing or unavailable-context error. With `-c <groupId>`, the
+  call travels through that group and access is checked against your role in it on the
+  target device.
 
 ## System Packages contract
 
@@ -167,7 +170,9 @@ peers packages reload <packageId> --device <deviceId>
   [Administering your other devices](#administering-your-other-devices)); every other remote
   caller is refused, group Admins included. This is the ordinary rule for contract tools
   without a `remoteAccessLevel`, the same one System App Updates uses.
-- **Not for packages.** It refuses calls that come from package code.
+- **Not for packages.** It refuses calls that come from package code, and a device refuses
+  to forward a package's call to it on another device (see
+  [Trust](./Trust.md#code-you-run-does-not-get-your-self)).
 - **Not for workflows or Assistants.** It is not callable from either.
 
 Every call is bound to one data context, and the access level is checked against your

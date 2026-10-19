@@ -158,7 +158,11 @@ This produces `dist/package.bundle.js`, `dist/routes.bundle.js`, and `dist/uis.b
 
 ```bash
 peers ui reload
+peers ui screenshot   # prints the path of a PNG of the Peers window
 ```
+
+Open the printed file to check what your package's screen looks like (an agent can open it
+too); `peers ui inspect --text` shows the visible text instead.
 
 During development, `npm run dev` watches the renderer routes and UI. Run
 `npm run build:package` after changing the manifest, IDs, or provider source, then restart

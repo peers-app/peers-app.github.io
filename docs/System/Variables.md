@@ -67,7 +67,7 @@ The **Variables** screen lists pvars and has two tabs:
 
 ### Copy Value
 
-The variable detail screen has a **Copy Value** button. It copies the variable's value to the system clipboard **entirely on the server/main process** via `rpcServerCalls.copyPvarValueToClipboard(persistentVarId, groupId?)` — the same approach used by "Copy Secret Key". For secret variables, the value is decrypted server-side and written straight to the clipboard; the plaintext is **never returned to or displayed in the UI**.
+The variable detail screen has a **Copy Value** button. It copies the variable's value to the system clipboard **entirely on the host** (the server/main process) via the [System Host Shell](./Host-Shell.md) tool `copyVariableToClipboard({ persistentVarId, groupId? })` — the same approach used by "Copy Secret Key". For secret variables, the value is decrypted on the host and written straight to the clipboard; the plaintext is **never returned to or displayed in the UI**.
 
 - On desktop (Electron), a copied secret is automatically cleared from the clipboard after 30 seconds.
 - On the PWA (single process), the copy uses the browser clipboard API. True process isolation isn't possible there, but decryption stays out of UI components and auto-clear is best-effort (it only clears if the clipboard still holds the copied value).
