@@ -644,8 +644,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   host derives an internal 25-character table ID for `TableDefinitions` and stores
   the table as `${logicalTableName}_${packageId}`. Guest code receives copied
   records through `getOwnedTableRecord`, `saveOwnedTableRecord`,
-  `listOwnedTableRecords`, and `deleteOwnedTableRecord` only during an authorized tool
-  invocation. The host binds package identity, route context, and authority;
+  `listOwnedTableRecords`, and `deleteOwnedTableRecord`, at any time while its worker
+  runs (see **Background work** below). The host binds package identity, route context, and authority;
   guessed physical or system table names are not declarations. A provided
   contract can expose a schema with `{ name }` in `provides[].tables`; the host
   then serves standard table CRUD against the trusted provider package and
@@ -676,8 +676,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   the table's data with the synced schema instead of failing.
 - **Persistent variables.** Isolated provider code can call
   `getOwnedPersistentVar(scope, name)` and
-  `setOwnedPersistentVar(scope, name, value)` during an authorized tool
-  invocation. The host derives `${packageId}_${name}` from the worker's trusted
+  `setOwnedPersistentVar(scope, name, value)` at any time while its worker runs.
+  The host derives `${packageId}_${name}` from the worker's trusted
   identity before scope handling and deterministic ID generation. It uses the
   existing pvar rows and canonical factories—there is no new persisted package
   column. `device`, `user`, `group`, `groupDevice`, and
@@ -698,10 +698,10 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `description`, and optional `payloadFields` (an events-only contract is
   valid). The host owns an emitter per declared event from install time, so a
   worker restart does not drop subscribers; uninstall, or a replacement that
-  removes the event, detaches them. Provider code emits during an authorized
-  tool invocation with `emitContractEvent(contractId, version, eventName,
-  payload)`; the host rejects undeclared events, payloads that do not match
-  `payloadFields`, and emits made at eval time or between invocations. Renderer
+  removes the event, detaches them. Provider code emits at any time while its
+  worker runs with `emitContractEvent(contractId, version, eventName,
+  payload)`; the host rejects undeclared events and payloads that do not match
+  `payloadFields`. Renderer
   and host consumers subscribe with `consumer.events[name].subscribe(handler)`.
   Another isolated package on the same device may subscribe with
   `subscribeConsumedEvent(contractId, version, eventName, handler)` once its
@@ -714,8 +714,20 @@ outside the Electron host process. The host never evaluates provider source. Leg
   unsubscribe, package replacement, or uninstall, and each delivery wakes the
   consumer worker (starting it when that generation is not running). There is
   no replay. The delivery waits for promises returned by the guest handlers, so
-  a handler can finish an owned-table write or `callConsumedTool` before the
-  invocation ends. Guest subscriptions to observables are still deferred.
+  a handler can finish a `callConsumedTool` before the invocation ends. Guest
+  subscriptions to observables are still deferred.
+- **Background work.** A package's own tables, pvars, and events don't need an
+  active tool invocation. Provider code can use them while it evaluates, and
+  after a tool call returns: from a promise that settles later, or (in privileged
+  mode) a timer or child process's output. The writes are the same as during a
+  call, and consumers' `dataChanged` handlers see them. The host accepts these calls only from the
+  package's current worker; once a version is replaced, uninstalled, or its worker
+  is stopped (crash or timeout), that worker's calls are denied. Calls into other
+  contracts (`callConsumedTool`, consumed tables and observables) still need an
+  active invocation, because they act with the caller's access level; they are
+  denied at eval time and from background work. A denied call rejects in the guest,
+  and the host logs each denial message once per installed package generation
+  (worker restarts retain that generation; replacement or reinstallation creates a new one).
 - **Table `dataChanged`.** Consumers may call
   `consumer.tables[name].dataChanged.subscribe(handler)` on a contract-exposed
   isolated table. The host attaches to the real `Table.dataChanged` event, so
@@ -755,8 +767,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   their subscription ID while attachment is pending; concurrent duplicates are
   rejected. Unsubscribe or teardown cancels pending registrations too, and any
   attachment that finishes afterward is detached. Delivery awaits promises returned
-  by the handlers, so consumed-tool calls and owned-table writes can finish under the
-  delivery's trusted invocation. Source writes do not wait for these callbacks.
+  by the handlers, so consumed-tool calls, which need the delivery's trusted
+  invocation, can finish before it ends. Source writes do not wait for these callbacks.
   Failed consumer worker startup (including evaluation timeouts), worker teardown,
   replacement, or uninstall detaches subscriptions and disposes retained host endpoints;
   isolated provider replacement or uninstall also detaches its guest table

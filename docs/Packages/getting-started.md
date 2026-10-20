@@ -109,7 +109,11 @@ device instead of syncing them
 physical name. The host
 stores each table as `${logicalTableName}_${packageId}`, and guest code reads or
 writes copied records through `getOwnedTableRecord`, `saveOwnedTableRecord`,
-`listOwnedTableRecords`, and `deleteOwnedTableRecord` during an active tool invocation. A
+`listOwnedTableRecords`, and `deleteOwnedTableRecord`. Those calls, owned pvars, and event
+emits work at any time while the package's worker runs, including from promise continuations
+after a tool call returns (and timers in privileged mode); calls into other packages'
+contracts need an active tool call
+([Background work](./contracts#isolated-contract-packages-electron)). A
 provided contract can expose selected schemas using name-only table references;
 unreferenced schemas stay private. Contracts can also expose typed, optionally
 writable observables backed by package-prefixed pvars. Normal contract consumers
@@ -296,6 +300,12 @@ into the source: the artifact format does not distribute package-directory asset
 The provider uses the Node version shipped with its host (Electron's embedded Node on desktop).
 Standard output and standard error go to the host's output streams; bridge traffic uses a
 separate IPC channel, so provider logging does not interfere with contract replies.
+
+A privileged provider can keep working after a tool call returns: a timer or a child process's
+output can write the package's own tables and pvars and emit its events, and consumers of a
+contract-exposed table see those writes through `dataChanged` as usual. The process starts
+lazily on its first tool call; subscribing to its events or tables does not start it.
+Starting it at activation isn't supported yet.
 
 Startup stays lazy, with one session per package/data context. Normal deadlines still apply:
 Electron and headless allow 30 seconds for startup/evaluation and, by default, each tool call;
