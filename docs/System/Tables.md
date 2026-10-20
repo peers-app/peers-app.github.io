@@ -15,6 +15,32 @@ This page is intentionally short. Deeper ORM and sync documentation will grow he
 
 :::
 
+## Values in object and array fields
+
+A top-level field is stored by its declared type: a `Date` as ISO text, a `boolean` as 0/1, and a `string` or `number` as itself. Object and array fields are stored as JSON text written by Peers' serializer (`toJSONString` / `fromJSONString` in `@peers-app/peers-sdk`). The same serializer carries change values between devices and RPC arguments between processes. It keeps these values that plain JSON can't:
+
+| In your value | Comes back as |
+| --- | --- |
+| `Date` | `Date` |
+| `Uint8Array`, `Buffer` | the same type |
+| `undefined`, `NaN`, `Infinity` | the same value (an `undefined` key is kept) |
+| `RegExp` | `RegExp` |
+| `Error` | `Error` whose `stack` is the original stack (its `message` and other properties aren't kept) |
+| a key starting with `$` | the same key |
+
+An object or array that appears more than once in a value, including a cycle, comes back shared in the same way. That holds within one value only (one field, one change, one message), so two fields of a row that held the same object come back as two equal copies.
+
+What doesn't survive storage:
+
+- `Map` and `Set` become `{}`, and class instances become plain objects.
+- `-Infinity` becomes `null`, and `-0` becomes `0`.
+- `BigInt` values and invalid Dates throw when the row is saved.
+- Symbol values are dropped (inside an array, a Symbol becomes `null`), and so are `__proto__` keys. A function is stored as its source text and comes back as a `"__FUNCTION …"` string.
+- A string that spells one of the serializer's markers comes back as the marked value. For example, `"__UNDEFINED"` becomes `undefined`, and `"__DATE tomorrow"` becomes an invalid Date. Until the serializer escapes these, don't store arbitrary user text that starts with two underscores inside object or array fields.
+- Keys named `__this_ref` or starting with `__DOLLAR_`, and a first array element that starts with `__this_ref:`, are reserved for the serializer's own bookkeeping and don't come back as written.
+
+A field whose schema Peers can't map to one of its types, such as `z.record()`, `z.union()` or `z.any()`, is written the same way, but reads currently return the stored text rather than the value: an object comes back as its JSON, and a number or boolean as a string. Use `z.object()` or an array for structured data until that's fixed.
+
 ## Sync timestamps and conflict resolution
 
 Non-`localOnly` tables are wrapped in a tracked data source. Writes do not last-write-wins on a row-level `modifiedAt`. They append **change-log rows** (`ChangeTrackingV2`) and peers exchange those rows.
