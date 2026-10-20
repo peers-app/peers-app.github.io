@@ -25,6 +25,14 @@ Non-`localOnly` tables are wrapped in a tracked data source. Writes do not last-
 | `appliedAt` | Local apply / sync-visibility time. Each device assigns this when it inserts the row. Incremental sync cursors (`timestampAppliedLast`) are high-water marks of `appliedAt`, not `createdAt`. |
 | `supersededAt` | Set when a later write covers the same path. Superseded rows are not pulled unless history is preserved. |
 
+### What a change row holds
+
+An insert, a restore, or a save with `saveAsSnapshot` records one row at path `/` for the whole record. Its value is read from the table when changes are listed, so it is not stored twice. An update records one row per changed path (a JSON Patch of the old and new record), and each row's value is encoded and decoded on its own.
+
+A record whose fields share one object, such as a tool whose `inputSchema` and `outputSchema` are the same object, is compared as if each field held its own copy. Nothing is recorded when equal copies become one shared object. A cycle can't be split into separate rows, so an update that adds one is recorded as a root snapshot.
+
+Older versions could split a shared object from its reference into separate rows. Peers then decoded the reference to `{}`, and schema validation could [park the record](./Network-Diagnostics.md#automatic-record-recovery) for good. At startup, the device that wrote such rows (the only one that keeps them in that form) records each affected record again as a root snapshot from its own row. Peers rebuild the record from that snapshot on their next sync.
+
 ### Hybrid logical clock
 
 `createdAt` and `supersededAt` come from a per-database hybrid logical clock: `max(now(), last + 1)`. Receiving a change **observes** its `createdAt`, so a later local edit always orders after a change this device has already seen. That fixes the common skew case where device B is a few minutes ahead, A applies B's edit, then A's next edit would otherwise get a *lower* wall-clock time and lose.
