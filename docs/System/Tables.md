@@ -41,6 +41,19 @@ What doesn't survive storage:
 
 A field whose schema Peers can't map to one of its types, such as `z.record()`, `z.union()` or `z.any()`, is written the same way, but reads currently return the stored text rather than the value: an object comes back as its JSON, and a number or boolean as a string. Use `z.object()` or an array for structured data until that's fixed.
 
+## Local-only tables
+
+A table whose metadata sets `localOnly` keeps its rows on the device that writes them. Peers records no change rows for it, so nothing about its rows syncs. System tables such as console logs, sync bookkeeping and workflow runs work this way.
+
+For package tables, the schema still syncs through `TableDefinitions`. So every device in the group has its own, separate copy, and a device keeps the table out of sync even before it loads the package that declared it.
+
+An isolated package declares one by setting `localOnly: true` on a `manifest.tables` entry (see **[Package contracts](../Packages/contracts#isolated-contract-packages-electron)**). Whether a table syncs is the provider's choice and isn't part of any contract: a contract can expose a local-only table like any other, and a consumer reads the copy on its own device.
+
+A later schema version can switch a table either way. Changing the flag is a schema change, so it needs a higher `versionNumber`.
+
+- **Synced to local-only:** each device keeps the rows it has and stops sending the table's changes once it has the new definition. It deletes its change rows for the table when it loads the table under that definition; a device that doesn't run the package keeps them, unsent.
+- **Local-only to synced:** when a device loads the table under the new definition, it records its existing rows with a near-zero timestamp, so they sync but any real write wins. Where two devices hold a row with the same primary key, one copy wins. A device still on the older version doesn't apply the table's changes from other devices; it gets them on a later sync, after it loads the newer version. A device that kept change rows from before the table went local-only (because it never loaded that version) sends them with their original timestamps, so its copy of those rows wins.
+
 ## Sync timestamps and conflict resolution
 
 Non-`localOnly` tables are wrapped in a tracked data source. Writes do not last-write-wins on a row-level `modifiedAt`. They append **change-log rows** (`ChangeTrackingV2`) and peers exchange those rows.

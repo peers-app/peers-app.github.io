@@ -637,8 +637,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
   local artifact).
 - **Tables.** Isolated packages declare every package-owned schema once at
   `manifest.tables`.
-  Authors provide a package-local name, primary key, fields, and optional schema
-  version—never `tableId`, visibility, contract identity, or a physical name. The
+  Authors provide a package-local name, primary key, fields, optional schema
+  version, and optional `localOnly`—never `tableId`, visibility, contract identity, or
+  a physical name. The
   logical name must be unique among that package's tables. The
   host derives an internal 25-character table ID for `TableDefinitions` and stores
   the table as `${logicalTableName}_${packageId}`. Guest code receives copied
@@ -652,6 +653,14 @@ outside the Electron host process. The host never evaluates provider source. Leg
   also `listOwnedTableRecords` and `deleteOwnedTableRecord`. Custom table methods
   are not exposed. Guests can subscribe to contract-exposed table `dataChanged`
   as described below.
+  `localOnly: true` keeps a table's rows on the device that writes them: no change
+  rows are recorded and no row syncs, while the schema still reaches every device, each
+  with its own copy. Use it for per-device state such as caches or what a device
+  observed locally. It isn't part of a contract's table shape: a contract can expose a
+  local-only table, and a consumer reads the copy on its own device. A later schema version
+  can switch the flag either way. Hosts that predate the flag reject a manifest that sets
+  it. See
+  **[Local-only tables](../System/Tables#local-only-tables)**.
   These guarantees apply to bridge operations. Privileged providers have direct OS
   access, while legacy host-evaluated packages can still import tables directly.
   The host validates the package's complete declaration batch before publishing

@@ -102,8 +102,11 @@ New packages use an **isolated** `PEERS_ISOLATED_PACKAGE_V1` JSON envelope for
 `package.bundle.js`. Electron and headless run that provider source in a supervised sandbox
 worker by default, or a separate privileged Node process when explicitly declared. Existing legacy `definePackage()` bundles remain supported.
 Every package-owned table schema belongs once at
-`manifest.tables`. Authors declare a package-local name, primary key, fields, and
-optional schema version; they do not provide a table ID or physical name. The host
+`manifest.tables`. Authors declare a package-local name, primary key, fields, an
+optional schema version, and optionally `localOnly: true` to keep a table's rows on each
+device instead of syncing them
+([Local-only tables](../System/Tables#local-only-tables)); they do not provide a table ID or
+physical name. The host
 stores each table as `${logicalTableName}_${packageId}`, and guest code reads or
 writes copied records through `getOwnedTableRecord`, `saveOwnedTableRecord`,
 `listOwnedTableRecords`, and `deleteOwnedTableRecord` during an active tool invocation. A

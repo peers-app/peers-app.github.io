@@ -42,7 +42,7 @@ Sync resolves that pair without asking: the deterministic id owns the name when 
 A `PersistentVar<T>` is an `Observable<T>` with two extra members:
 
 - **`loadingPromise`** — resolves when the initial database lookup has finished and subscriptions are wired. A missing row is allowed and is not created just by loading. Await this before calling `delete()` or assuming persistence has caught up.
-- **`delete()`** — removes the row and resets to the default value when a default was provided.
+- **`delete()`** — removes the row and resets to the default value when a default was provided. Setting a new value afterwards restores the same deterministic record ID, including when changes are tracked.
 
 Reading and writing use the observable call form: `myVar()` to read, `myVar(newValue)` to write. Writes debounce through to `PersistentVars` save logic.
 
@@ -50,7 +50,9 @@ Reading and writing use the observable call form: `myVar()` to read, `myVar(newV
 
 `defaultValue` is a non-authoritative in-memory fallback. Constructing or loading a pvar whose row does not exist does not persist the default by itself.
 
-The first observable-driven save for a locally absent pvar is a **weak insert**. It still synchronizes, but any established normal write from another device has higher conflict priority. This prevents a newly connected device from replacing an existing `userVar`, `groupVar`, or `groupUserVar` value with locally initialized state before synchronization catches up. Once the row exists locally, subsequent writes are normal updates and take normal conflict priority.
+The first observable-driven save for a locally absent pvar with no deletion history is a **weak insert**. It still synchronizes, but any established normal write from another device has higher conflict priority. This prevents a newly connected device from replacing an existing `userVar`, `groupVar`, or `groupUserVar` value with locally initialized state before synchronization catches up. Once the row exists locally, subsequent writes are normal updates and take normal conflict priority.
+
+Saving a previously deleted pvar restores it with normal conflict priority. `PersistentVarsTable.save` defaults to `restoreIfDeleted: true`; callers can explicitly pass `false` to reject restoration. Re-declaring a name under another scope still drops the old scope's value; later writes under the new scope can reuse its ID.
 
 ## Secrets
 
