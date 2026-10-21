@@ -624,9 +624,13 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `callConsumedTool`, `callRemoteTool`, `callConsumedTable`, `getConsumedTableRecord`,
   `saveConsumedTableRecord`, `getConsumedObservable`, `setConsumedObservable`,
   `subscribeConsumedEvent`, `subscribeConsumedTableEvent`, `emitContractEvent`, the owned
-  table helpers (`getOwnedTableRecord`, `saveOwnedTableRecord`, `listOwnedTableRecords`,
-  `deleteOwnedTableRecord`), and `getOwnedPersistentVar` / `setOwnedPersistentVar`. Pass
-  `ctx` to any helper that needs it; there are no global helpers.
+  table helpers (`callOwnedTable(tableName, operation, args)` for any table method, including
+  `list` with a filter and options, plus `getOwnedTableRecord`, `saveOwnedTableRecord`,
+  `listOwnedTableRecords`, and `deleteOwnedTableRecord`), and `getOwnedPersistentVar`,
+  `setOwnedPersistentVar`, and `watchOwnedPersistentVar`. Pass `ctx` to any helper that needs
+  it; there are no global helpers. A package declared with `definePackage` rarely calls these
+  itself: its table and contract handles take the `ctx` and make the calls, and its variables
+  (`deviceVar` and the rest) need no `ctx` ([Declaring a package](./declaring-a-package)).
   `onWorkerStart(async (ctx) => { ... })` runs after the source is evaluated, with a `ctx`
   bound to no call: use it for subscriptions and other startup or background work (its owned
   state, emits, and subscriptions work; its consumed calls are denied). Worker startup waits
@@ -783,6 +787,12 @@ outside the Electron host process. The host never evaluates provider source. Leg
 - **Persistent variables.** Isolated provider code can call
   `ctx.getOwnedPersistentVar(scope, name)` and
   `ctx.setOwnedPersistentVar(scope, name, value)` at any time while its worker runs.
+  With `guestApi: 2`, `ctx.watchOwnedPersistentVar(scope, name, handler)` resolves to an unwatch
+  function and calls `handler()` whenever the stored value changes, including through device
+  sync; read the value again in the handler. The watch belongs to the running worker: it ends
+  when the worker stops, so a change never starts a worker, and a notification carries no
+  caller identity. A package declared with `definePackage` uses `deviceVar` and the other
+  variable helpers instead, which do this for it.
   The host derives `${packageId}_${name}` from the worker's trusted
   identity before scope handling and deterministic ID generation. It uses the
   existing pvar rows and canonical factories—there is no new persisted package
@@ -791,7 +801,7 @@ outside the Electron host process. The host never evaluates provider source. Leg
   context. Guest-supplied package, context, or authority fields cannot redirect
   access. Secret rows are explicitly denied to guest pvar helpers; System HTTP
   may inject a package's declared credential without exposing its value.
-  Shared/global pvars and owned-pvar subscriptions are deliberately deferred.
+  Shared/global pvars are deliberately deferred.
 - **Contract observables.** A provided contract may bind an observable to a
   package-owned pvar by declaring its scope, logical pvar name,
   JSON-compatible default, value type, and `writable` flag. Normal renderer/host
@@ -826,8 +836,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   subscriptions to observables are still deferred.
 - **Background work.** A package's own tables, pvars, and events don't need an
   active tool invocation. Provider code can use them from the `onWorkerStart` ctx, and
-  through a call's `ctx` after that call returns: from a promise that settles later, or (in
-  privileged mode) a timer or child process's output. The writes are the same as during a
+  through a call's `ctx` after that call returns: from a promise that settles later, a timer,
+  or (in privileged mode) a child process's output. The writes are the same as during a
   call, and consumers' `dataChanged` handlers see them. The host accepts these calls only from the
   package's current worker; once a version is replaced, uninstalled, or its worker
   is stopped (crash or stuck event loop), that worker's calls are denied. Calls into other
@@ -931,7 +941,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
   available, it retries and restores the originally selected version.
 
 The canonical template keeps identity in `src/ids.json`, writes the envelope from
-`build-package.mjs`, and keeps plain worker code in `src/provider-source.js`. Its starter
+`build-package.mjs`, and keeps plain worker code in `src/provider-source.js`. A package
+declared with `definePackage` generates the same envelope with `peers-package build`
+([Declaring a package](./declaring-a-package)). Its starter
 contract exposes a group-scoped writable state observable so renderer-only packages have a
 reactive persistence path before they need tools or record tables.
 

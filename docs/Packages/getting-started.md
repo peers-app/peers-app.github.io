@@ -98,6 +98,10 @@ The build produces three output bundles:
 | `routes.bundle.js` | `src/routes.ts` | URL path mappings (loaded eagerly at startup) |
 | `uis.bundle.js` | `src/uis.ts` | React components (loaded lazily on navigation) |
 
+The template writes its manifest by hand. A package can instead declare its tables, tools,
+and contracts in `src/package.ts` with `definePackage` and build them with `peers-package`,
+as News does. See **[Declaring a package](./declaring-a-package)**.
+
 New packages use an **isolated** `PEERS_ISOLATED_PACKAGE_V1` JSON envelope for
 `package.bundle.js`. Electron and headless run that provider source in a supervised sandbox
 worker by default, or a separate privileged Node process when explicitly declared. Existing legacy `definePackage()` bundles remain supported.
@@ -109,11 +113,12 @@ device instead of syncing them
 physical name. The host
 stores each table as `${logicalTableName}_${packageId}`. A new package's manifest sets
 `guestApi: 2`: each tool handler is `async (args, ctx) => { ... }`, and guest code reads or
-writes copied records through `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`,
-`ctx.listOwnedTableRecords`, and `ctx.deleteOwnedTableRecord`. Those calls, owned pvars, and
+writes copied records through `ctx.callOwnedTable` (any table method, with filters for
+`list`), `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`, `ctx.listOwnedTableRecords`,
+and `ctx.deleteOwnedTableRecord`. Those calls, owned pvars, and
 event emits work at any time while the package's worker runs, including through a call's
-`ctx` after it returns and from `onWorkerStart(async (ctx) => { ... })` (timers need
-privileged mode); calls into other packages' contracts need an active tool call. Calls run
+`ctx` after it returns, from a timer, and from `onWorkerStart(async (ctx) => { ... })`;
+calls into other packages' contracts need an active tool call. Calls run
 concurrently and the package orders the state they share: a handler that reads and then
 writes the same row runs that change through a small queue kept in module state. A call
 that times out is rejected while the worker keeps running
@@ -183,9 +188,13 @@ Electron or reinstall the package so the isolated artifact is reloaded.
 
 The renderer provides `React` and `@peers-app/peers-sdk` as globals. The route and UI webpack
 configs list them as **externals** so they are not bundled. Provider source is not a webpack
-entry and cannot import these modules.
+entry: a package declared with `definePackage` bundles `@peers-app/peers-sdk/define` (and any
+other libraries it imports) into its provider with `peers-package`.
 
 ## Defining an isolated package
+
+This section describes the manifest the template writes by hand. A package can declare the
+same things in code instead; see [Declaring a package](./declaring-a-package).
 
 `build-package.mjs` combines a pure-data manifest with the text from
 `src/provider-source.js`:
@@ -229,10 +238,12 @@ one tool, table, or observable. The starter's writable observable gives UI-first
 small reactive persistence path without starting a worker. Prefer declared tables for
 record-oriented data.
 
-`provider-source.js` is JavaScript stored inside the artifact. In the default sandbox it
-cannot import Node modules or the host SDK. Declare tools in the manifest and register matching
-handlers with the guest API `registerContractTool`. Privileged providers can use Node built-ins
-as described below.
+`provider-source.js` is JavaScript stored inside the artifact. The template copies it in as
+is, so it can't import modules; bundle it to use libraries, as `peers-package` does. The
+default sandbox runs ordinary isomorphic JavaScript but has no Node modules
+([what it provides](./declaring-a-package#what-the-sandbox-provides)). Declare tools in the
+manifest and register matching handlers with the guest API `registerContractTool`. Privileged
+providers can use Node built-ins as described below.
 
 `appNavs` declares the navigation items that appear in the Apps launcher. The
 `navigationPath` corresponds to the route path registered in `src/routes.ts`.
@@ -343,6 +354,7 @@ Explicitly deleting `packageSigningKey_<packageId>` removes your local author si
 
 ## Related topics
 
+- **[Declaring a package](./declaring-a-package)** — `definePackage`, tables, tools, contracts, the `peers-package` build, and what the sandbox provides.
 - **[Routes and UI](./routes-and-ui)** — how routes and UI bundles work, how to author them, and why to prefer route-based rendering.
 - **[Package lifecycle](./package-lifecycle)** — develop, release, and run versions (dev / beta / stable).
 - **[Package contracts](./contracts)** — versioned interfaces, isolated manifests, validation, and the registry.
