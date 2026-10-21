@@ -101,8 +101,10 @@ The other runtime fields:
 - `worker`: isolated worker health, `workerRunning` plus `lastWorkerError`. Isolated
   workers start on the first tool call, so a provider that throws while starting shows up
   only after a call has failed. An unexpected worker exit also updates health immediately,
-  including an exit while idle. A tool call that times out stops the worker and records the
-  timeout as the worker error. A successful worker restart clears the worker error.
+  including an exit while idle. A tool call that times out is rejected and the worker keeps
+  running; only if the worker then misses a liveness check (its event loop is stuck) is it
+  stopped, with the timeout recorded as the worker error. A successful worker restart clears
+  the worker error.
 
 Runtime state is in memory. It describes the current process and starts again when Peers
 restarts, which reloads every package anyway. The Packages screen shows the status as a

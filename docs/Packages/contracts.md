@@ -387,7 +387,7 @@ consumer throw on access, and `loadingPromise` resolves immediately. Device cons
 cached per device id; passing this device's own id resolves locally. Disposing the factory
 disposes every device consumer; a device consumer may also be disposed on its own.
 Isolated packages use the same feature through
-`callRemoteTool(contractId, version, deviceId, toolName, args)`, for any contract the
+`ctx.callRemoteTool(contractId, version, deviceId, toolName, args)`, for any contract the
 package provides or consumes.
 
 **Opting a tool in.** Tools are local-only by default. To allow callers on other devices,
@@ -618,8 +618,114 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `provides[].tables` entries are rejected rather than migrated.
   Optional `manifest.network` declares HTTPS hostnames and credential refs.
   See [System HTTP](../System/HTTP.md).
+- **Guest API.** Set `manifest.guestApi: 2`. Provider source registers handlers with
+  `registerContractTool(contractId, version, toolName, async (args, ctx) => { ... })`. Each
+  call gets its own `ctx`, which carries the host functions bound to that call:
+  `callConsumedTool`, `callRemoteTool`, `callConsumedTable`, `getConsumedTableRecord`,
+  `saveConsumedTableRecord`, `getConsumedObservable`, `setConsumedObservable`,
+  `subscribeConsumedEvent`, `subscribeConsumedTableEvent`, `emitContractEvent`, the owned
+  table helpers (`getOwnedTableRecord`, `saveOwnedTableRecord`, `listOwnedTableRecords`,
+  `deleteOwnedTableRecord`), and `getOwnedPersistentVar` / `setOwnedPersistentVar`. Pass
+  `ctx` to any helper that needs it; there are no global helpers.
+  `onWorkerStart(async (ctx) => { ... })` runs after the source is evaluated, with a `ctx`
+  bound to no call: use it for subscriptions and other startup or background work (its owned
+  state, emits, and subscriptions work; its consumed calls are denied). Worker startup waits
+  for the hook's promise within the evaluation deadline, and a hook that throws or rejects
+  fails the start, so the package's calls fail too. Start long-running work without awaiting
+  it, and catch failures the package can live with, such as subscribing to an optional
+  contract that isn't installed.
+
+  ```js
+  // Reads then writes the row, so changes to one item run one at a time (see below).
+  registerContractTool(CONTRACT_ID, 1, "rename", (args, ctx) =>
+    withItem(args.itemId, async () => {
+      const item = await ctx.getOwnedTableRecord("Items", args.itemId);
+      await ctx.saveOwnedTableRecord("Items", { ...item, name: args.name });
+      await ctx.emitContractEvent(CONTRACT_ID, 1, "itemChanged", { itemId: args.itemId });
+      return { ok: true };
+    }),
+  );
+  ```
+
+  **Calls run concurrently.** A slow call, such as one waiting on System HTTP, doesn't hold
+  up the package's other calls, and event callbacks run alongside them too. Startup hooks
+  run concurrently with each other; calls and event deliveries wait until all hooks finish.
+  Work a hook starts without awaiting can overlap later calls. The package orders whatever
+  state these operations share.
+  A handler that reads a row and then writes it back can lose another call's update, so keep
+  a small queue in module state and run such changes through it, one queue per record or
+  one for the whole package as the state requires:
+
+  ```js
+  const changes = new Map(); // record id -> the last queued change
+
+  function withItem(itemId, change) {
+    const run = (changes.get(itemId) ?? Promise.resolve()).then(change, change);
+    const settled = run.catch(() => undefined);
+    changes.set(itemId, settled);
+    settled.then(() => {
+      if (changes.get(itemId) === settled) changes.delete(itemId);
+    });
+    return run;
+  }
+  ```
+
+  Time spent waiting in such a queue counts against the call's deadline, so a tool that can
+  queue behind slow work needs a `timeoutMs` that covers it (or should use the job pattern
+  below). A handler that takes a queue and then makes a consumed call that comes back into
+  the same package and the same queue waits for itself until the timeout; don't hold a queue
+  across such a call.
+
+  **Timeouts reject the call, not the worker.** When a call passes its deadline (the
+  runtime's default, or the tool's `timeoutMs`, at most 120 s), the caller gets an error, and
+  the handler, module state, and timers keep running; its later consumed calls are denied,
+  while owned-state writes still go through. The worker is terminated only when it then fails
+  a liveness ping, meaning its event loop is stuck (for example a busy loop). For work longer
+  than a call should wait (a login flow, draining a node), have a start tool record a job row
+  and return its ID, write progress to that row as the work runs, and offer a cancel tool;
+  consumers watch the row with `dataChanged`:
+
+  ```js
+  const jobErrors = new Map(); // Persistence failures, available while this worker lives.
+
+  registerContractTool(CONTRACT_ID, 1, "start-drain", async (args, ctx) => {
+    const jobId = args.jobId; // the caller allocates it with newid()
+    await ctx.saveOwnedTableRecord("Jobs", { jobId, state: "running", log: "" });
+    // This outlives the call: owned state, emits, and local work only; consumed calls are denied.
+    // drain must await each progress callback so its write failures reach this chain.
+    drain(args.node, (line) => ctx.saveOwnedTableRecord("Jobs", { jobId, state: "running", log: line }))
+      .then(
+        () => ctx.saveOwnedTableRecord("Jobs", { jobId, state: "done", log: "" }),
+        (error) => ctx.saveOwnedTableRecord("Jobs", { jobId, state: "failed", log: String(error) }),
+      )
+      .catch((error) => {
+        // The worker may have been replaced or storage may be unavailable. Keep the
+        // failure available to a status tool without starting another unhandled write.
+        jobErrors.set(jobId, String(error));
+      });
+    return { jobId };
+  });
+
+  registerContractTool(CONTRACT_ID, 1, "drain-status", async (args, ctx) => ({
+    job: await ctx.getOwnedTableRecord("Jobs", args.jobId),
+    persistenceError: jobErrors.get(args.jobId) ?? null,
+  }));
+  ```
+
+  **Identity.** The host learns which package is calling from the worker the message arrives
+  on, never from the message. Each call's principal stays on the host; a `ctx` carries only
+  that call's opaque invocation ID. Package code that keeps another call's `ctx`, or otherwise
+  reuses a live invocation ID (a privileged package can forge its own IPC), acts with that
+  call's authority while it is still running, so a package can mix up the authority of its
+  own concurrent callers, but never another package's.
+
+  **Legacy packages.** A manifest without `guestApi` keeps the older global helpers
+  (`callConsumedTool`, `getOwnedTableRecord`, `emitContractEvent`, and so on, plus `callHost`),
+  and the host runs its calls one at a time. With `guestApi: 2` those globals are removed.
+  Hosts that predate `guestApi` reject a manifest that sets it, so a package that moves to it
+  needs the newer host on every device that runs it.
 - **Providers.** A guest addresses one provider with
-  `callConsumedTool(contractId, version, toolName, args, { providerPackageId })`.
+  `ctx.callConsumedTool(contractId, version, toolName, args, { providerPackageId })`.
   The local UI router honors the same field. Remote routers ignore it.
   `listContractProviders` on the System Contract Catalog returns every installed provider.
 - **Host.** Electron and peers-headless each register an `IIsolatedPackageRuntime`
@@ -643,14 +749,14 @@ outside the Electron host process. The host never evaluates provider source. Leg
   logical name must be unique among that package's tables. The
   host derives an internal 25-character table ID for `TableDefinitions` and stores
   the table as `${logicalTableName}_${packageId}`. Guest code receives copied
-  records through `getOwnedTableRecord`, `saveOwnedTableRecord`,
-  `listOwnedTableRecords`, and `deleteOwnedTableRecord`, at any time while its worker
-  runs (see **Background work** below). The host binds package identity, route context, and authority;
+  records through `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`,
+  `ctx.listOwnedTableRecords`, and `ctx.deleteOwnedTableRecord`, at any time while its
+  worker runs (see **Background work** below). The host binds package identity, route context, and authority;
   guessed physical or system table names are not declarations. A provided
   contract can expose a schema with `{ name }` in `provides[].tables`; the host
   then serves standard table CRUD against the trusted provider package and
   logical table name. Unreferenced tables remain private. The owning worker can
-  also `listOwnedTableRecords` and `deleteOwnedTableRecord`. Custom table methods
+  also list and delete its rows. Custom table methods
   are not exposed. Guests can subscribe to contract-exposed table `dataChanged`
   as described below.
   `localOnly: true` keeps a table's rows on the device that writes them: no change
@@ -675,8 +781,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   example, a device that has not yet activated the newer version) still reaches
   the table's data with the synced schema instead of failing.
 - **Persistent variables.** Isolated provider code can call
-  `getOwnedPersistentVar(scope, name)` and
-  `setOwnedPersistentVar(scope, name, value)` at any time while its worker runs.
+  `ctx.getOwnedPersistentVar(scope, name)` and
+  `ctx.setOwnedPersistentVar(scope, name, value)` at any time while its worker runs.
   The host derives `${packageId}_${name}` from the worker's trusted
   identity before scope handling and deterministic ID generation. It uses the
   existing pvar rows and canonical factories—there is no new persisted package
@@ -699,31 +805,33 @@ outside the Electron host process. The host never evaluates provider source. Leg
   valid). The host owns an emitter per declared event from install time, so a
   worker restart does not drop subscribers; uninstall, or a replacement that
   removes the event, detaches them. Provider code emits at any time while its
-  worker runs with `emitContractEvent(contractId, version, eventName,
+  worker runs with `ctx.emitContractEvent(contractId, version, eventName,
   payload)`; the host rejects undeclared events and payloads that do not match
   `payloadFields`. Renderer
   and host consumers subscribe with `consumer.events[name].subscribe(handler)`.
   Another isolated package on the same device may subscribe with
-  `subscribeConsumedEvent(contractId, version, eventName, handler)` once its
-  worker is running (lazy: `startProvider` or a first tool call). The host holds
+  `ctx.subscribeConsumedEvent(contractId, version, eventName, handler)` once its
+  worker is running (lazy: `startProvider` or a first tool call); `onWorkerStart` is the
+  usual place. Each delivery calls `handler(payload, ctx)` with that delivery's own `ctx`. The host holds
   the live subscription and delivers into the consumer worker; payloads emitted
   before that attach are not replayed. Events stay local (no `pkg.remote()` /
   mesh delivery) and carry no per-event access level yet. An isolated guest can
   also subscribe to a **host or system** contract event with
-  `subscribeConsumedEvent`. The runtime holds a provider endpoint until
+  `ctx.subscribeConsumedEvent`. The runtime holds a provider endpoint until
   unsubscribe, package replacement, or uninstall, and each delivery wakes the
   consumer worker (starting it when that generation is not running). There is
-  no replay. The delivery waits for promises returned by the guest handlers, so
-  a handler can finish a `callConsumedTool` before the invocation ends. Guest
+  no replay. The delivery waits for all promises returned by the guest handlers, including
+  when one handler rejects, so
+  a handler can finish a `ctx.callConsumedTool` before the invocation ends. Guest
   subscriptions to observables are still deferred.
 - **Background work.** A package's own tables, pvars, and events don't need an
-  active tool invocation. Provider code can use them while it evaluates, and
-  after a tool call returns: from a promise that settles later, or (in privileged
-  mode) a timer or child process's output. The writes are the same as during a
+  active tool invocation. Provider code can use them from the `onWorkerStart` ctx, and
+  through a call's `ctx` after that call returns: from a promise that settles later, or (in
+  privileged mode) a timer or child process's output. The writes are the same as during a
   call, and consumers' `dataChanged` handlers see them. The host accepts these calls only from the
   package's current worker; once a version is replaced, uninstalled, or its worker
-  is stopped (crash or timeout), that worker's calls are denied. Calls into other
-  contracts (`callConsumedTool`, consumed tables and observables) still need an
+  is stopped (crash or stuck event loop), that worker's calls are denied. Calls into other
+  contracts (`ctx.callConsumedTool`, consumed tables and observables) still need an
   active invocation, because they act with the caller's access level; they are
   denied at eval time and from background work. A denied call rejects in the guest,
   and the host logs each denial message once per installed package generation
@@ -731,20 +839,22 @@ outside the Electron host process. The host never evaluates provider source. Leg
 - **Table `dataChanged`.** Consumers may call
   `consumer.tables[name].dataChanged.subscribe(handler)` on a contract-exposed
   isolated table. The host attaches to the real `Table.dataChanged` event, so
-  writes through the contract proxy, the provider's `saveOwnedTableRecord`, and
+  writes through the contract proxy, the provider's `ctx.saveOwnedTableRecord`, and
   device sync all notify with the usual `{ dataObject, op, source }` payload.
   Private tables are rejected exactly like CRUD; `dataChanged` is the only
   table event supported. An isolated guest uses
-  `subscribeConsumedTableEvent(contractId, version, tableName, eventName, handler)`:
+  `ctx.subscribeConsumedTableEvent(contractId, version, tableName, eventName, handler)`:
 
   ```js
-  const unsubscribe = await subscribeConsumedTableEvent(
-    itemsContractId, 1, "Items", "dataChanged", async ({ dataObject, op, source }) => {
-      await callConsumedTool(auditContractId, 1, "recordChange", { dataObject, op, source });
-    },
-  );
-  // When the consumer no longer needs notifications:
-  await unsubscribe();
+  onWorkerStart(async (ctx) => {
+    const unsubscribe = await ctx.subscribeConsumedTableEvent(
+      itemsContractId, 1, "Items", "dataChanged", async ({ dataObject, op, source }, delivery) => {
+        await delivery.callConsumedTool(auditContractId, 1, "recordChange", { dataObject, op, source });
+      },
+    );
+    // When the consumer no longer needs notifications:
+    // await unsubscribe();
+  });
   ```
 
   The helper supports isolated providers through the host table gateway and

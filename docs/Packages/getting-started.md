@@ -107,13 +107,17 @@ optional schema version, and optionally `localOnly: true` to keep a table's rows
 device instead of syncing them
 ([Local-only tables](../System/Tables#local-only-tables)); they do not provide a table ID or
 physical name. The host
-stores each table as `${logicalTableName}_${packageId}`, and guest code reads or
-writes copied records through `getOwnedTableRecord`, `saveOwnedTableRecord`,
-`listOwnedTableRecords`, and `deleteOwnedTableRecord`. Those calls, owned pvars, and event
-emits work at any time while the package's worker runs, including from promise continuations
-after a tool call returns (and timers in privileged mode); calls into other packages'
-contracts need an active tool call
-([Background work](./contracts#isolated-contract-packages-electron)). A
+stores each table as `${logicalTableName}_${packageId}`. A new package's manifest sets
+`guestApi: 2`: each tool handler is `async (args, ctx) => { ... }`, and guest code reads or
+writes copied records through `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`,
+`ctx.listOwnedTableRecords`, and `ctx.deleteOwnedTableRecord`. Those calls, owned pvars, and
+event emits work at any time while the package's worker runs, including through a call's
+`ctx` after it returns and from `onWorkerStart(async (ctx) => { ... })` (timers need
+privileged mode); calls into other packages' contracts need an active tool call. Calls run
+concurrently and the package orders the state they share: a handler that reads and then
+writes the same row runs that change through a small queue kept in module state. A call
+that times out is rejected while the worker keeps running
+([Guest API](./contracts#isolated-contract-packages-electron)). A
 provided contract can expose selected schemas using name-only table references;
 unreferenced schemas stay private. Contracts can also expose typed, optionally
 writable observables backed by package-prefixed pvars. Normal contract consumers
@@ -309,8 +313,10 @@ Starting it at activation isn't supported yet.
 
 Startup stays lazy, with one session per package/data context. Normal deadlines still apply:
 Electron and headless allow 30 seconds for startup/evaluation and, by default, each tool call;
-a tool can declare `timeoutMs` up to 120 seconds. A timeout or crash terminates the session,
-and the next invocation starts a fresh one. Switching modes requires normal version
+a tool can declare `timeoutMs` up to 120 seconds. A timed-out call is rejected while the
+process and its state keep running; the session is terminated
+only when it then fails a liveness ping, or crashes, and the next invocation starts a fresh
+one. Startup and evaluation timeouts still terminate the session. Switching modes requires normal version
 replacement, which stops the previous session. Invalid replacements retain the old registration.
 
 Activation follows existing device/group version selection, pin, and follow rules. A version
