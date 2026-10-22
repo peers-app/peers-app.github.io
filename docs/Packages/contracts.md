@@ -467,11 +467,12 @@ Electron renderers and the PWA can use the same typed contract consumers:
 - `registerHostContractTransport`, `waitForHostContractTransport`, and
   `subscribeHostContractTransport` expose transport readiness and reconnect lifecycle to UI
   modules. Consumers must be disposed and recreated when the transport changes.
-- A package's own screens use `hostContract(contractRef<typeof Contract>(contractId, version))`:
-  a client typed from the package's `defineContract`, with members made on first use, so no
+- A package's own screens use `hostContract<typeof Contract>(contractId, version)`: a client
+  typed from the package's `defineContract`, with members made on first use, so no
   definition is needed at runtime. It waits for the transport, re-attaches subscriptions and
   observables after a reconnect, and binds the active group. `useRows` in `peers-ui` keeps a
-  table's rows current. See
+  table's rows current, and `useTool` runs a tool with its pending and error state. UI tests use
+  `mockHostContract` from `@peers-app/peers-sdk/testing`. See
   [Using the contract from a UI](./declaring-a-package#using-the-contract-from-a-ui).
 - System screens share one cache via `hostContractConsumer(definition, options)` from the SDK.
   `useHostContract(accessor)` in `peers-ui` returns `{ consumer, error }` and refreshes

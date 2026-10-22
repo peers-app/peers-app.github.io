@@ -156,8 +156,9 @@ const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
 
 - Every tool and table is typed from the contract, and an id or version that doesn't match it is
   a compile error. A tool whose input has no required field can be called without one.
-- `tables` has the same methods as the package's own table handle, except that `save` sends the
-  row as given: only the provider has the schema.
+- `tables` has the same methods as the package's own table handle, except that `save` sends a
+  complete row as given, including defaulted fields. The host validates the manifest's fields;
+  the provider's Zod defaults and transforms don't run.
 - Without the contract's types (another package's contract you don't have the source for), type
   just the tools, with the provider's tool signatures (`IHttpConsumer["tools"]`).
 
@@ -344,28 +345,49 @@ contract in one place:
 
 ```ts
 // ui/news.ts
-import { contractRef, hostContract } from "@peers-app/peers-sdk";
+import { hostContract } from "@peers-app/peers-sdk";
 import { contractId, contractVersion } from "../consts";
 import type { News } from "../package"; // types only: no handler code in the UI bundle
 
-export const news = hostContract(contractRef<typeof News>(contractId, contractVersion));
+export const news = hostContract<typeof News>(contractId, contractVersion);
 ```
 
 Then use it anywhere in the UI:
 
 ```tsx
-import { useRows } from "@peers-app/peers-ui";
+import { useRows, useTool } from "@peers-app/peers-ui";
 
-const { rows: feeds, error } = useRows(news.tables.Feeds, {}, { pageSize: 50 });
-await news.tables.Feeds.save({ feedId: newid(), title, url });
-const { errors } = await news.tools.refresh();
+function Feeds() {
+  const { rows: feeds } = useRows(news.tables.Feeds, {}, { pageSize: 50 });
+  const refresh = useTool(news.tools.refresh);
+  return (
+    <>
+      <button disabled={refresh.pending} onClick={() => refresh.run()}>Refresh</button>
+      {refresh.error && <div>Couldn't refresh.</div>}
+      {feeds.map((feed) => <div key={feed.feedId}>{feed.title}</div>)}
+    </>
+  );
+}
 ```
 
 - **Typed from the contract.** `tools`, `tables`, `events`, and `observables` are all typed by
   `import type`, which brings none of the package's code into the UI bundle. At runtime the
-  client needs only the id and version.
-- **Tables** have the package's table methods (`save` sends the row as given) and
-  `dataChanged.subscribe(handler)`. **Events** have `subscribe(handler)`. **Observables** are
+  client needs only the id and version, which must match the contract's (a mismatch doesn't
+  compile). `hostContract(contractRef<typeof News>(contractId, contractVersion))` is the same
+  client, from a reference.
+- **`useTool(call, { onSuccess, onError })`** from `@peers-app/peers-ui` runs a tool and tracks
+  it: `run(input)` resolves to the result, or `undefined` when it fails (it never throws);
+  `pending`, `result`, and `error` describe the latest run; `reset()` clears state without
+  cancelling calls or their callbacks. Callbacks run for each completion, including older
+  overlapping runs. Callback failures are logged and do not change the tool's outcome; async
+  callbacks are not awaited. It takes table writes too (`useTool(news.tables.Feeds.save)`)
+  or any async function. `run` keeps one identity
+  across renders and calls the latest function; nothing updates after unmount.
+- **Tables** have the package's table methods and `dataChanged.subscribe(handler)`. `save` sends
+  a complete row, including defaulted fields. The host validates the manifest's fields; the
+  package's Zod defaults and transforms run only on its own table handle (`Feeds(ctx).save`).
+  The same complete-row requirement applies to `contractRef` table writes in handlers.
+  **Events** have `subscribe(handler)`. **Observables** are
   live local copies: read one with `useObservable(weather.observables.location)` and write it
   by calling it with a value when declared writable. Read-only declarations expose a
   `ReadonlyObservable`; only writable observables have a callable typed `useObservable` setter.
@@ -384,7 +406,7 @@ const { errors } = await news.tools.refresh();
   its initial attachment succeeded; unsubscribing before attachment resolves it to `false`. When
   the initial attachment fails, the next one that goes live after a reconnect calls `onReconnect`.
   Calls go to the active group; switching groups reloads the window.
-- **One client per contract.** `hostContract(ref)` without options returns the same client for
+- **One client per contract.** `hostContract` without options returns the same client for
   the same contract id and version, even from a new reference. It isn't a hook, so it works in
   event handlers and plain functions too.
 - **Disposal.** Shared clients live for the window's lifetime. A client created with options is
@@ -394,6 +416,52 @@ const { errors } = await news.tools.refresh();
   dependency and a webpack external.
 - **Access.** A UI's calls act as the signed-in user today, as every UI call does
   ([Local UI-to-host contracts](./contracts#local-ui-to-host-contracts)).
+
+### Testing a UI
+
+`mockHostContract` from `@peers-app/peers-sdk/testing` stands in for the host. The UI's own
+client connects to it, with no signed-in user and no provider running:
+
+```ts
+import { mockHostContract } from "@peers-app/peers-sdk/testing";
+import { News } from "../package"; // a test can import the contract itself
+
+const host = mockHostContract(News, {
+  tables: { Feeds: [{ feedId: newid(), title: "NPR", url: "https://feeds.npr.org/1001/rss.xml" }] },
+  tools: { refresh: async () => ({ errors: [] }) },
+});
+// Render the screen; it reads and writes through `news` as usual.
+await host.tables.Feeds.save(nextFeed); // the screen sees the change
+host.tables.Feeds.rows; // what the screen saved
+host.dispose();
+```
+
+- **Tables** hold complete rows in memory, validate saves against the manifest's field rules
+  without running package defaults or transforms, and send `dataChanged`
+  for writes from either side. Filters are equality only (`{ feedId }`); a filter with operators
+  (`$or`, `$matchWords`) fails rather than guess. Equality to `null` or `undefined` matches
+  omitted optional fields, as in host storage. Paging and `sortBy` work; other query options,
+  including text search, fail explicitly.
+- **Tools** answer with the fakes you pass, given the input as the tool's schema parses it. A
+  tool without a fake fails when called, and a private tool refuses UI calls, as the host does.
+  Access levels aren't checked.
+- **Observables** start with the values you pass; others start as the host serves them, a
+  stored observable's default or the value an in-memory one's source holds. Set
+  `host.observables.x(value)` to push one, and read it to see what the UI wrote. Read-only ones
+  refuse UI writes, as the host does. Every UI write must fit the manifest's value type first,
+  including IR declarations; schema defaults and coercion cannot bypass that check. Schema
+  declarations then parse the write: in-memory observables keep the parsed value, stored ones
+  keep the value as sent. For stored observables this is stricter than the host, which checks
+  the value type only. `host.events.x.emit(payload)` reaches subscribers.
+- **`onCall(call)`** runs before each answer: return a promise to delay it, or throw to fail it
+  (an offline read, a refused save). It cannot replace the answer.
+- Values are copied using the isolated boundary's supported value types, including Dates and
+  `Uint8Array`s. The helper also works in Jest's jsdom environment, without `structuredClone`.
+  One mock host runs at a time; dispose it after unmounting what you rendered. Disposing it
+  rejects calls still waiting for an answer.
+
+News's `src/ui/ui-test-kit.mjs` renders its screen and widget this way under `node --test`,
+bundling them with esbuild so React and the SDK stay single copies.
 
 ## Building
 
