@@ -184,6 +184,97 @@ await refreshSchedule.loadingPromise; // wait until the write is saved
 - Outside a worker (in tests, or while `peers-package` reads the declaration) a variable is an
   in-memory observable that starts at its default.
 
+## Events
+
+An event is a signal out. Define it with its payload schema, list it on a provided contract,
+and emit it from anywhere in the package:
+
+```ts
+import { defineEvent, z } from "@peers-app/peers-sdk/define";
+
+export const finished = defineEvent({
+  name: "finished",
+  description: "A timer finished.",
+  payloadSchema: z.object({
+    title: z.string().describe("The timer's label."),
+    kind: z.string().default("timer").describe("What finished."),
+  }),
+});
+
+timers.events = [finished];
+
+await finished.emit({ title: "Tea" }); // no ctx
+```
+
+- `emit` parses the payload with the schema first, so defaults apply and a bad payload fails in
+  the package. It resolves once the host has accepted the event. An event without a payload is
+  sent with `emit()`.
+- It needs no `ctx`: the package emits for itself, from a handler, a timer, or other background
+  work. An event listed on two provided contracts goes out on both.
+- The payload is copied as it's sent, the way JSON would carry it: `undefined` fields are left
+  out, and `undefined` array entries become `null`. Dates and `Uint8Array`s are kept. A value
+  that can't be sent (a function, a `Map`, a cycle, `NaN`) fails `emit`.
+- The manifest describes the parsed payload: an optional or nullable field may be missing or
+  `null`, and a field with a transform accepts any value.
+- Events aren't replayed: subscribers get the ones emitted while they're subscribed.
+- Outside a worker, `emit` checks the payload the same way and sends nothing.
+- For a contract defined elsewhere, pass `payloadFields` (Peers IR) instead of a schema, or list
+  the IR event on `contract.events` directly when the package doesn't emit it.
+
+## Observables
+
+An observable is one value other packages and the UI can read, watch, and (when `writable`)
+write. Define it over a `source` the package already uses: a package variable, or a plain
+in-memory `observable()`.
+
+```ts
+import { defineObservable, groupVar, observable, z } from "@peers-app/peers-sdk/define";
+
+const location = groupVar("location", { defaultValue: { query: "", unit: "F" } });
+const conditions = observable<{ temp: number } | null>(null);
+
+weather.observables = [
+  defineObservable({
+    name: "location",
+    description: "Saved city and display unit.",
+    schema: z.object({ query: z.string(), unit: z.enum(["F", "C"]) }),
+    writable: true,
+    source: location,
+  }),
+  defineObservable({
+    name: "conditions",
+    description: "The latest reading.",
+    schema: z.object({ temp: z.number() }).nullable(),
+    source: conditions,
+  }),
+];
+
+conditions({ temp: 71 }); // the package reads and writes the source as usual
+```
+
+- **A package variable** is stored, so the Runtime serves the observable without running the
+  package. Changes from any side reach everyone, including devices the value syncs to. It
+  needs a `defaultValue`, which consumers read while the variable is unset.
+- **An in-memory observable** is held by the package's worker. Reading it starts the worker,
+  which publishes the value before the read returns, and the package's changes reach
+  subscribers as they happen. The value starts over when the worker does. Use it for state
+  that doesn't need to outlive the worker, like what the package is doing right now.
+  - The worker publishes after the package's variables load, so a value derived from them
+    starts out right.
+  - Each value is copied as it's published, like an event payload.
+  - `peers-package` fails the build when the source's starting value doesn't fit the value
+    type. If the first publish still fails, the worker doesn't start; later failed publishes
+    are logged.
+- A consumer's write to a writable in-memory observable is parsed with the schema before the
+  source takes it, and carries no caller authority. A write to a variable-backed observable
+  goes straight to the variable, checked only against the value type.
+- The schema sets the value type the Runtime checks (`string`, `number`, `boolean`, `object`,
+  `id`, or `any`): an enum or string literal is `string`, an array is `object`, and a value
+  that can be `null` or `undefined`, or that comes from a transform, is `any`. Values are JSON,
+  so a schema with a `Date` anywhere in it is rejected.
+- For a contract defined elsewhere, pass `valueType` instead of a schema, or list the IR
+  observable (with its `persistentVar` binding) on `contract.observables` directly.
+
 ## The declaration
 
 `src/package.ts` default-exports the package's definition:
@@ -213,8 +304,7 @@ export default definePackage((pkg) => {
 ```
 
 - `pkg.contract(...)` provides a contract; assign its `tables`, `tools`, `observables`, and
-  `events`. Observables (each backed by a package-prefixed persistent variable) and events are
-  declared in IR for now.
+  `events`. News's Voice Skill members come as IR from the shared Voice Skill declaration.
 - `pkg.consumes(ref, { optional })` declares a dependency.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
   names. `pkg.actionAliases` maps voice or UI action names to provided tools.
@@ -251,7 +341,9 @@ found one rather than leaving it to fail at install.
 ## Testing
 
 `runPackageTool(tool, args, ctx)` runs a tool the way the Runtime does: it parses the input,
-then calls the handler. Pass a fake `ctx` that records or answers host calls. To test what ships,
+then calls the handler. Pass a fake `ctx` that records or answers host calls.
+`startPackage(definition, ctx)` starts the package's variables, events, and in-memory
+observables with a fake `ctx`, the way the worker start does. To test what ships,
 evaluate `dist/package.bundle.js`'s provider source with a fake `registerContractTool` and
 `ctx`, as News's tests do.
 

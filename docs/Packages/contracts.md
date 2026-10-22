@@ -611,8 +611,8 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `PEERS_ISOLATED_PACKAGE_V1` followed by a JSON envelope: package/version identity,
   provided contracts, optional package-owned `manifest.tables`, declared
   consumes, optional `appNavs`, and `providerSource`. Provided contracts can
-  expose selected tables with name-only references and expose package pvars as
-  typed observables. A recognized but malformed envelope
+  expose selected tables with name-only references and expose typed observables,
+  stored in package pvars or held by the worker. A recognized but malformed envelope
   **fails closed** and never falls back to `new Function`. Older table-less
   and tool-only artifacts remain valid. Earlier schema-bearing
   `provides[].tables` entries are rejected rather than migrated.
@@ -626,11 +626,13 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `subscribeConsumedEvent`, `subscribeConsumedTableEvent`, `emitContractEvent`, the owned
   table helpers (`callOwnedTable(tableName, operation, args)` for any table method, including
   `list` with a filter and options, plus `getOwnedTableRecord`, `saveOwnedTableRecord`,
-  `listOwnedTableRecords`, and `deleteOwnedTableRecord`), and `getOwnedPersistentVar`,
-  `setOwnedPersistentVar`, and `watchOwnedPersistentVar`. Pass `ctx` to any helper that needs
-  it; there are no global helpers. A package declared with `definePackage` rarely calls these
-  itself: its table and contract handles take the `ctx` and make the calls, and its variables
-  (`deviceVar` and the rest) need no `ctx` ([Declaring a package](./declaring-a-package)).
+  `listOwnedTableRecords`, and `deleteOwnedTableRecord`), `getOwnedPersistentVar`,
+  `setOwnedPersistentVar`, and `watchOwnedPersistentVar`, and the in-memory observable
+  helpers `publishOwnedObservable` and `onOwnedObservableSet`. Pass `ctx` to any helper that
+  needs it; there are no global helpers. A package declared with `definePackage` rarely calls
+  these itself: its table and contract handles take the `ctx` and make the calls, and its
+  variables (`deviceVar` and the rest), events, and observables need no `ctx`
+  ([Declaring a package](./declaring-a-package)).
   `onWorkerStart(async (ctx) => { ... })` runs after the source is evaluated, with a `ctx`
   bound to no call: use it for subscriptions and other startup or background work (its owned
   state, emits, and subscriptions work; its consumed calls are denied). Worker startup waits
@@ -807,17 +809,33 @@ outside the Electron host process. The host never evaluates provider source. Leg
   JSON-compatible default, value type, and `writable` flag. Normal renderer/host
   contract consumers can get, set when writable, and subscribe. Canonical pvar
   changes—including changes applied by device sync—notify subscribers, as do
-  writes through either the contract or the provider's owned-pvar helper. The
+  writes through either the contract or the provider's owned-pvar helper. A stored
+  `null` reads as the default. The
   pvar binding is host-only and never lets a consumer supply package or physical
   storage identity. Isolated guest subscriptions remain deferred.
+- **In-memory observables.** With `guestApi: 2`, an observable declared without a
+  `persistentVar` is held by the worker. The worker publishes its value with
+  `ctx.publishOwnedObservable(contractId, version, observableName, value)` at any time
+  while it runs; the host checks the value against `valueType`, keeps the latest for
+  reads, and pushes it to subscribers. A read starts the worker, like a tool call, so the
+  worker should publish from `onWorkerStart`. Each new worker starts with no value, and a
+  read fails until it has published. A write to a writable one calls the handler registered
+  with `ctx.onOwnedObservableSet(contractId, version, observableName, handler)` with no
+  invocation frame, so it carries no caller authority (observables have no access
+  level); the handler stores and publishes the value and returns it. Subscriptions are the
+  host's and stay attached across worker restarts; a replacement clears the value, and one
+  that drops the observable, or an uninstall, ends them. The value starts over with each
+  worker. `definePackage` packages get all of this from `defineObservable`
+  ([Observables](./declaring-a-package#observables)).
 - **Contract events.** A provided contract may declare `events` with a `name`,
   `description`, and optional `payloadFields` (an events-only contract is
   valid). The host owns an emitter per declared event from install time, so a
   worker restart does not drop subscribers; uninstall, or a replacement that
   removes the event, detaches them. Provider code emits at any time while its
   worker runs with `ctx.emitContractEvent(contractId, version, eventName,
-  payload)`; the host rejects undeclared events and payloads that do not match
-  `payloadFields`. Renderer
+  payload)`, or, in a `definePackage` package, with `emit` on the event from
+  [`defineEvent`](./declaring-a-package#events); the host rejects undeclared events and
+  payloads that do not match `payloadFields`. Renderer
   and host consumers subscribe with `consumer.events[name].subscribe(handler)`.
   Another isolated package on the same device may subscribe with
   `ctx.subscribeConsumedEvent(contractId, version, eventName, handler)` once its
