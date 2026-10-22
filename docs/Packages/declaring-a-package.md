@@ -36,13 +36,14 @@ News, for example:
 ```
 news/src/
   consts.ts                ids
-  package.ts               the declaration
+  package.ts               the contract and the declaration
   data/feeds.ts            schema + table
   data/headlines.ts        schema + table
   tools/refresh.tool.ts    definition + handler
   tools/headlines.tool.ts  definition + handler
   logic/feed-xml.ts        parsing (internal)
   voice/news-voice-skill.ts
+  ui/news.ts               the UI's client for the contract
   ui/…                     screens and widgets
 ```
 
@@ -76,8 +77,8 @@ In a handler, `Headlines(ctx)` has `get(id)`, `list(filter?, options?)`, `count(
 options as any Peers table (`Headlines(ctx).list({ feedId }, { pageSize: 20 })`). `save` parses
 the row with the schema first, so defaults apply and an invalid row is rejected in the package.
 
-List a table on a contract (`contract.tables`) to expose it to other packages and the UI, or on
-`pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device, and
+List a table on a contract (`tables` in [`defineContract`](#the-declaration)) to expose it to
+other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device, and
 raise `versionNumber` when its fields change.
 
 zod defaults are functions, so they aren't part of the IR: a field with a default is required
@@ -141,13 +142,24 @@ const page = await SystemHttp(ctx).tools.request({
 ```
 
 `SystemHttp` and `SystemScheduler` are typed references to [System HTTP](../System/HTTP.md) and
-[System Scheduler](../System/Scheduler.md). Type your own references with the provider's tool
-signatures, or with its tool declarations:
+[System Scheduler](../System/Scheduler.md). Type your own references with the contract from
+[`defineContract`](#the-declaration), imported with `import type` so none of the provider's code
+comes along. News's Voice Skill entry point references News's own contract this way:
 
 ```ts
-const News = contractRef<{ refresh: typeof refreshTool }>(newsContractId, 1);
-await News(ctx).tools.refresh({});
+import type { News } from "../package";
+
+const NewsRef = contractRef<typeof News>(contractId, contractVersion);
+await NewsRef(ctx).tools.refresh();
+const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
 ```
+
+- Every tool and table is typed from the contract, and an id or version that doesn't match it is
+  a compile error. A tool whose input has no required field can be called without one.
+- `tables` has the same methods as the package's own table handle, except that `save` sends the
+  row as given: only the provider has the schema.
+- Without the contract's types (another package's contract you don't have the source for), type
+  just the tools, with the provider's tool signatures (`IHttpConsumer["tools"]`).
 
 A package can call its own contract this way when the Runtime should check the caller again.
 News's Voice Skill entry point is open to Readers, so it runs `refresh` through the Runtime,
@@ -201,7 +213,7 @@ export const finished = defineEvent({
   }),
 });
 
-timers.events = [finished];
+export const Timers = defineContract({ /* … */ events: [finished] });
 
 await finished.emit({ title: "Tea" }); // no ctx
 ```
@@ -219,7 +231,7 @@ await finished.emit({ title: "Tea" }); // no ctx
 - Events aren't replayed: subscribers get the ones emitted while they're subscribed.
 - Outside a worker, `emit` checks the payload the same way and sends nothing.
 - For a contract defined elsewhere, pass `payloadFields` (Peers IR) instead of a schema, or list
-  the IR event on `contract.events` directly when the package doesn't emit it.
+  the IR event in the contract's `events` directly when the package doesn't emit it.
 
 ## Observables
 
@@ -228,26 +240,29 @@ write. Define it over a `source` the package already uses: a package variable, o
 in-memory `observable()`.
 
 ```ts
-import { defineObservable, groupVar, observable, z } from "@peers-app/peers-sdk/define";
+import { defineContract, defineObservable, groupVar, observable, z } from "@peers-app/peers-sdk/define";
 
 const location = groupVar("location", { defaultValue: { query: "", unit: "F" } });
 const conditions = observable<{ temp: number } | null>(null);
 
-weather.observables = [
-  defineObservable({
-    name: "location",
-    description: "Saved city and display unit.",
-    schema: z.object({ query: z.string(), unit: z.enum(["F", "C"]) }),
-    writable: true,
-    source: location,
-  }),
-  defineObservable({
-    name: "conditions",
-    description: "The latest reading.",
-    schema: z.object({ temp: z.number() }).nullable(),
-    source: conditions,
-  }),
-];
+export const Weather = defineContract({
+  // contractId, version, name, description, tools …
+  observables: [
+    defineObservable({
+      name: "location",
+      description: "Saved city and display unit.",
+      schema: z.object({ query: z.string(), unit: z.enum(["F", "C"]) }),
+      writable: true,
+      source: location,
+    }),
+    defineObservable({
+      name: "conditions",
+      description: "The latest reading.",
+      schema: z.object({ temp: z.number() }).nullable(),
+      source: conditions,
+    }),
+  ],
+});
 
 conditions({ temp: 71 }); // the package reads and writes the source as usual
 ```
@@ -273,28 +288,35 @@ conditions({ temp: 71 }); // the package reads and writes the source as usual
   that can be `null` or `undefined`, or that comes from a transform, is `any`. Values are JSON,
   so a schema with a `Date` anywhere in it is rejected.
 - For a contract defined elsewhere, pass `valueType` instead of a schema, or list the IR
-  observable (with its `persistentVar` binding) on `contract.observables` directly.
+  observable (with its `persistentVar` binding) in the contract's `observables` directly.
 
 ## The declaration
 
-`src/package.ts` default-exports the package's definition:
+`src/package.ts` exports the package's own contract and default-exports the package's
+definition:
 
 ```ts
-import { definePackage, SystemHttp, SystemScheduler } from "@peers-app/peers-sdk/define";
+import {
+  defineContract,
+  definePackage,
+  SystemHttp,
+  SystemScheduler,
+} from "@peers-app/peers-sdk/define";
+
+export const News = defineContract({
+  contractId,
+  version: 1,
+  name: "News",
+  description: "RSS and Atom headlines for a few allowlisted feeds.",
+  tables: [Feeds, Headlines],
+  tools: [refreshTool, headlinesTool],
+});
 
 export default definePackage((pkg) => {
   pkg.packageId = packageId;
   pkg.version = version;
-
-  const news = pkg.contract(contractId, 1, "News", "RSS and Atom headlines.");
-  news.tables = [Feeds, Headlines];
-  news.tools = [refreshTool, headlinesTool];
-
-  const voice = pkg.contract(skill.contractId, skill.version, skill.name, skill.description);
-  voice.tools = [newsVoiceInvoke];
-  voice.observables = skill.observables;
-  voice.events = skill.events;
-
+  pkg.provides(News);
+  pkg.provides(NewsVoiceSkill);
   pkg.consumes(SystemHttp);
   pkg.consumes(SystemScheduler, { optional: true });
   pkg.network = { allowedHosts: ["feeds.bbci.co.uk", "feeds.npr.org"] };
@@ -303,11 +325,75 @@ export default definePackage((pkg) => {
 });
 ```
 
-- `pkg.contract(...)` provides a contract; assign its `tables`, `tools`, `observables`, and
-  `events`. News's Voice Skill members come as IR from the shared Voice Skill declaration.
+- `defineContract` declares a contract: its id (from `newid()`), version, name, description,
+  and the `tables`, `tools`, `observables`, and `events` it exposes. It checks each member's
+  kind and rejects a name used twice. The value and its member lists are frozen and typed
+  read-only. Export it so the package's UI (and other packages) can reference it by type.
+- `pkg.provides(contract)` provides it. A contract defined elsewhere is a `defineContract` too:
+  News's `NewsVoiceSkill` takes its members as IR from the shared Voice Skill declaration, with
+  News's own `invoke` tool.
 - `pkg.consumes(ref, { optional })` declares a dependency.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
   names. `pkg.actionAliases` maps voice or UI action names to provided tools.
+
+## Using the contract from a UI
+
+A package's screens and widgets are clients of the Runtime, like the admin UI: they call the
+package's contract through the host, not the package's code. Give the UI a client for the
+contract in one place:
+
+```ts
+// ui/news.ts
+import { contractRef, hostContract } from "@peers-app/peers-sdk";
+import { contractId, contractVersion } from "../consts";
+import type { News } from "../package"; // types only: no handler code in the UI bundle
+
+export const news = hostContract(contractRef<typeof News>(contractId, contractVersion));
+```
+
+Then use it anywhere in the UI:
+
+```tsx
+import { useRows } from "@peers-app/peers-ui";
+
+const { rows: feeds, error } = useRows(news.tables.Feeds, {}, { pageSize: 50 });
+await news.tables.Feeds.save({ feedId: newid(), title, url });
+const { errors } = await news.tools.refresh();
+```
+
+- **Typed from the contract.** `tools`, `tables`, `events`, and `observables` are all typed by
+  `import type`, which brings none of the package's code into the UI bundle. At runtime the
+  client needs only the id and version.
+- **Tables** have the package's table methods (`save` sends the row as given) and
+  `dataChanged.subscribe(handler)`. **Events** have `subscribe(handler)`. **Observables** are
+  live local copies: read one with `useObservable(weather.observables.location)` and write it
+  by calling it with a value when declared writable. Read-only declarations expose a
+  `ReadonlyObservable`; only writable observables have a callable typed `useObservable` setter.
+  A write the provider refuses is logged, and the copy reads the
+  provider's value again. Writes made while disconnected wait for a connection (up to the
+  client's timeout); writes to different observables have independent queues. A slow reread
+  cannot replace a newer provider push.
+- **`useRows(table, filter, options)`** from `@peers-app/peers-ui` keeps rows current. It reads
+  on mount, and again when the table changes, after a reconnect, or when the filter or options
+  change. It also reads once a remote subscription becomes live, covering changes missed
+  during setup. Changes that arrive during a read cause one more read, not one per change.
+- **Connection.** Calls wait for the host connection (10 seconds by default). Subscriptions and
+  observables wait as long as it takes and re-attach after a reconnect;
+  `subscribe(handler, { onReconnect })` reports when changes may have been missed, after the
+  replacement subscription is live. The returned subscription's `ready` promise reports whether
+  its initial attachment succeeded; unsubscribing before attachment resolves it to `false`. When
+  the initial attachment fails, the next one that goes live after a reconnect calls `onReconnect`.
+  Calls go to the active group; switching groups reloads the window.
+- **One client per contract.** `hostContract(ref)` without options returns the same client for
+  the same contract id and version, even from a new reference. It isn't a hook, so it works in
+  event handlers and plain functions too.
+- **Disposal.** Shared clients live for the window's lifetime. A client created with options is
+  independent; call `dispose()` when its owner ends. Disposal cancels connection waits, ends
+  subscriptions, and refuses new calls and observable writes; cached observable reads remain.
+- The renderer provides `@peers-app/peers-ui`, like `@peers-app/peers-sdk`; list it as a peer
+  dependency and a webpack external.
+- **Access.** A UI's calls act as the signed-in user today, as every UI call does
+  ([Local UI-to-host contracts](./contracts#local-ui-to-host-contracts)).
 
 ## Building
 

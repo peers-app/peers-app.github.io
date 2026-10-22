@@ -186,8 +186,8 @@ Electron or reinstall the package so the isolated artifact is reloaded.
 
 ### Webpack externals
 
-The renderer provides `React` and `@peers-app/peers-sdk` as globals. The route and UI webpack
-configs list them as **externals** so they are not bundled. Provider source is not a webpack
+The renderer provides `React`, `@peers-app/peers-sdk`, and `@peers-app/peers-ui` as globals.
+The route and UI webpack configs list them as **externals** so they are not bundled. Provider source is not a webpack
 entry: a package declared with `definePackage` bundles `@peers-app/peers-sdk/define` (and any
 other libraries it imports) into its provider with `peers-package`.
 

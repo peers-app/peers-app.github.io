@@ -467,7 +467,13 @@ Electron renderers and the PWA can use the same typed contract consumers:
 - `registerHostContractTransport`, `waitForHostContractTransport`, and
   `subscribeHostContractTransport` expose transport readiness and reconnect lifecycle to UI
   modules. Consumers must be disposed and recreated when the transport changes.
-- Screens share one cache via `hostContractConsumer(definition, options)` from the SDK.
+- A package's own screens use `hostContract(contractRef<typeof Contract>(contractId, version))`:
+  a client typed from the package's `defineContract`, with members made on first use, so no
+  definition is needed at runtime. It waits for the transport, re-attaches subscriptions and
+  observables after a reconnect, and binds the active group. `useRows` in `peers-ui` keeps a
+  table's rows current. See
+  [Using the contract from a UI](./declaring-a-package#using-the-contract-from-a-ui).
+- System screens share one cache via `hostContractConsumer(definition, options)` from the SDK.
   `useHostContract(accessor)` in `peers-ui` returns `{ consumer, error }` and refreshes
   when the host transport is replaced. Read `consumer.observables.*` with `useObservable`.
   System Identity is the example that resolves before sign-in: the handle passes no
@@ -569,7 +575,8 @@ helper for isolated providers. Production connection routing does not use it.
 
 `connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
 
-Still deferred are precise generic `createContractConsumer<T>()` typing,
+Still deferred are precise generic `createContractConsumer<T>()` typing for contracts not
+declared with `defineContract` (a `hostContract` client is typed from its declaration),
 granular per-package UI permissions, and remote
 access to tables, observables, and events (remote consumers are tools-only). Desktop and
 headless hosts raise the isolated wire cap to 16 MB. The codec default is 64 KB.
