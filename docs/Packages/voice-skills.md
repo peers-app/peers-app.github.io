@@ -62,13 +62,11 @@ Voice Hub calls a contributed widget with these props:
 `active` is true for the focused widget. `host` lets a reusable UI make small host-specific choices
 without importing Voice Hub.
 
-A summary should be quick to mount, compact, and useful from cached/local state. A package can
-own conditional freshness scheduling while mounted, independently of `active`: Weather displays
-its saved-city cache first and checks Writer access before an overdue hourly refresh, including
-on Overview. Do not start an unconditional network refresh on every summary mount. Stop package
-scheduling when its final view unmounts; visibility/focus resume can check for overdue work.
-Weather's **°F / °C** control also waits for Writer (40) access before saving the shared
-preference. Readers keep the current unit and see a save error.
+A summary should be quick to mount, compact, and useful from cached/local state. Keep freshness
+in the provider rather than the view: Weather's provider books its next refresh through System
+Scheduler after each one, and its widget only calls `refresh({ ifStale: true })` when it opens,
+which the provider skips while the forecast is fresh. Do not start an unconditional network
+refresh on every summary mount.
 A focus view should provide the package's common touch actions with at least 44-pixel targets and no keyboard-only or
 hover-only behavior. Voice Hub owns the card header and context selection; the package owns all
 domain UI and writes.

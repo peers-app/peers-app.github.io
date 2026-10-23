@@ -156,25 +156,14 @@ Voice Hub opens on **Overview**, where populated skills show summary cards with 
 content body: several grocery items, current weather conditions, or several news headlines.
 Only empty skills use a single row with an icon, name, and quiet status; skills needing attention
 keep their card layout. Cards pack beneath shorter neighbors without forcing equal heights.
-Weather refreshes its saved city while mounted in Overview as well as in focus. It shows the
-cache first, refreshes missing or hour-old forecasts immediately, and otherwise refreshes one
-hour after the last successful fetch. Each attempt requires Writer access in the current group
-or personal context. Failed or denied attempts wait one hour from completion before retrying
-automatically; **Update** can retry immediately. This wait resets when the saved city or context
-changes, or after closing and reopening Voice Hub. Weather shares requests across mounted views
-and preserves the same city's last-good forecast on failure, with age and stale/last-forecast
-wording (or an unavailable update time). An empty saved city does not refresh, and another
-city's cache is not shown as the selected city's forecast. Automatic refresh never saves an
-edited city draft. **Update** saves the city with Writer access and preserves the latest unit;
-unit switches only change the observable preference. Dirty drafts survive forecast and unit
-updates; changing groups initializes the editor from that group's saved city.
-Background refresh keeps the city and unit controls available; only an explicit **Update**
-temporarily disables them. Changing groups starts a fresh refresh lifecycle.
-Forecast age uses minutes, hours or days.
-Browser suspension can delay refresh timers; returning to a visible/focused window checks
-for one overdue refresh and honors in-flight work and failure cooldowns. Refresh stops when
-Weather unmounts; there is no background runtime schedule. Voice `get_weather` remains a
-Reader cache-only operation, including when the cache is empty, stale or for a different city.
+Opening Weather refreshes a stale forecast; after that, Weather refreshes about once an hour in
+the background on devices whose user is a Writer, and a Reader's device picks up those forecasts
+within a few minutes. Weather shows the last good forecast with its age, **Stale** after an hour,
+or **Last forecast (refresh failed)** after a failed refresh, and never shows another city's
+forecast as the saved city's. **Update** fetches the typed city and saves it, keeping the unit; a
+city that can't be found leaves the saved city unchanged. A typed city survives forecast and
+unit updates, and only **Update** disables the controls. Voice `get_weather` answers from the
+cached forecast without fetching.
 
 Tap a context such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News**
 to open its complete touch

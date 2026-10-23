@@ -74,7 +74,8 @@ export const Headlines = defineTable({
 
 In a handler, `Headlines(ctx)` has `get(id)`, `list(filter?, options?)`, `count(filter?)`,
 `findOne(filter?)`, `save(row)`, and `delete(id)`. `list` takes the same filters and paging
-options as any Peers table (`Headlines(ctx).list({ feedId }, { pageSize: 20 })`). `save` parses
+options as any Peers table (`Headlines(ctx).list({ feedId }, { page: 1, pageSize: 20 })`);
+page numbers start at 1. `save` parses
 the row with the schema first, so defaults apply and an invalid row is rejected in the package.
 An optional field left `undefined` is stored unset, and reads leave unset fields out.
 
@@ -241,7 +242,7 @@ const refreshSchedule = deviceVar("refreshSchedule", { defaultValue: "" });
 
 const scheduleId = refreshSchedule(); // read
 refreshSchedule(next.scheduleId); // write
-await refreshSchedule.loadingPromise; // wait until the write is saved
+await refreshSchedule.loadingPromise; // wait until the background write settles
 ```
 
 - Each is an observable. `v()` reads, `v(value)` writes, and `v.subscribe(fn)` hears every
@@ -249,8 +250,13 @@ await refreshSchedule.loadingPromise; // wait until the write is saved
 - The Runtime loads every variable declared at module scope when the package's worker starts,
   before the first call, so handlers can read them right away. A variable created later loads
   when it's created; await its `loadingPromise` before reading it.
-- A write updates the value at once and is saved in the background, in order. Await
-  `loadingPromise` when the handler's result depends on the write being saved.
+- A callable write updates the value at once and is saved in the background, in order.
+  `loadingPromise` waits for it to settle; a failed background save is logged.
+  When a handler depends on persistence, use `await writePackageVar(v, value)` from `/define`:
+  it returns the written value and rejects a failed save, even for an unchanged value.
+  `await readPackageVar(v)` rereads storage and rejects read failures. Both retain the variable's
+  value type. These helpers operate on package variables, and apply no observable schema;
+  validate the value before writing when needed.
 - `v.delete()` clears the stored value and goes back to the default. A stored `null` also reads
   as the default.
 - The variables are the package's own: the Runtime prefixes each name with the package's id,
@@ -400,6 +406,41 @@ export default definePackage((pkg) => {
 - `pkg.consumes(ref, { optional })` declares a dependency.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
   names. `pkg.actionAliases` maps voice or UI action names to provided tools.
+- `pkg.onStart(fn)` runs background work when the worker starts ([below](#background-work)).
+
+## Background work
+
+`pkg.onStart(fn)` runs `fn(ctx)` each time the package's worker starts: after the package's
+variables load, and before its in-memory observables publish, so a value `fn` sets is the first
+one readers see. Weather loads its cached forecast into its `forecast` observable this way, and
+follows the saved city:
+
+```ts
+export default definePackage((pkg) => {
+  // …
+  pkg.onStart(async (ctx) => {
+    forecast({ snapshot: await loadForecast(ctx), refreshing: false, error: "" });
+    location.subscribe(() => {
+      /* the saved city changed, here or synced from another device */
+    });
+  });
+});
+```
+
+- The worker waits for `fn`, and a failure fails its start (and every call to the package), so
+  catch what can fail and don't await long-running work. Hooks run in the order they're added.
+- `ctx` belongs to no call. It reaches the package's own tables, and the package's variables,
+  events, and observables work as usual. Calls to other contracts, System HTTP included, are
+  refused outside a call.
+- Worker timers (`setTimeout`, `setInterval`) can use the package's own tables and variables
+  the same way, but not other contracts. To fetch or call other contracts on a timer, have a
+  tool book its next run with [System Scheduler](../System/Scheduler.md): the scheduled tool
+  runs as a call, as the person signed in on the device, so a Reader's device can't run a Writer
+  tool this way. Weather's `refresh` books the next refresh an hour out each time it runs,
+  keeping the booking's id in a `groupDeviceVar` so the next refresh replaces it, and its widget
+  calls `refresh({ ifStale: true })` when it opens to start the cycle.
+- Workers start on first use, so `onStart` runs when something first calls or reads the package
+  on that device, not at install.
 
 ## Every call goes through the package
 
@@ -482,13 +523,18 @@ function Feeds() {
   `ReadonlyObservable`; only writable observables have a callable typed `useObservable` setter.
   A write the provider refuses is logged, and the copy reads the
   provider's value again. Writes made while disconnected wait for a connection (up to the
-  client's timeout); writes to different observables have independent queues. A slow reread
+  client's timeout); writes to different observables have independent queues. A write still
+  waiting for its reply when the connection is replaced is logged as failed, along with writes
+  queued on that connection. Writes made while disconnected or after reconnecting can use the
+  new connection, and the copy shows its value. A slow reread
   cannot replace a newer provider push.
 - **`useRows(table, filter, options)`** from `@peers-app/peers-ui` keeps rows current. It reads
   on mount, and again when the table changes, after a reconnect, or when the filter or options
   change. It also reads once a remote subscription becomes live, covering changes missed
   during setup. Changes that arrive during a read cause one more read, not one per change.
-- **Connection.** Calls wait for the host connection (10 seconds by default). Subscriptions and
+- **Connection.** Calls wait for the host connection (10 seconds by default). A tool or table
+  call still waiting for its reply when the connection is lost or replaced fails; the provider
+  may still have run it. Subscriptions and
   observables wait as long as it takes and re-attach after a reconnect;
   `subscribe(handler, { onReconnect })` reports when changes may have been missed, after the
   replacement subscription is live. The returned subscription's `ready` promise reports whether
@@ -589,8 +635,8 @@ found one rather than leaving it to fail at install.
 
 `runPackageTool(tool, args, ctx)` runs a tool the way the Runtime does: it parses the input,
 then calls the handler. Pass a fake `ctx` that records or answers host calls.
-`startPackage(definition, ctx)` starts the package's variables, events, and in-memory
-observables with a fake `ctx`, the way the worker start does. To test what ships,
+`startPackage(definition, ctx)` starts the package's variables, events, `onStart` hooks, and
+in-memory observables with a fake `ctx`, the way the worker start does. To test what ships,
 evaluate `dist/package.bundle.js`'s provider source with a fake `registerContractTool`,
 `registerHandler`, `onWorkerStart`, and `ctx`, as News's tests do; the bundle throws if one of
 the three functions is missing. Each provided contract registers its member handler under
