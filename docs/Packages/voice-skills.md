@@ -10,7 +10,7 @@ The contract id is `00muxgugn6xvs8f2r80ru205t`, version 1. Official packages sha
 
 ## Catalog
 
-`skill` is a read-only observable backed by a device persistent variable. Reading it does not start the package worker. Put the catalog in `persistentVar.defaultValue`:
+`skill` is a read-only observable backed by a device persistent variable. For a package declared with `definePackage` (guest API 3), reading it goes through the package, so it starts the package's worker; with guest API 2 the host reads it without the worker. Put the catalog in `persistentVar.defaultValue`:
 
 ```json
 {
@@ -88,8 +88,9 @@ Missing signed-in identity still fails closed with “missing caller identity”
 payloads or skill arguments never become caller identity.
 
 Mutations normally return `{ result }` without `speech`; Voice Hub confirms them with a tone and
-emoji and does not invent a spoken confirmation. Omit the key entirely: the isolate codec rejects
-`speech: undefined`. Lookups can suggest a short spoken answer. Skill failures use the failed tone,
+emoji and does not invent a spoken confirmation. `definePackage` omits fields left `undefined`
+from tool results before sending them; a provider using the isolate bridge directly must omit
+the key itself. Lookups can suggest a short spoken answer. Skill failures use the failed tone,
 retain a recent explanation, and normalize transport-added `Error:` prefixes to one.
 
 After `invoke` succeeds, Voice Hub records the provider package, skill slug, and tool name as
@@ -107,6 +108,16 @@ It does not branch on `kind` or any other package-specific field. Package-specif
 in the provider's detail sentence.
 
 An alert without spoken detail uses the done tone instead.
+
+A package declared with `definePackage` sends it as an event declared from the shared IR, listed
+on its Voice Skill contract in place of the IR one. Timers does this:
+
+```ts
+const voiceSkill = voiceSkillDeclaration(catalog);
+export const timerAlert = defineEvent(voiceSkill.events[0]);
+// defineContract({ ..., events: [timerAlert] })
+await timerAlert.emit({ kind: "timer-expired", title: "Tea", detail: "Your Tea timer is done." });
+```
 
 Official Timers uses the shared renderer helper `official-packages/alert-audio.ts` for sound
 ownership. Voice Hub registers before widgets mount and records completed playback by provider

@@ -76,6 +76,12 @@ In a handler, `Headlines(ctx)` has `get(id)`, `list(filter?, options?)`, `count(
 `findOne(filter?)`, `save(row)`, and `delete(id)`. `list` takes the same filters and paging
 options as any Peers table (`Headlines(ctx).list({ feedId }, { pageSize: 20 })`). `save` parses
 the row with the schema first, so defaults apply and an invalid row is rejected in the package.
+An optional field left `undefined` is stored unset, and reads leave unset fields out.
+
+The manifest types each field from its schema: an enum or a string literal is `string`, a
+number or boolean literal is `number` or `boolean`, and `zodPeerId` is `id`.
+Enum and literal fields that allow `null`, contain nullable or nested array elements, or use a
+transform keep `any`, so the host can accept every value the schema allows.
 
 List a table on a contract (`tables` in [`defineContract`](#the-declaration)) to expose it to
 other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device, and
@@ -118,6 +124,25 @@ export const Feeds = defineTable({
   package.
 - The class runs in the package's worker, like the rest of its code, never in the host.
 
+A table can also be read-only to its consumers, when its rows must change through a tool. Timers
+does this: a timer's row and its device schedule change together, in `write-timer`. Its class
+refuses `save` and `delete`, and the package stores the rows it plans through a method of its own:
+
+```ts
+export class TimersTable extends PackageTable<typeof timerSchema> {
+  async save(): Promise<never> {
+    throw new Error("Timers change through the write-timer tool");
+  }
+  async delete(): Promise<never> {
+    throw new Error("Timers change through the write-timer tool");
+  }
+  /** The package's own write. */
+  write(timer: ITimer) {
+    return super.save(timer);
+  }
+}
+```
+
 ## Tools
 
 A tool's definition and its handler sit together:
@@ -154,7 +179,8 @@ export const refreshTool = defineTool({
 - `accessLevel` is the level a caller needs (the manifest carries it as `suggestedAccessLevel`).
   `timeoutMs` is the call's deadline, up to 120 seconds.
 - `outputSchema` describes the result for callers and the catalog; the result isn't parsed with
-  it. Return every required output field yourself, including fields with schema defaults.
+  it. Return every required output field yourself, including fields with schema defaults. The
+  result is copied as JSON would carry it, so an optional field can be left `undefined`.
 - A contract defined elsewhere, such as [Voice Skill](./voice-skills), arrives as IR: declare
   its tools with `inputFields` and `outputFields` instead of schemas. Their input reaches the
   handler as sent.
@@ -193,6 +219,8 @@ const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
 - `tables` has the same methods as the package's own table handle. Each call goes through the
   providing package's table (its class, if it has one), so `save` takes the schema's input and
   the provider's defaults and transforms apply.
+- Tool input and saved rows are copied as JSON would carry them: a field left `undefined` is
+  omitted.
 - Without the contract's types (another package's contract you don't have the source for), type
   just the tools, with the provider's tool signatures (`IHttpConsumer["tools"]`).
 
@@ -503,9 +531,9 @@ host.dispose();
   Delivery hooks stop when the last subscriber leaves or the mock host is disposed. The test
   context's `callOwnedTable` reaches the mock's rows; its other calls fail. `host.tables` are
   storage writes, with no class or schema in between, validated against the manifest's fields
-  as host storage does; their changes still pass through the class. Filters are equality only
-  (`{ feedId }`); a filter with operators
-  (`$or`, `$matchWords`) fails rather than guess. Equality to `null` or `undefined` matches
+  as host storage does; their changes still pass through the class. Filters are equality
+  (`{ feedId }`) and `$in` (`{ status: { $in: ["running", "paused"] } }`); a filter with other
+  operators (`$or`, `$matchWords`) fails rather than guess. Equality to `null` or `undefined` matches
   omitted optional fields, as in host storage. Paging and `sortBy` work; other query options,
   including text search, fail explicitly.
 - **Tools** answer with the fakes you pass, given the input as the tool's schema parses it. A
