@@ -111,10 +111,11 @@ optional schema version, and optionally `localOnly: true` to keep a table's rows
 device instead of syncing them
 ([Local-only tables](../System/Tables#local-only-tables)); they do not provide a table ID or
 physical name. The host
-stores each table as `${logicalTableName}_${packageId}`. A new package's manifest sets
-`guestApi: 2`: each tool handler is `async (args, ctx) => { ... }`, and guest code reads or
-writes copied records through `ctx.callOwnedTable` (any table method, with filters for
-`list`), `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`, `ctx.listOwnedTableRecords`,
+stores each table as `${logicalTableName}_${packageId}`. A hand-written manifest sets
+`guestApi: 2` (`definePackage` packages get `guestApi: 3`, which also serves their contracts
+through the worker; see [Declaring a package](./declaring-a-package)): each tool handler is
+`async (args, ctx) => { ... }`, and guest code reads or writes copied records through
+`ctx.callOwnedTable` (any table method, with filters for `list`), `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`, `ctx.listOwnedTableRecords`,
 and `ctx.deleteOwnedTableRecord`. Those calls, owned pvars, and
 event emits work at any time while the package's worker runs, including through a call's
 `ctx` after it returns, from a timer, and from `onWorkerStart(async (ctx) => { ... })`;

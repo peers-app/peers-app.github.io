@@ -738,6 +738,21 @@ outside the Electron host process. The host never evaluates provider source. Leg
   and the host runs its calls one at a time. With `guestApi: 2` those globals are removed.
   Hosts that predate `guestApi` reject a manifest that sets it, so a package that moves to it
   needs the newer host on every device that runs it.
+
+  **Guest API 3: the package serves its own contract members.** `guestApi: 3` is guest API 2,
+  plus: the host sends every consumer call on the package's contract tables, observables, and
+  events (reads, writes, `subscribe`, and `unsubscribe`) to its worker, under the caller's
+  authority, through the guest handler `contractMemberHandlerName(contractId, version)`, and
+  passes every table change, event payload, and observable value bound for a subscriber
+  through `contractDeliveryHandlerName(contractId, version)` first, under that subscriber's
+  authority, in order, so the package may change or drop it. If the worker can't start, those
+  calls fail. An explicit unsubscribe waits for the running provider's handler and reports
+  its failure; automatic cleanup does not wait. The package's own owned-table and variable
+  calls, and sync, go straight to storage. Packages declared with `definePackage` use it:
+  `servePackage` registers both handlers, which answer through each table's class
+  (`PackageTable`; see [Overriding table methods](./declaring-a-package#overriding-table-methods))
+  and each observable's source. With guest API 2, the host serves contract tables and stored
+  observables from storage, without the worker. Hosts that predate guest API 3 reject it.
 - **Providers.** A guest addresses one provider with
   `ctx.callConsumedTool(contractId, version, toolName, args, { providerPackageId })`.
   The local UI router honors the same field. Remote routers ignore it.
@@ -767,8 +782,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `ctx.listOwnedTableRecords`, and `ctx.deleteOwnedTableRecord`, at any time while its
   worker runs (see **Background work** below). The host binds package identity, route context, and authority;
   guessed physical or system table names are not declarations. A provided
-  contract can expose a schema with `{ name }` in `provides[].tables`; the host
-  then serves standard table CRUD against the trusted provider package and
+  contract can expose a schema with `{ name }` in `provides[].tables`. With guest API 3,
+  the host forwards the six standard methods through the provider's worker and table class;
+  older packages use host storage directly. Both bind the trusted provider package and
   logical table name. Unreferenced tables remain private. The owning worker can
   also list and delete its rows. Custom table methods
   are not exposed. Guests can subscribe to contract-exposed table `dataChanged`
@@ -797,7 +813,7 @@ outside the Electron host process. The host never evaluates provider source. Leg
 - **Persistent variables.** Isolated provider code can call
   `ctx.getOwnedPersistentVar(scope, name)` and
   `ctx.setOwnedPersistentVar(scope, name, value)` at any time while its worker runs.
-  With `guestApi: 2`, `ctx.watchOwnedPersistentVar(scope, name, handler)` resolves to an unwatch
+  With `guestApi: 2` or later, `ctx.watchOwnedPersistentVar(scope, name, handler)` resolves to an unwatch
   function and calls `handler()` whenever the stored value changes, including through device
   sync; read the value again in the handler. The watch belongs to the running worker: it ends
   when the worker stops, so a change never starts a worker, and a notification carries no
@@ -821,16 +837,18 @@ outside the Electron host process. The host never evaluates provider source. Leg
   `null` reads as the default. The
   pvar binding is host-only and never lets a consumer supply package or physical
   storage identity. Isolated guest subscriptions remain deferred.
-- **In-memory observables.** With `guestApi: 2`, an observable declared without a
+- **In-memory observables.** With `guestApi: 2` or later, an observable declared without a
   `persistentVar` is held by the worker. The worker publishes its value with
   `ctx.publishOwnedObservable(contractId, version, observableName, value)` at any time
   while it runs; the host checks the value against `valueType`, keeps the latest for
   reads, and pushes it to subscribers. A read starts the worker, like a tool call, so the
   worker should publish from `onWorkerStart`. Each new worker starts with no value, and a
-  read fails until it has published. A write to a writable one calls the handler registered
+  read fails until it has published. With guest API 2, a write to a writable one calls the handler registered
   with `ctx.onOwnedObservableSet(contractId, version, observableName, handler)` with no
   invocation frame, so it carries no caller authority (observables have no access
-  level); the handler stores and publishes the value and returns it. Subscriptions are the
+  level); the handler stores and publishes the value and returns it. Guest API 3 routes reads,
+  writes, subscriptions, and deliveries through the member and delivery handlers under the
+  caller's authority, as described above. Subscriptions are the
   host's and stay attached across worker restarts; a replacement clears the value, and one
   that drops the observable, or an uninstall, ends them. The value starts over with each
   worker. `definePackage` packages get all of this from `defineObservable`

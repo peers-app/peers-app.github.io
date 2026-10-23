@@ -81,8 +81,42 @@ List a table on a contract (`tables` in [`defineContract`](#the-declaration)) to
 other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device, and
 raise `versionNumber` when its fields change.
 
-zod defaults are functions, so they aren't part of the IR: a field with a default is required
-for anyone else who writes the table, and the package's own `save` fills it in.
+Every call on a table goes through the package, its own handlers' and its consumers' alike: a
+UI's or another package's `save` reaches the package's table and is parsed with its schema, so
+defaults apply to them too
+([Every call goes through the package](#every-call-goes-through-the-package)).
+
+### Overriding table methods
+
+To change what a table does, give it a class, as you would any table class. Extend
+`PackageTable` for the table's schema and override a method; `super` reaches Peers:
+
+```ts
+class FeedsTable extends PackageTable<typeof feedSchema> {
+  async save(feed: z.input<typeof feedSchema>) {
+    return super.save({ ...feed, title: feed.title.trim() });
+  }
+}
+
+export const Feeds = defineTable({
+  name: "Feeds",
+  description: "RSS or Atom feeds shared with the group.",
+  primaryKeyName: "feedId",
+  schema: feedSchema,
+  tableClass: FeedsTable,
+});
+```
+
+- `Feeds(ctx)` returns a `FeedsTable`, and so does every consumer call through a contract, so
+  an override is the logic every caller gets. `this.ctx` is that call's context.
+- `super.save` parses the row with the schema (defaults and transforms apply) and stores it;
+  `get`, `list`, `count`, `findOne`, and `delete` go straight to storage.
+- `dataChanged(event)` sees each change on its way to one subscriber, with `this.ctx` carrying
+  that subscriber. Return it, return a changed copy, or return `undefined` to drop it. By
+  default it passes the change through.
+- Consumers can call the six standard methods. Other methods on the class stay private to the
+  package.
+- The class runs in the package's worker, like the rest of its code, never in the host.
 
 ## Tools
 
@@ -156,9 +190,9 @@ const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
 
 - Every tool and table is typed from the contract, and an id or version that doesn't match it is
   a compile error. A tool whose input has no required field can be called without one.
-- `tables` has the same methods as the package's own table handle, except that `save` sends a
-  complete row as given, including defaulted fields. The host validates the manifest's fields;
-  the provider's Zod defaults and transforms don't run.
+- `tables` has the same methods as the package's own table handle. Each call goes through the
+  providing package's table (its class, if it has one), so `save` takes the schema's input and
+  the provider's defaults and transforms apply.
 - Without the contract's types (another package's contract you don't have the source for), type
   just the tools, with the provider's tool signatures (`IHttpConsumer["tools"]`).
 
@@ -268,9 +302,10 @@ export const Weather = defineContract({
 conditions({ temp: 71 }); // the package reads and writes the source as usual
 ```
 
-- **A package variable** is stored, so the Runtime serves the observable without running the
-  package. Changes from any side reach everyone, including devices the value syncs to. It
-  needs a `defaultValue`, which consumers read while the variable is unset.
+- **A package variable** is stored; consumer reads and writes reach it through the package
+  worker. Changes from any side reach subscribers through that worker, including changes
+  synced from another device. It needs a `defaultValue`, which consumers read while the
+  variable is unset.
 - **An in-memory observable** is held by the package's worker. Reading it starts the worker,
   which publishes the value before the read returns, and the package's changes reach
   subscribers as they happen. The value starts over when the worker does. Use it for state
@@ -281,9 +316,10 @@ conditions({ temp: 71 }); // the package reads and writes the source as usual
   - `peers-package` fails the build when the source's starting value doesn't fit the value
     type. If the first publish still fails, the worker doesn't start; later failed publishes
     are logged.
-- A consumer's write to a writable in-memory observable is parsed with the schema before the
-  source takes it, and carries no caller authority. A write to a variable-backed observable
-  goes straight to the variable, checked only against the value type.
+- Consumer reads and writes run under the caller's authority. A write must fit the manifest's
+  value type, then is parsed with the schema before the source takes it, for stored and
+  in-memory observables alike. A stored write replies once its value is saved, and fails if
+  the save does.
 - The schema sets the value type the Runtime checks (`string`, `number`, `boolean`, `object`,
   `id`, or `any`): an enum or string literal is `string`, an array is `object`, and a value
   that can be `null` or `undefined`, or that comes from a transform, is `any`. Values are JSON,
@@ -337,6 +373,32 @@ export default definePackage((pkg) => {
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
   names. `pkg.actionAliases` maps voice or UI action names to provided tools.
 
+## Every call goes through the package
+
+A package is the server for its contracts, and its consumers (UIs and other packages) are its
+clients. Every consumer call reaches the package's code in its worker, under the caller's
+authority, and everything sent back passes through it:
+
+- **Tables:** `get`, `list`, `count`, `findOne`, `save`, and `delete` run the table's class
+  ([Overriding table methods](#overriding-table-methods)). Each change on its way to a
+  subscriber passes through the class's `dataChanged`, with that subscriber's context.
+- **Observables:** reads and writes go to the observable's source (or, for an IR declaration,
+  the package variable it names). Values on their way to subscribers pass through unchanged.
+- **Events:** emitted by the package's code; each payload on its way to a subscriber passes
+  through the package unchanged.
+- **Subscriptions:** subscribing and unsubscribing go to the package too. The package accepts
+  every subscription; there's no hook to refuse one yet. A subscription carries on across the
+  package's restarts and updates, and unsubscribing never starts the worker.
+- **Tools:** run their handlers, as always.
+
+If the package's worker can't start, its contract calls fail, as a request to a stopped server
+would. The package's own calls to its tables and variables go straight to Peers, and so does
+sync: a change that arrives from another device already went through the package on the
+device that made it.
+
+The manifest says `guestApi: 3` for this (`peers-package` sets it). Hosts that predate it
+reject the package, rather than serve its tables without it.
+
 ## Using the contract from a UI
 
 A package's screens and widgets are clients of the Runtime, like the admin UI: they call the
@@ -383,11 +445,10 @@ function Feeds() {
   callbacks are not awaited. It takes table writes too (`useTool(news.tables.Feeds.save)`)
   or any async function. `run` keeps one identity
   across renders and calls the latest function; nothing updates after unmount.
-- **Tables** have the package's table methods and `dataChanged.subscribe(handler)`. `save` sends
-  a complete row, including defaulted fields. The host validates the manifest's fields; the
-  package's Zod defaults and transforms run only on its own table handle (`Feeds(ctx).save`).
-  The same complete-row requirement applies to `contractRef` table writes in handlers.
-  **Events** have `subscribe(handler)`. **Observables** are
+- **Tables** have the package's table methods and `dataChanged.subscribe(handler)`. Each call
+  goes through the package's table, so `save` takes the schema's input and the package's
+  defaults, transforms, and overrides apply, and each change reaches the UI through the
+  table's `dataChanged`. **Events** have `subscribe(handler)`. **Observables** are
   live local copies: read one with `useObservable(weather.observables.location)` and write it
   by calling it with a value when declared writable. Read-only declarations expose a
   `ReadonlyObservable`; only writable observables have a callable typed `useObservable` setter.
@@ -436,9 +497,14 @@ host.tables.Feeds.rows; // what the screen saved
 host.dispose();
 ```
 
-- **Tables** hold complete rows in memory, validate saves against the manifest's field rules
-  without running package defaults or transforms, and send `dataChanged`
-  for writes from either side. Filters are equality only (`{ feedId }`); a filter with operators
+- **Tables** hold rows in memory, and a UI's calls go through the table's class with a test
+  context, as on the host: a save runs the class's overrides and the schema, defaults
+  included, and observed changes reach subscribers through the class's `dataChanged`.
+  Delivery hooks stop when the last subscriber leaves or the mock host is disposed. The test
+  context's `callOwnedTable` reaches the mock's rows; its other calls fail. `host.tables` are
+  storage writes, with no class or schema in between, validated against the manifest's fields
+  as host storage does; their changes still pass through the class. Filters are equality only
+  (`{ feedId }`); a filter with operators
   (`$or`, `$matchWords`) fails rather than guess. Equality to `null` or `undefined` matches
   omitted optional fields, as in host storage. Paging and `sortBy` work; other query options,
   including text search, fail explicitly.
@@ -450,9 +516,8 @@ host.dispose();
   `host.observables.x(value)` to push one, and read it to see what the UI wrote. Read-only ones
   refuse UI writes, as the host does. Every UI write must fit the manifest's value type first,
   including IR declarations; schema defaults and coercion cannot bypass that check. Schema
-  declarations then parse the write: in-memory observables keep the parsed value, stored ones
-  keep the value as sent. For stored observables this is stricter than the host, which checks
-  the value type only. `host.events.x.emit(payload)` reaches subscribers.
+  declarations then parse the write, and the observable keeps the parsed value, as the
+  package does. `host.events.x.emit(payload)` reaches subscribers.
 - **`onCall(call)`** runs before each answer: return a promise to delay it, or throw to fail it
   (an offline read, a refused save). It cannot replace the answer.
 - Values are copied using the isolated boundary's supported value types, including Dates and
@@ -498,8 +563,12 @@ found one rather than leaving it to fail at install.
 then calls the handler. Pass a fake `ctx` that records or answers host calls.
 `startPackage(definition, ctx)` starts the package's variables, events, and in-memory
 observables with a fake `ctx`, the way the worker start does. To test what ships,
-evaluate `dist/package.bundle.js`'s provider source with a fake `registerContractTool` and
-`ctx`, as News's tests do.
+evaluate `dist/package.bundle.js`'s provider source with a fake `registerContractTool`,
+`registerHandler`, `onWorkerStart`, and `ctx`, as News's tests do; the bundle throws if one of
+the three functions is missing. Each provided contract registers its member handler under
+`contractMemberHandlerName(contractId, version)` (from `@peers-app/peers-sdk`). Call it with
+`{ member: "table", name: "Feeds", operation: "save", args: [row] }` to make a consumer's
+call, which runs through the table's class.
 
 ## What the sandbox provides
 
