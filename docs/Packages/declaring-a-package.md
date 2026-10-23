@@ -203,7 +203,8 @@ const page = await SystemHttp(ctx).tools.request({
 ```
 
 `SystemHttp` and `SystemScheduler` are typed references to [System HTTP](../System/HTTP.md) and
-[System Scheduler](../System/Scheduler.md). Type your own references with the contract from
+[System Scheduler](../System/Scheduler.md); `SystemContractCatalog`
+[lists every provider of a contract](#calling-every-provider-of-a-contract). Type your own references with the contract from
 [`defineContract`](#the-declaration), imported with `import type` so none of the provider's code
 comes along. News's Voice Skill entry point references News's own contract this way:
 
@@ -228,6 +229,35 @@ const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
 A package can call its own contract this way when the Runtime should check the caller again.
 News's Voice Skill entry point is open to Readers, so it runs `refresh` through the Runtime,
 which requires Writer for it.
+
+### Calling every provider of a contract
+
+A call through a reference goes to the contract's active provider. A hub that works with every
+installed provider, the way Voice Hub works with every voice skill, declares
+`SystemContractCatalog` too, lists the providers, and names one on each call through `ctx`:
+
+```ts
+import { SystemContractCatalog } from "@peers-app/peers-sdk/define";
+
+const { providers } = await SystemContractCatalog(ctx).tools.listContractProviders({
+  contractId: VOICE_SKILL_CONTRACT_ID,
+  version: 1,
+});
+for (const { packageId } of providers) {
+  const catalog = await ctx.getConsumedObservable(VOICE_SKILL_CONTRACT_ID, 1, "skill", {
+    providerPackageId: packageId,
+  });
+  // ...
+}
+
+// Later: run a tool on the skill the model chose.
+await ctx.callConsumedTool(VOICE_SKILL_CONTRACT_ID, 1, "invoke", { tool, args }, {
+  providerPackageId: chosen.packageId,
+});
+```
+
+Declare the contract the providers serve with `pkg.consumes(...)` as well (`{ optional: true }`
+when the package works with none installed).
 
 ## Package-internal state
 
