@@ -77,12 +77,17 @@ In a handler, `Headlines(ctx)` has `get(id)`, `list(filter?, options?)`, `count(
 options as any Peers table (`Headlines(ctx).list({ feedId }, { page: 1, pageSize: 20 })`);
 page numbers start at 1. `save` parses
 the row with the schema first, so defaults apply and an invalid row is rejected in the package.
-An optional field left `undefined` is stored unset, and reads leave unset fields out.
+An optional field saved as `null` or `undefined` is stored unset, a field with a default gets
+the default, and reads leave unset fields out ([Empty values](#empty-values)). `save` resolves
+to the row as stored.
+Rows read from storage and passed to a table override follow the same empty-value rule,
+including nested fields written by an older package build.
 
 The manifest types each field from its schema: an enum or a string literal is `string`, a
 number or boolean literal is `number` or `boolean`, and `zodPeerId` is `id`.
-Enum and literal fields that allow `null`, contain nullable or nested array elements, or use a
-transform keep `any`, so the host can accept every value the schema allows.
+Enum and literal fields declared with `.nullish()`, with empty or nested array elements, or with
+a transform keep `any`, so the host can accept every value the schema allows. The manifest also
+describes nested objects and enum values ([Schemas in the manifest](#schemas-in-the-manifest)).
 
 List a table on a contract (`tables` in [`defineContract`](#the-declaration)) to expose it to
 other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device, and
@@ -182,9 +187,82 @@ export const refreshTool = defineTool({
 - `outputSchema` describes the result for callers and the catalog; the result isn't parsed with
   it. Return every required output field yourself, including fields with schema defaults. The
   result is copied as JSON would carry it, so an optional field can be left `undefined`.
+- An assistant's model sees a tool's inputs in full: nested objects and the values an enum
+  allows ([Schemas in the manifest](#schemas-in-the-manifest)). An optional input sent as `null`,
+  as models often do, is left out before the handler sees it ([Empty values](#empty-values)).
 - A contract defined elsewhere, such as [Voice Skill](./voice-skills), arrives as IR: declare
   its tools with `inputFields` and `outputFields` instead of schemas. Their input reaches the
-  handler as sent.
+  handler as sent, so a call from another package can pass `null` for an optional input.
+
+## Schemas in the manifest
+
+The manifest describes each schema (a table's rows, a tool's input and output, an event's
+payload, an observable's value) as a list of Peers IR fields. Each field has a `name` and a
+`type`: `string`, `number`, `boolean`, `id`, `Date`, `object`, `blob`, or `any`. The rest say
+more about the value:
+
+| Key | Comes from | Means |
+| --- | --- | --- |
+| `optional` | `.optional()` or `.nullish()`; on a tool input, also `.default()` or `.catch()` | The value may be empty ([Empty values](#empty-values)). |
+| `isArray` | `z.array(...)` | The value is an array; `type`, `fields`, and `enumValues` describe each element. `optional` applies to the whole array. |
+| `fields` | `z.object(...)` | The object's own fields, nested up to 16 levels. |
+| `enumValues` | `z.enum`, `z.nativeEnum`, a literal, or a union of literals | The only values allowed. |
+
+```json
+{
+  "name": "place",
+  "type": "object",
+  "fields": [
+    { "name": "city", "type": "string" },
+    { "name": "unit", "type": "string", "enumValues": ["F", "C"] },
+    { "name": "zone", "type": "string", "optional": true }
+  ]
+}
+```
+
+- When a value arrives, the Runtime checks a table row, a tool's input, or an event payload
+  against `type`, `optional`, and `isArray`, and an observable's value against its
+  `valueType`. `fields` and `enumValues` describe values for consumers and for the models that
+  call tools; the package's schema enforces them when it parses. So a row synced from a device
+  running a newer version of the package isn't refused for a value the older schema doesn't
+  list.
+- An object keeps keys its `fields` don't list.
+- Some schemas are described by type only: records (`z.record`), unions of objects, tuples,
+  lazy schemas, a value inside a transform or a preprocess, and arrays of arrays.
+- The IR can't say that an array's elements may be empty, and then lists no enum values for
+  them. For now, avoid `null` or `undefined` elements and arrays of arrays in table rows and tool
+  inputs: the Runtime refuses them even where the schema allows them.
+- An observable's entry carries the value's full shape as `value`, beside the `valueType` the
+  Runtime checks ([Observables](#observables)).
+- Hand-written IR, for a contract defined elsewhere, can use the same keys. `peers-package`
+  fails the build on a field key it doesn't know, so a typo doesn't go unnoticed.
+- A package built with an SDK that writes `fields`, `enumValues`, or `value` needs a Peers host
+  from the same release or later; an older host refuses its manifest.
+
+### Empty values
+
+A field in Peers has one empty value: missing. Wherever the manifest describes a value (a table
+row, a tool's input and output, an event payload, an observable's value, and the objects nested
+in them), `null`, `undefined`, and a field left out all mean the same:
+
+- An optional field that's `null` or `undefined` is left out, so your code doesn't receive `null`
+  for one. The exception is a tool declared with `inputFields`: a call from another package
+  reaches it as sent.
+- A field with a default gets the default when it's empty, where the schema parses the value:
+  table saves, tool inputs, event emits, and observable writes. A tool's result and an
+  observable's source aren't parsed, so give their fields with defaults a value yourself.
+- A required field without a default can't be empty.
+- A table row saved with an empty field reads back without it.
+- Values the manifest doesn't describe field by field, such as those inside `z.record`,
+  `z.unknown()`, or `z.any()`, are left as they are, `null`s included.
+
+Declare a field that may be empty with `.optional()`. `peers-package build` refuses
+`.nullable()` unless the field is also optional (as with `.nullish()`) and has no default,
+because the field would never hold `null`. An observable's whole value may still be `null`
+([Observables](#observables)).
+
+A tool can't tell "clear this field" from "leave it alone" by `null` versus a field left out.
+When it needs to, take the fields to clear as an input, such as `clear: z.array(z.string())`.
 
 ## Calling contracts
 
@@ -325,8 +403,9 @@ await finished.emit({ title: "Tea" }); // no ctx
 - The payload is copied as it's sent, the way JSON would carry it: `undefined` fields are left
   out, and `undefined` array entries become `null`. Dates and `Uint8Array`s are kept. A value
   that can't be sent (a function, a `Map`, a cycle, `NaN`) fails `emit`.
-- The manifest describes the parsed payload: an optional or nullable field may be missing or
-  `null`, and a field with a transform accepts any value.
+- The manifest describes the parsed payload: an optional field may be empty, and subscribers
+  receive it left out ([Empty values](#empty-values)). A field with a transform accepts any
+  value.
 - Events aren't replayed: subscribers get the ones emitted while they're subscribed.
 - Outside a worker, `emit` checks the payload the same way and sends nothing.
 - For a contract defined elsewhere, pass `payloadFields` (Peers IR) instead of a schema, or list
@@ -387,7 +466,10 @@ conditions({ temp: 71 }); // the package reads and writes the source as usual
 - The schema sets the value type the Runtime checks (`string`, `number`, `boolean`, `object`,
   `id`, or `any`): an enum or string literal is `string`, an array is `object`, and a value
   that can be `null` or `undefined`, or that comes from a transform, is `any`. Values are JSON,
-  so a schema with a `Date` anywhere in it is rejected.
+  so a schema with a `Date` anywhere in it is rejected. The manifest also carries the value's
+  full shape as `value`: a nullable object, say, is `any` to the Runtime and an optional object
+  with its fields to readers ([Schemas in the manifest](#schemas-in-the-manifest)). Fields of an
+  object value follow [Empty values](#empty-values).
 - For a contract defined elsewhere, pass `valueType` instead of a schema, or list the IR
   observable (with its `persistentVar` binding) in the contract's `observables` directly.
 

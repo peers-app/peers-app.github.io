@@ -108,6 +108,8 @@ Contract maturity is **coupled to the package lifecycle**. Developers do not set
 
 The lifecycle is one-way: once a contract version is frozen (stable), it **cannot** be re-registered as dev. The registry rejects such attempts.
 
+A frozen version's shape can't change, but its descriptions can: reword a tool's `usageDescription` or any `description` to clarify usage or point callers at a newer version. Reordering members or fields doesn't need a new contract version either, though a table still raises its own `versionNumber` whenever its field list changes, order included. Adding the [richer schema keys](./declaring-a-package#schemas-in-the-manifest) when rebuilding a provider preserves compatibility with the same frozen version. A rebuild that also changes a field's type or whether it is optional needs a new version: for example, a field declared `.optional().nullable()`, which SDKs before this release marked required.
+
 Isolated artifacts follow the same mutable-development rule without trusting
 artifact data for maturity. The host reads the active `PackageVersion.versionTag`
 when it installs an artifact: `dev` and `beta` definitions receive
