@@ -190,9 +190,11 @@ export const refreshTool = defineTool({
 - An assistant's model sees a tool's inputs in full: nested objects and the values an enum
   allows ([Schemas in the manifest](#schemas-in-the-manifest)). An optional input sent as `null`,
   as models often do, is left out before the handler sees it ([Empty values](#empty-values)).
-- A contract defined elsewhere, such as [Voice Skill](./voice-skills), arrives as IR: declare
-  its tools with `inputFields` and `outputFields` instead of schemas. Their input reaches the
-  handler as sent, so a call from another package can pass `null` for an optional input.
+- A contract another package declares, such as [Voice Skill](./voice-skills), is implemented
+  from its declaration ([below](#declaring-a-contract-other-packages-implement)). One you have
+  only as IR can be declared with `inputFields` and `outputFields` instead of schemas; such a
+  tool's input reaches the handler as sent, so a call from another package can pass `null` for
+  an optional input.
 
 ## Schemas in the manifest
 
@@ -299,8 +301,14 @@ const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
 - `tables` has the same methods as the package's own table handle. Each call goes through the
   providing package's table (its class, if it has one), so `save` takes the schema's input and
   the provider's defaults and transforms apply.
+- `observables` reads a contract's observables as this call's caller:
+  `await Weather(ctx).observables.forecast.get()`, and `.set(value)` on a writable one.
+  An empty whole observable value is `null` on the wire; check for it before using the result.
+  To clear a writable whole value, declare a schema that allows `null` and pass `null`.
 - Tool input and saved rows are copied as JSON would carry them: a field left `undefined` is
   omitted.
+- A contract [declared on its own](#declaring-a-contract-other-packages-implement) is its own
+  reference: `VoiceSkill(ctx).tools.invoke(...)`, with no `contractRef`.
 - Without the contract's types (another package's contract you don't have the source for), type
   just the tools, with the provider's tool signatures (`IHttpConsumer["tools"]`).
 
@@ -312,30 +320,29 @@ which requires Writer for it.
 
 A call through a reference goes to the contract's active provider. A hub that works with every
 installed provider, the way Voice Hub works with every voice skill, declares
-`SystemContractCatalog` too, lists the providers, and names one on each call through `ctx`:
+`SystemContractCatalog` too, lists the providers, and passes `{ providerPackageId }` when it
+calls the reference:
 
 ```ts
 import { SystemContractCatalog } from "@peers-app/peers-sdk/define";
+import { VoiceSkill } from "./contracts/voice-skill";
 
 const { providers } = await SystemContractCatalog(ctx).tools.listContractProviders({
-  contractId: VOICE_SKILL_CONTRACT_ID,
-  version: 1,
+  contractId: VoiceSkill.contractId,
+  version: VoiceSkill.version,
 });
 for (const { packageId } of providers) {
-  const catalog = await ctx.getConsumedObservable(VOICE_SKILL_CONTRACT_ID, 1, "skill", {
-    providerPackageId: packageId,
-  });
+  const catalog = await VoiceSkill(ctx, { providerPackageId: packageId }).observables.skill.get();
   // ...
 }
 
 // Later: run a tool on the skill the model chose.
-await ctx.callConsumedTool(VOICE_SKILL_CONTRACT_ID, 1, "invoke", { tool, args }, {
-  providerPackageId: chosen.packageId,
-});
+await VoiceSkill(ctx, { providerPackageId: chosen.packageId }).tools.invoke({ tool, args });
 ```
 
 Declare the contract the providers serve with `pkg.consumes(...)` as well (`{ optional: true }`
-when the package works with none installed).
+when the package works with none installed). Tools and observables can pick a provider this way;
+table calls can't yet, and fail if you pass one.
 
 ## Package-internal state
 
@@ -512,13 +519,104 @@ export default definePackage((pkg) => {
   and the `tables`, `tools`, `observables`, and `events` it exposes. It checks each member's
   kind and rejects a name used twice. The value and its member lists are frozen and typed
   read-only. Export it so the package's UI (and other packages) can reference it by type.
-- `pkg.provides(contract)` provides it. A contract defined elsewhere is a `defineContract` too:
-  News's `NewsVoiceSkill` takes its members as IR from the shared Voice Skill declaration, with
-  News's own `invoke` tool.
+- `pkg.provides(contract)` provides it. A contract another package declares is provided the same
+  way, once implemented: News's `NewsVoiceSkill` is Voice Hub's Voice Skill declaration with
+  News's `invoke` handler ([below](#declaring-a-contract-other-packages-implement)).
 - `pkg.consumes(ref, { optional })` declares a dependency.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
   names. `pkg.actionAliases` maps voice or UI action names to provided tools.
 - `pkg.onStart(fn)` runs background work when the worker starts ([below](#background-work)).
+
+## Declaring a contract other packages implement
+
+Some contracts have many providers: every voice skill provides Voice Skill, and Voice Hub calls
+each one. Declare such a contract on its own, with no handlers, in the package that owns it, and
+let each provider implement it:
+
+```ts
+// voice-hub/src/contracts/voice-skill.ts: no handlers, safe to import or copy
+import {
+  AccessLevel,
+  declareContract,
+  declareObservable,
+  declareTool,
+  defineEvent,
+  z,
+} from "@peers-app/peers-sdk/define";
+
+// Exported, so providers can emit it.
+export const voiceSkillAlert = defineEvent({
+  name: "alert",
+  description: "Attention.",
+  payloadSchema: alertSchema,
+});
+
+export const VoiceSkill = declareContract({
+  contractId: "00muxgugn6xvs8f2r80ru205t",
+  version: 1,
+  name: "Voice Skill",
+  tools: [
+    declareTool({
+      name: "invoke",
+      usageDescription: "Run one tool from this skill's catalog.",
+      accessLevel: AccessLevel.Reader,
+      authorityPropagation: "preserve",
+      inputSchema: z.object({ tool: z.string(), args: z.object({}).passthrough().optional() }),
+      outputSchema: z.object({ result: z.unknown().optional(), speech: z.string().optional() }),
+    }),
+  ],
+  observables: [
+    declareObservable({ name: "skill", description: "The catalog.", schema: catalogSchema }),
+  ],
+  events: [voiceSkillAlert],
+});
+```
+
+- `declareTool` and `declareObservable` take what `defineTool` and `defineObservable` take,
+  without the handler or the source. Events (`defineEvent`) and tables (`defineTable`, without a
+  `tableClass`) are listed as they are.
+- `declareContract` checks the same things as `defineContract`, and refuses a member with a
+  handler or a source.
+
+A provider implements the declaration: a handler for each tool and a source for each
+observable, by name. The result is a contract to provide:
+
+```ts
+import { deviceVar, implementContract } from "@peers-app/peers-sdk/define";
+import { VoiceSkill, type VoiceSkillCatalog } from "../../../voice-hub/src/contracts/voice-skill";
+
+export const TimersVoiceSkill = implementContract(VoiceSkill, {
+  tools: {
+    invoke: async ({ tool, args }, ctx) => {
+      // `tool` and `args` are typed from the declared input schema.
+      return { speech: "Done." };
+    },
+  },
+  observables: { skill: deviceVar<VoiceSkillCatalog>("skill", { defaultValue: catalog }) },
+});
+
+// In definePackage:
+pkg.provides(TimersVoiceSkill);
+```
+
+- Handlers are typed from the declaration: the parsed input in, the declared output back. A
+  source must hold the declared value. A writable source must accept every value allowed by the
+  declaration; give its variable or `observable()` that full value type.
+- A missing or unknown member fails the build, so an implementation can't drift from the
+  declaration: its manifest shape comes from the declaration.
+- A tool's entry may set this provider's deadline: `invoke: { handler, timeoutMs: 90_000 }`.
+  Its access level and `authorityPropagation` come from the declaration.
+- A declared event is emitted with its own `emit` (`voiceSkillAlert.emit({ ... })`), from any
+  package that provides an implementation listing it. Export the declaration's events so
+  providers can reach them.
+
+Consumers use the declaration as the reference: `pkg.consumes(VoiceSkill, { optional: true })`,
+`VoiceSkill(ctx).tools.invoke(...)` in a handler, and `hostContract(VoiceSkill)` in a UI.
+
+A declaration holds no handlers or sources, so other packages can import it or copy it. Once a
+stable package release freezes a contract version, its shape can't change (the Runtime refuses
+a provider whose shape differs); descriptions may still change. Contracts from dev and beta
+packages remain mutable. Today, official packages import Voice Hub's declaration by path.
 
 ## Background work
 
@@ -656,6 +754,13 @@ function Feeds() {
 - **One client per contract.** `hostContract` without options returns the same client for
   the same contract id and version, even from a new reference. It isn't a hook, so it works in
   event handlers and plain functions too.
+- **One provider.** `hostContract(VoiceSkill, { providerPackageId })` reaches that provider
+  rather than the group's default, to show a widget for every installed skill, say. This applies
+  to tools, tables, observables, and events. Handler references can't select a table's provider
+  yet.
+- **Initial observable values.** A local copy starts empty. Await
+  `client.observables.skill.loadingPromise` before relying on its first value. It resolves
+  after the initial read attempt (a failed read is logged), or when the client is disposed.
 - **Disposal.** Shared clients live for the window's lifetime. A client created with options is
   independent; call `dispose()` when its owner ends. Disposal cancels connection waits, ends
   subscriptions, and refuses new calls and observable writes; cached observable reads remain.
@@ -704,6 +809,10 @@ host.dispose();
   including IR declarations; schema defaults and coercion cannot bypass that check. Schema
   declarations then parse the write, and the observable keeps the parsed value, as the
   package does. `host.events.x.emit(payload)` reaches subscribers.
+- **A [declared contract](#declaring-a-contract-other-packages-implement)** works too:
+  `mockHostContract(VoiceSkill, { tools, observables })`. The fakes stand in for its handlers,
+  and its observables start empty unless you give them values. The mock is a single provider:
+  a client made with `providerPackageId` reaches it whatever the id.
 - **`onCall(call)`** runs before each answer: return a promise to delay it, or throw to fail it
   (an offline read, a refused save). It cannot replace the answer.
 - Values are copied using the isolated boundary's supported value types, including Dates and

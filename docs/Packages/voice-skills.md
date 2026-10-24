@@ -6,11 +6,34 @@ sidebar_position: 4
 
 A voice skill is a package that provides the Voice Skill contract. Voice Hub does not know the package at build time. It lists every provider, reads each `skill` catalog, and calls `invoke`.
 
-The contract id is `00muxgugn6xvs8f2r80ru205t`, version 1. Official packages share `official-packages/voice-skill-contract.mjs` so the public shape stays identical. The first installed provider freezes that shape. A later provider with a different public shape fails to install.
+The contract id is `00muxgugn6xvs8f2r80ru205t`, version 1. Voice Hub declares it in
+`voice-hub/src/contracts/voice-skill.ts` with `declareContract`, and each skill implements that
+declaration ([Declaring a contract other packages implement](./declaring-a-package#declaring-a-contract-other-packages-implement)),
+so every skill has the same public shape. Once a stable package release freezes the contract
+version, a provider with a different public shape fails to install. Dev and beta packages leave
+their contracts mutable.
+
+## Providing Voice Skill
+
+```ts
+import { deviceVar, implementContract } from "@peers-app/peers-sdk/define";
+import { VoiceSkill, type VoiceSkillCatalog } from "../../../voice-hub/src/contracts/voice-skill";
+
+export const TimersVoiceSkill = implementContract(VoiceSkill, {
+  tools: { invoke: async ({ tool, args }, ctx) => runCatalogTool(tool, args, ctx) },
+  observables: { skill: deviceVar<VoiceSkillCatalog>("skill", { defaultValue: catalog }) },
+});
+// In definePackage:
+pkg.provides(TimersVoiceSkill);
+pkg.actionAliases = { set_timer: writeTimerTool /* one per catalog tool */ };
+```
+
+List each catalog tool in `pkg.actionAliases`, naming the provided tool it runs: the Runtime
+uses the aliases to decide which catalog tools a caller may use.
 
 ## Catalog
 
-`skill` is a read-only observable backed by a device persistent variable. For a package declared with `definePackage` (guest API 3), reading it goes through the package, so it starts the package's worker; with guest API 2 the host reads it without the worker. Put the catalog in `persistentVar.defaultValue`:
+`skill` is a read-only observable backed by a device variable named `skill`. For a package declared with `definePackage` (guest API 3), reading it goes through the package, so it starts the package's worker; with guest API 2 the host reads it without the worker. Make the catalog the variable's default value. `VoiceSkillCatalog` types it, and the build checks it against the declared schema:
 
 ```json
 {
@@ -107,14 +130,12 @@ in the provider's detail sentence.
 
 An alert without spoken detail uses the done tone instead.
 
-A package declared with `definePackage` sends it as an event declared from the shared IR, listed
-on its Voice Skill contract in place of the IR one. Timers does this:
+A package that implements the declaration sends it with the declaration's event:
 
 ```ts
-const voiceSkill = voiceSkillDeclaration(catalog);
-export const timerAlert = defineEvent(voiceSkill.events[0]);
-// defineContract({ ..., events: [timerAlert] })
-await timerAlert.emit({ kind: "timer-expired", title: "Tea", detail: "Your Tea timer is done." });
+import { voiceSkillAlert } from "../../../voice-hub/src/contracts/voice-skill";
+
+await voiceSkillAlert.emit({ kind: "timer-expired", title: "Tea", detail: "Your Tea timer is done." });
 ```
 
 Official Timers uses the shared renderer helper `official-packages/alert-audio.ts` for sound
@@ -130,7 +151,7 @@ data refreshes or every successful voice invocation.
 
 ## Discovery
 
-Voice Hub consumes Voice Skill as optional, then calls `listContractProviders` and reads `skill` on each provider with `providerPackageId`. A package that does not provide the contract is not a skill.
+Voice Hub consumes Voice Skill as optional, then calls `listContractProviders` and reads `skill` on each provider: `VoiceSkill(ctx, { providerPackageId }).observables.skill.get()` in its provider, and `hostContract(VoiceSkill, { providerPackageId })` for widgets. A package that does not provide the contract is not a skill.
 
 Catalog observables stay subscribed while Voice Hub is open, so changing or removing widget
 metadata updates the context picker without hard-coded package checks.
