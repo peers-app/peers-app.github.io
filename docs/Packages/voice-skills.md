@@ -9,8 +9,7 @@ package when it's built. It lists every provider of Voice Skill, and calls the t
 contracts each one **exposes**, on that provider, as the person speaking.
 
 Voice Skill's contract id is `00muxgugn6xvs8f2r80ru205t`. Implement **version 2**. Version 1, with
-its catalog and `invoke`, is described [at the end](#voice-skill-v1); Voice Hub still reads it from
-a package that exposes nothing through v2.
+its catalog and `invoke`, is [retired](#voice-skill-v1).
 
 ## Providing Voice Skill
 
@@ -154,12 +153,10 @@ or every successful call.
 
 ## Discovery
 
-Voice Hub consumes Voice Skill v2 and v1 as optional, and lists the providers of each with the
-Contract Catalog's `listContractProviders`. A v2 provider's listing includes the contracts it
-exposes, with the tools the caller may run. For tools, v2 takes precedence when that provider's
-listing exposes at least one contract; otherwise Voice Hub still reads its v1 catalog. For
-widgets and alerts, v2 takes precedence whenever the package provides it. A package that doesn't
-provide Voice Skill isn't a skill.
+Voice Hub consumes Voice Skill v2 as optional and lists its providers with the Contract
+Catalog's `listContractProviders`, which includes the contracts each one exposes, with the tools
+the caller may run. A package that doesn't provide Voice Skill isn't a skill. Voice Hub's screen
+finds skills when it opens; reopen it to see one installed while it was open.
 
 News, Weather, Timers, and Groceries in `official-packages/`, and Tasks from its `peers-core`
 package boundary, provide Voice Skill v2. Groceries exposes Grocery List and Tasks exposes Task
@@ -195,24 +192,5 @@ the Cancel button for active turns.
 
 ## Voice Skill v1
 
-Superseded by v2; implement v2 for a new skill. Voice Hub still reads v1 from a package that
-provides it without exposing anything through v2. Groceries and Tasks still provide v1, for their
-own screens' actions, until those move to their own contracts.
-
-A v1 skill implements Voice Skill's `invoke` tool and its `skill` observable:
-
-- **`skill`** is a catalog: `name`, a lowercase `slug`, optional `description`, `tools` (each with
-  a `name`, a `description`, and JSON Schema `parameters`), and an optional `widget` (`peersUIId`,
-  `title`, `iconClassName`, `order`). Voice Hub prefixes the model's tool names with the slug.
-  It numbers colliding slugs and legacy slugs ending in `_` so each offered tool name identifies
-  one skill. Slugs containing `__` are omitted.
-- **`invoke({ tool, args })`** runs one catalog tool and returns `{ result, speech? }`. `speech`
-  is suggested wording for the model; leave it out after a change, and Voice Hub confirms with a
-  tone. `invoke` admits Readers and declares `authorityPropagation: "preserve"`, so it runs each
-  catalog tool with the caller's own level.
-- **`pkg.actionAliases`** maps each catalog tool's name to the provided tool it runs. The Runtime
-  uses it to list which catalog tools the caller may use (`authorizedActions` on
-  `listContractProviders`). Map each catalog name onto your own tools, and don't trust a name
-  that isn't in the catalog.
-
-Generate the v1 copy with `contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkill`.
+Retired: Voice Hub no longer reads it. Version 1 had a catalog observable and an `invoke` tool
+that routed to the skill's own tools; a skill on v1 should move to v2 and expose its contracts.

@@ -143,8 +143,8 @@ Clearing local voice history requires Owner (80). Anyone speaking acts as the si
 using the configured OpenAI credential and installed skills admitted by their own access checks.
 The wake word is not a second login.
 
-Skill `invoke` is Reader and requests authority preservation, as does
-`voice-hub-run-action`. Ordinary action tools cap subsequent calls at their own effective level.
+Voice Hub's entry tool is Reader and preserves the caller's authority for skill calls.
+Ordinary skill tools cap subsequent calls at their own effective level.
 A delegated Reader cannot dispatch a Writer action even for a Writer user; this path does not
 use assistant approvals. Delegated remote-device action calls fail closed. Weather and news
 voice answers use cached data only; refresh requires Writer. These checks cover the migrated
@@ -293,7 +293,7 @@ Peers Services.
 
 Groceries and Tasks voice writes run as the person signed in on this device. The package loader
 supplies the isolate runtime with a host-only resolver for that user's identity and data context.
-Grocery/task/timer writes and weather/news refresh require Writer (40); their reads are Reader. Voice Hub shows only actions authorized for the current turn and rechecks at dispatch. Grocery screen/widget controls and the Tasks widget/list controls use the same gate.
+Grocery/task/timer writes and weather/news refresh require Writer (40); their reads are Reader. Voice Hub offers its model only the tools the person may run, and every call is checked again. The Groceries screen and widget, and the Tasks widget and list controls, use the same levels.
 Without a known signed-in identity, calls still fail with
 a missing-identity permission denial. Guest payloads and skill arguments
 cannot supply trusted identity.
@@ -310,8 +310,8 @@ behavior. Base Peers components do not contain a second wake-word or speech serv
 
 ## Turn completion and upgrades
 
-Voice Hub can look up a task and then update it within the same request. Skill-provided speech
-is a suggested response; the model receives the result and can continue with the required action.
+Voice Hub can look up a task and then update it within the same request. The model receives each
+tool's result and can continue with the required action before answering.
 A turn permits four rounds of skill calls, followed by a response-only summary. If a later model
 request fails after a skill succeeds, Voice Hub reports that the whole request was not completed.
 
@@ -334,4 +334,7 @@ you return near the bottom or reopen the panel. Hidden or zero-height panels def
 until layout is available. Long messages wrap inside the bounded panel so the microphone dock
 remains reachable; reopening does not reset stored history.
 
-Voice Hub's `voice-hub-run-action` and each skill provider's `invoke` declare `authorityPropagation: "preserve"`, which the runtime honors like a declared access level (see [Authority propagation and dynamic dispatch](./System/Tools.md#authority-propagation-and-dynamic-dispatch)). Installing the package into a group is the trust decision; there is no separate approval step. Admission and propagation are independent; selected targets and catalogs use the caller's live group role and inherited ceiling, and an ordinary Reader tool upstream still caps the chain at Reader.
+Installing Voice Hub and a skill into a group is the trust decision; there is no separate approval
+step for voice actions. Each call uses the person's current group role and inherited access limit.
+A Reader tool upstream still limits subsequent calls to Reader (see
+[Authority propagation and dynamic dispatch](./System/Tools.md#authority-propagation-and-dynamic-dispatch)).
