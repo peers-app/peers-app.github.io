@@ -9,8 +9,8 @@ package when it's built. It lists every provider of Voice Skill, and calls the t
 contracts each one **exposes**, on that provider, as the person speaking.
 
 Voice Skill's contract id is `00muxgugn6xvs8f2r80ru205t`. Implement **version 2**. Version 1, with
-its catalog and `invoke`, is described [at the end](#voice-skill-v1); Voice Hub still reads it while
-the skills that provide it move.
+its catalog and `invoke`, is described [at the end](#voice-skill-v1); Voice Hub still reads it from
+a package that exposes nothing through v2.
 
 ## Providing Voice Skill
 
@@ -161,8 +161,10 @@ listing exposes at least one contract; otherwise Voice Hub still reads its v1 ca
 widgets and alerts, v2 takes precedence whenever the package provides it. A package that doesn't
 provide Voice Skill isn't a skill.
 
-News, Weather, and Timers in `official-packages/` provide Voice Skill v2. Groceries, and Tasks from
-its `peers-core` package boundary, still provide v1.
+News, Weather, Timers, and Groceries in `official-packages/`, and Tasks from its `peers-core`
+package boundary, provide Voice Skill v2. Groceries exposes Grocery List and Tasks exposes Task
+List: small contracts with the tools a person asks for by voice, which the assistant and the CLI
+can use too.
 
 ## Who a call runs as
 
@@ -193,8 +195,9 @@ the Cancel button for active turns.
 
 ## Voice Skill v1
 
-Superseded by v2; implement v2 for a new skill. Groceries and Tasks still provide v1, and Voice Hub
-reads it until they move.
+Superseded by v2; implement v2 for a new skill. Voice Hub still reads v1 from a package that
+provides it without exposing anything through v2. Groceries and Tasks still provide v1, for their
+own screens' actions, until those move to their own contracts.
 
 A v1 skill implements Voice Skill's `invoke` tool and its `skill` observable:
 

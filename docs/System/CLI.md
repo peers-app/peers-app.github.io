@@ -238,7 +238,7 @@ peers tools get "new-task"
 peers tools run "new-task" '{"title": "Buy groceries", "status": "Queued"}'
 
 # Run a tool in a group context
-peers tools run "add-to-shopping-list" '{"item": "milk"}' -c <groupId>
+peers tools run "add-to-shopping-list" '{"name": "milk"}' -c <groupId>
 
 # Inspect and run tools on a directly connected device
 peers tools list --device <deviceId>
@@ -582,7 +582,7 @@ By default, the CLI operates on your personal data. To work with a group's data,
 ```bash
 peers -c <groupId> "What are our shared tasks?"
 peers db Tasks -c <groupId>
-peers tools run "add-to-shopping-list" '{"item": "milk"}' -c <groupId>
+peers tools run "add-to-shopping-list" '{"name": "milk"}' -c <groupId>
 peers db query "SELECT * FROM GroupMembers" -c <groupId> --device <deviceId>
 ```
 
