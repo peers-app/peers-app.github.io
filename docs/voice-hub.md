@@ -162,8 +162,8 @@ within a few minutes. Weather shows the last good forecast with its age, **Stale
 or **Last forecast (refresh failed)** after a failed refresh, and never shows another city's
 forecast as the saved city's. **Update** fetches the typed city and saves it, keeping the unit; a
 city that can't be found leaves the saved city unchanged. A typed city survives forecast and
-unit updates, and only **Update** disables the controls. Voice `get_weather` answers from the
-cached forecast without fetching.
+unit updates, and only **Update** disables the controls. Asked about the weather, Voice Hub answers
+from the cached forecast without fetching.
 
 Tap a context such as **Groceries**, **Tasks**, **Timers**, **Weather**, or **News**
 to open its complete touch

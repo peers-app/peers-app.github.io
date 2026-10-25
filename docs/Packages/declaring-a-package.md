@@ -23,10 +23,8 @@ declares without running any of its code. The same declaration is bundled for th
 each tool's handler is registered under its declared name.
 
 :::note Where this applies today
-The official News package is declared this way. The template and the other isolated official
-packages still write their manifest by hand, as described in
-[Getting started](./getting-started#defining-an-isolated-package); they move to `definePackage`
-next.
+News, Weather, Timers, and Voice Hub use these declarations. Packages that still write their
+manifest by hand can follow [Getting started](./getting-started#defining-an-isolated-package).
 :::
 
 ## Layout
@@ -42,7 +40,7 @@ news/src/
   tools/refresh.tool.ts    definition + handler
   tools/headlines.tool.ts  definition + handler
   logic/feed-xml.ts        parsing (internal)
-  voice/news-voice-skill.ts
+  contracts/voice-skill.v2.ts  a generated copy of Voice Hub's declaration
   ui/news.ts               the UI's client for the contract
   ui/…                     screens and widgets
 ```
@@ -286,7 +284,7 @@ const page = await SystemHttp(ctx).tools.request({
 [System Scheduler](../System/Scheduler.md); `SystemContractCatalog`
 [lists every provider of a contract](#calling-every-provider-of-a-contract). Type your own references with the contract from
 [`defineContract`](#the-declaration), imported with `import type` so none of the provider's code
-comes along. News's Voice Skill entry point references News's own contract this way:
+comes along. A handler in News can reference its own contract this way:
 
 ```ts
 import type { News } from "../package";
@@ -313,8 +311,7 @@ const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
   just the tools, with the provider's tool signatures (`IHttpConsumer["tools"]`).
 
 A package can call its own contract this way when the Runtime should check the caller again.
-News's Voice Skill entry point is open to Readers, so it runs `refresh` through the Runtime,
-which requires Writer for it.
+For example, Timer Controls calls Timers' `write-timer` through the Runtime for each change.
 
 ### Calling every provider of a contract
 
@@ -325,19 +322,19 @@ calls the reference:
 
 ```ts
 import { SystemContractCatalog } from "@peers-app/peers-sdk/define";
-import { VoiceSkill } from "./contracts/voice-skill";
+import { VoiceSkill } from "./contracts/voice-skill.v2";
 
 const { providers } = await SystemContractCatalog(ctx).tools.listContractProviders({
   contractId: VoiceSkill.contractId,
   version: VoiceSkill.version,
 });
 for (const { packageId } of providers) {
-  const catalog = await VoiceSkill(ctx, { providerPackageId: packageId }).observables.skill.get();
+  const widget = await VoiceSkill(ctx, { providerPackageId: packageId }).observables.widget.get();
   // ...
 }
 
-// Later: run a tool on the skill the model chose.
-await VoiceSkill(ctx, { providerPackageId: chosen.packageId }).tools.invoke({ tool, args });
+// The listing also includes the contracts each provider exposes.
+// Call their tools as described under "Exposing your contracts through a hub's contract".
 ```
 
 Declare the contract the providers serve with `pkg.consumes(...)` as well (`{ optional: true }`
@@ -501,7 +498,7 @@ export const News = defineContract({
   contractId,
   version: 1,
   name: "News",
-  description: "RSS and Atom headlines for a few allowlisted feeds.",
+  description: "Headlines from a few RSS and Atom feeds.",
   tables: [Feeds, Headlines],
   tools: [refreshTool, headlinesTool],
 });
@@ -515,7 +512,6 @@ export default definePackage((pkg) => {
   pkg.consumes(SystemScheduler, { optional: true });
   pkg.network = { allowedHosts: ["feeds.bbci.co.uk", "feeds.npr.org"] };
   pkg.appNavs = [{ name: "News", iconClassName: "bi bi-newspaper", navigationPath: "app" }];
-  pkg.actionAliases = { get_headlines: headlinesTool, refresh_news: refreshTool };
 });
 ```
 
@@ -525,17 +521,19 @@ export default definePackage((pkg) => {
   read-only. Export it so the package's UI (and other packages) can reference it by type.
 - `pkg.provides(contract)` provides it. A contract another package declares is provided the same
   way, once implemented: News's `NewsVoiceSkill` is Voice Hub's Voice Skill declaration with
-  News's `invoke` handler ([below](#declaring-a-contract-other-packages-implement)).
+  News's widget, exposing News ([below](#exposing-your-contracts-through-a-hubs-contract)).
 - `pkg.consumes(ref, { optional })` declares a dependency.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
-  names. `pkg.actionAliases` maps voice or UI action names to provided tools.
+  names. `pkg.actionAliases`, only for [Voice Skill v1](./voice-skills#voice-skill-v1), maps
+  action names to provided tools.
 - `pkg.onStart(fn)` runs background work when the worker starts ([below](#background-work)).
 
 ## Declaring a contract other packages implement
 
 Some contracts have many providers: every voice skill provides Voice Skill, and Voice Hub calls
 each one. Declare such a contract on its own, with no handlers, in the package that owns it, and
-let each provider implement it:
+let each provider implement it. Voice Skill v1, the example here, has a tool and an observable
+([v2](./voice-skills) has an observable and an event):
 
 ```ts
 // voice-hub/src/contracts/voice-skill.ts: no handlers, safe to import or copy
@@ -592,7 +590,7 @@ import { VoiceSkill, type VoiceSkillObservables } from "../contracts/voice-skill
 
 type Catalog = VoiceSkillObservables["skill"];
 
-export const TimersVoiceSkill = implementContract(VoiceSkill, {
+export const MyVoiceSkill = implementContract(VoiceSkill, {
   tools: {
     invoke: async ({ tool, args }, ctx) => {
       // `tool` and `args` are typed from the declared input schema.
@@ -603,7 +601,7 @@ export const TimersVoiceSkill = implementContract(VoiceSkill, {
 });
 
 // In definePackage:
-pkg.provides(TimersVoiceSkill);
+pkg.provides(MyVoiceSkill);
 ```
 
 - Handlers are typed from the declaration: the parsed input in, the declared output back. A

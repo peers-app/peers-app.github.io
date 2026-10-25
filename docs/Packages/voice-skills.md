@@ -4,82 +4,105 @@ sidebar_position: 4
 
 # Voice skills
 
-A voice skill is a package that provides the Voice Skill contract. Voice Hub does not know the package at build time. It lists every provider, reads each `skill` catalog, and calls `invoke`.
+A voice skill is a package that provides the Voice Skill contract. Voice Hub doesn't know the
+package when it's built. It lists every provider of Voice Skill, and calls the tools of the
+contracts each one **exposes**, on that provider, as the person speaking.
 
-The contract id is `00muxgugn6xvs8f2r80ru205t`, version 1. Voice Hub declares it in
-`voice-hub/src/contracts/voice-skill.ts` with `declareContract`, and each skill implements a
-generated copy of that declaration ([Declaring a contract other packages implement](./declaring-a-package#declaring-a-contract-other-packages-implement)),
-so every skill has the same public shape. Once a stable package release freezes the contract
-version, a provider with a different public shape fails to install. Dev and beta packages leave
-their contracts mutable.
+Voice Skill's contract id is `00muxgugn6xvs8f2r80ru205t`. Implement **version 2**. Version 1, with
+its catalog and `invoke`, is described [at the end](#voice-skill-v1); Voice Hub still reads it while
+the skills that provide it move.
 
 ## Providing Voice Skill
 
+Voice Hub declares Voice Skill in `voice-hub/src/contracts/voice-skill.ts` (`VoiceSkillV2`). Generate
+your copy of the declaration, and implement it with your widget and the contracts you expose:
+
+```bash
+npx peers-package contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkillV2
+```
+
 ```ts
-import { deviceVar, implementContract } from "@peers-app/peers-sdk/define";
-// Generated: npx peers-package contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkill
-import { VoiceSkill, type VoiceSkillObservables } from "../contracts/voice-skill.v1";
+import { implementContract, observable } from "@peers-app/peers-sdk/define";
+import { VoiceSkill, type VoiceSkillObservables } from "./contracts/voice-skill.v2";
 
-export const TimersVoiceSkill = implementContract(VoiceSkill, {
-  tools: { invoke: async ({ tool, args }, ctx) => runCatalogTool(tool, args, ctx) },
+export const NewsVoiceSkill = implementContract(VoiceSkill, {
   observables: {
-    skill: deviceVar<VoiceSkillObservables["skill"]>("skill", { defaultValue: catalog }),
+    widget: observable<VoiceSkillObservables["widget"]>({
+      peersUIId: newsWidgetId,
+      iconClassName: "bi-newspaper",
+      order: 40,
+    }),
   },
+  exposes: [News],
 });
+
 // In definePackage:
-pkg.provides(TimersVoiceSkill);
-pkg.actionAliases = { set_timer: writeTimerTool /* one per catalog tool */ };
+pkg.provides(News);
+pkg.provides(NewsVoiceSkill);
 ```
 
-List each catalog tool in `pkg.actionAliases`, naming the provided tool it runs: the Runtime
-uses the aliases to decide which catalog tools a caller may use.
+- **`exposes`** lists contracts your package provides whose tools Voice Hub may call. Voice Skill
+  itself has no tools. The rules are in
+  [Exposing your contracts through a hub's contract](./declaring-a-package#exposing-your-contracts-through-a-hubs-contract).
+- **`widget`** is your widget in Voice Hub, or `null` when you have none ([below](#contextual-widget)).
+- **The `contract add` command** works next to Voice Hub's source, as in the Peers repository.
+  Without it, generate the copy from a skill's `dist/package.bundle.js` (add
+  `--contract 00muxgugn6xvs8f2r80ru205t@2`) or from a running Peers with a skill installed: see
+  [Getting a declaration you don't have](./declaring-a-package#getting-a-declaration-you-dont-have).
 
-The comment's command works next to Voice Hub's source, as in the Peers repository. Without it,
-generate the copy from a skill's `dist/package.bundle.js` (add
-`--contract 00muxgugn6xvs8f2r80ru205t@1`) or from a running Peers with a skill installed: see
-[Getting a declaration you don't have](./declaring-a-package#getting-a-declaration-you-dont-have).
+Once a stable package release freezes Voice Skill v2, a provider with a different shape fails to
+install. `exposes` isn't part of that shape: it's yours, and changes with your package's releases.
 
-## Catalog
+## What Voice Hub gives the model
 
-`skill` is a read-only observable backed by a device variable named `skill`. For a package declared with `definePackage` (guest API 3), reading it goes through the package, so it starts the package's worker; with guest API 2 the host reads it without the worker. Make the catalog the variable's default value. `VoiceSkillObservables["skill"]` types it, and the build checks it against the declared schema:
+Each contract you expose becomes one group of tools for Voice Hub's model:
 
-```json
-{
-  "name": "Timers",
-  "slug": "timers",
-  "description": "Active countdowns and timer controls.",
-  "tools": [
-    {
-      "name": "set_timer",
-      "description": "Start a countdown.",
-      "parameters": {
-        "type": "object",
-        "properties": { "seconds": { "type": "number" } },
-        "required": ["seconds"]
-      }
-    }
-  ],
-  "widget": {
-    "peersUIId": "<25-character UI id>",
-    "title": "Timers",
-    "iconClassName": "bi-alarm",
-    "order": 10
-  }
-}
-```
+- **Its name** goes in the prompt ("You can use these skills: News, Weather, Timer Controls") and
+  before each of its tools' descriptions ("News: Return cached headlines…").
+- **Its tools** are offered as `<slug>__<tool>`, where the slug is made from the contract's name:
+  `news__headlines`, `timer-controls__set-timer`. When two groups would share a slug, the later
+  one is numbered (`news-2`). The complete tool name must use only letters, digits, underscores,
+  and hyphens and fit within 64 characters; tools outside those limits are omitted.
+- **Each tool** gets its own `usageDescription`, and its input schema as the arguments' JSON Schema.
+  Write them for a model: what the tool does, its units, and its defaults.
+- **Only the tools the person speaking may run** are offered: a Reader isn't offered a Writer tool.
+  The Runtime checks every call again.
 
-`slug` is a short lowercase identifier. Voice Hub prefixes model tool names with it so two skills can both have a tool called `list`. `widget` is optional. When present, Voice Hub renders `peersUIId` through `PeersUI`. Omit `appNavs` when the package should appear only as a widget.
+A tool's output is what the model answers from, so return what a person would want said. Weather
+exposes a `summary` tool that describes the forecast in the group's unit, and Timers' `list-timers`
+gives each timer's time left in words as well as in milliseconds. Keep outputs small.
 
-`description`, `iconClassName`, and `order` are optional presentation hints inside the existing
-object-valued catalog; they do not change the frozen Voice Skill v1 contract shape. Lower `order`
-values appear first when attention and recency are equal. Voice Hub otherwise falls back to the
-provider name, a generic icon, and order `100`.
+When a tool only changes something, Voice Hub confirms it with a tone and an emoji rather than
+speech. When the person asked a question, Voice Hub's model answers from your tool's output. Failed calls use the failed tone, and Voice Hub keeps the error so the person can ask what
+went wrong.
 
-`parameters` is a JSON Schema object. Voice Hub sends it to the model as the tool's parameters.
+**Expose a small contract** when your main one has tools a voice model shouldn't reach. Timers
+exposes Timer Controls (`set-timer`, `add-time`, `pause-timer`, `resume-timer`, `cancel-timers`,
+`list-timers`), not its main contract, whose `fire-timer` is the scheduler's callback. The small
+contract's tools work for the assistant and the CLI too.
 
 ## Contextual widget
 
-Voice Hub calls a contributed widget with these props:
+`widget` holds:
+
+```json
+{
+  "peersUIId": "<25-character UI id>",
+  "title": "News",
+  "iconClassName": "bi-newspaper",
+  "order": 40
+}
+```
+
+Everything but `peersUIId` is optional. `title` defaults to your package's name, the icon to a
+generic one, and `order` to `100`. The card's description, shown when it's focused, comes from the
+first exposed contract with a description, so write that description for the person using Voice
+Hub as well as for developers. Lower `order` values appear first when attention and recency are
+equal.
+Omit `appNavs` when the package should appear only as a widget. Voice Hub subscribes to `widget`
+while it's open, so changing it to another widget or to `null` updates the context picker.
+
+Voice Hub renders the widget through `PeersUI` with these props:
 
 ```json
 {
@@ -93,99 +116,100 @@ Voice Hub calls a contributed widget with these props:
 `active` is true for the focused widget. `host` lets a reusable UI make small host-specific choices
 without importing Voice Hub.
 
-A summary should be quick to mount, compact, and useful from cached/local state. Keep freshness
+A summary should be quick to mount, compact, and useful from cached or local state. Keep freshness
 in the provider rather than the view: Weather's provider books its next refresh through System
 Scheduler after each one, and its widget only calls `refresh({ ifStale: true })` when it opens,
-which the provider skips while the forecast is fresh. Do not start an unconditional network
-refresh on every summary mount.
-A focus view should provide the package's common touch actions with at least 44-pixel targets and no keyboard-only or
-hover-only behavior. Voice Hub owns the card header and context selection; the package owns all
-domain UI and writes.
+which the provider skips while the forecast is fresh. Don't start an unconditional network refresh
+on every summary mount.
 
-## Invoke
+A focus view should provide the package's common touch actions with targets of at least 44 pixels,
+and no keyboard-only or hover-only behavior. Voice Hub owns the card header and context selection;
+the package owns all domain UI and writes.
 
-`invoke` takes `{ tool, args }` and returns `{ result, speech? }`. `result` is JSON the model can read. `speech`, when set, is suggested wording returned to the model alongside `result`. It does not end the turn: the model can use a lookup result to perform a subsequent action before replying. The frozen v1 wrapper admits Reader (20). The call runs as the person signed in on this device.
-
-Map `tool` onto the package's own contract tools. Do not trust a tool name that is not in the catalog.
-
-Isolated consumers calling host-owned skills, including Groceries and Tasks, receive authenticated
-local user identity and the owning data context from the runtime's host-only resolver supplied by
-the package loader. Read targets admit Reader; mutation and refresh targets require Writer (40),
-checked against that user's actual role and inherited ceiling. Reader admission to `invoke`
-does not grant Writer actions. Weather `get_weather` is cache-only, even when no fresh cache exists.
-Missing signed-in identity still fails closed with “missing caller identity”. User ids in guest
-payloads or skill arguments never become caller identity.
-
-Mutations normally return `{ result }` without `speech`; Voice Hub confirms them with a tone and
-emoji and does not invent a spoken confirmation. `definePackage` omits fields left `undefined`
-from tool results before sending them; a provider using the isolate bridge directly must omit
-the key itself. Lookups can suggest a short spoken answer. Skill failures use the failed tone,
-retain a recent explanation, and normalize transport-added `Error:` prefixes to one.
-
-After `invoke` succeeds, Voice Hub records the provider package, skill slug, and tool name as
-private runtime activity and focuses that skill's widget. Failed calls do not report successful
-activity. This does not add fields to the public Voice Skill response.
+After one of your tools succeeds, Voice Hub focuses your widget.
 
 ## Alert
 
-Emit `alert` when a skill needs immediate user attention. Payload fields are `kind`, `title`, and
-optional `detail`. Voice Hub focuses the provider's widget, marks its context, and ranks it first on
-Overview until the user opens it. When `detail` is set and voice output is enabled, Voice Hub speaks
-that string once, with no preceding completion tone. Alerts queue behind active voice turns and
-each other.
-It does not branch on `kind` or any other package-specific field. Package-specific wording stays
-in the provider's detail sentence.
+Emit `alert` when a skill needs the user's attention now. Its payload is `kind`, `title`, and an
+optional `detail`. Alerts work even when `widget` is `null`. When a widget is present, Voice Hub
+focuses it, marks its context, and ranks it first on
+Overview until the user opens it. When `detail` is set and voice output is on, Voice Hub speaks it
+once, with no tone before it; without a `detail`, it plays the done tone. Alerts wait for an active
+voice turn and for each other. Voice Hub doesn't branch on `kind`: keep package-specific wording in
+`detail`.
 
-An alert without spoken detail uses the done tone instead.
-
-A package that implements the declaration sends it with the declaration's event:
+Send it with the declaration's event:
 
 ```ts
-import { voiceSkillAlert } from "../contracts/voice-skill.v1";
+import { voiceSkillAlert } from "./contracts/voice-skill.v2";
 
 await voiceSkillAlert.emit({ kind: "timer-expired", title: "Tea", detail: "Your Tea timer is done." });
 ```
 
-Official Timers uses the shared renderer helper `official-packages/alert-audio.ts` for sound
-ownership. Voice Hub registers before widgets mount and records completed playback by provider
-and alert title. Timers registers due sounds with the matching title and expiry time, so its first
-chime waits for actual speech completion, even when table reads or focus remounts arrive later.
-Voice-off and detail-free alerts release sounds without TTS. This helper is separate from the frozen
-Voice Skill v1 contract; `invoke` and `alert` gain no fields. UI bundles currently share a renderer
-window through UILoader; the helper does not coordinate separate application windows.
+Timers waits to chime until Voice Hub finishes speaking the alert. This sound coordination
+applies within one application window.
 
-Use alerts sparingly for time-sensitive state such as an expired timer. Do not emit one for routine
-data refreshes or every successful voice invocation.
+Use alerts sparingly, for time-sensitive state such as an expired timer, not for routine refreshes
+or every successful call.
 
 ## Discovery
 
-Voice Hub consumes Voice Skill as optional, then calls `listContractProviders` and reads `skill` on each provider: `VoiceSkill(ctx, { providerPackageId }).observables.skill.get()` in its provider, and `hostContract(VoiceSkill, { providerPackageId })` for widgets. A package that does not provide the contract is not a skill.
+Voice Hub consumes Voice Skill v2 and v1 as optional, and lists the providers of each with the
+Contract Catalog's `listContractProviders`. A v2 provider's listing includes the contracts it
+exposes, with the tools the caller may run. For tools, v2 takes precedence when that provider's
+listing exposes at least one contract; otherwise Voice Hub still reads its v1 catalog. For
+widgets and alerts, v2 takes precedence whenever the package provides it. A package that doesn't
+provide Voice Skill isn't a skill.
 
-Catalog observables stay subscribed while Voice Hub is open, so changing or removing widget
-metadata updates the context picker without hard-coded package checks.
+News, Weather, and Timers in `official-packages/` provide Voice Skill v2. Groceries, and Tasks from
+its `peers-core` package boundary, still provide v1.
 
-Timers, Groceries, Weather, and News in `official-packages/` provide this contract. Tasks currently
-provides it from its `peers-core` package boundary so the contribution can move with Tasks when
-that app is extracted. Weather omits `appNavs`, so it appears as a widget and voice skill without an
-Apps-list entry.
+## Who a call runs as
+
+Voice Hub's calls to exposed tools run as the person speaking, in the active group, and never with
+more than that person's own level: a Reader can read the news but can't refresh it, and a Writer
+can do both. By default, an exposed tool's calls to other tools are capped at its own access level.
+A tool declared with `authorityPropagation: "preserve"` passes through the caller's authority
+instead; each target still checks its own required level. A call names your package as the provider
+and runs only on it. Installing your package into a group is the trust decision: there's no separate
+grant.
 
 ## Turn cancellation
 
-Voice Hub checks cancellation before each model request and skill invocation. A skill already
-running may finish, but no subsequent skill in that turn is started. Cancellation does not roll
-back package changes. Keep mutations atomic within the skill where appropriate.
+Voice Hub checks for cancellation before each model request and each skill call. A skill call
+already running may finish, but no later call in that turn starts. Cancellation doesn't roll back
+package changes, so keep a tool's changes atomic where it matters.
 
 Spoken listening cancellation happens earlier: a whole utterance of “never mind”, “nevermind”,
-“cancel listening”, or “stop listening” is checked after endpointing/STT and before assistant or
-skill dispatch. A leading or trailing “please” and the configured wake phrase are supported,
+“cancel listening”, or “stop listening” is checked after endpointing and transcription, before the
+model or any skill. A leading or trailing “please” and the configured wake phrase are supported,
 including “please Sterling, never mind” and “Sterling, please stop listening”. Matching ignores
 case, punctuation, and extra whitespace; underscores in the wake model name are treated as spaces.
-It ends the current recording and any manual conversation without a history entry.
-It cannot interrupt processing/playback or undo a dispatched skill. Bare “stop” and “cancel”,
-“go back to sleep”, timer commands, and longer requests such as “cancel my timer”, “add never mind
-to my list”, or “stop listening now” still reach skill selection. See
-[Voice Hub](../voice-hub#use-voice-input) for the Cancel button for active turns.
+It ends the current recording and any manual conversation without a history entry. It can't
+interrupt processing or playback, or undo a skill call. Bare “stop” and “cancel”, “go back to
+sleep”, timer commands, and longer requests such as “cancel my timer”, “add never mind to my list”,
+or “stop listening now” still reach the model. See [Voice Hub](../voice-hub#use-voice-input) for
+the Cancel button for active turns.
 
-## Authority propagation
+## Voice Skill v1
 
-Voice Skill v1 `invoke` retains Reader admission and declares `authorityPropagation: "preserve"`. The runtime honors that declaration like the declared level (see [Authority propagation and dynamic dispatch](../System/Tools.md#authority-propagation-and-dynamic-dispatch)): installing the skill into a group is the trust decision, and there is no separate operator grant. A direct Writer invoking the Reader wrapper can dispatch the skill's Writer mutations; a Reader cannot, and a Writer arriving through an ordinary Reader tool remains capped at Reader. Preservation never raises an inherited or consume ceiling; private canonical actions remain package-owned and are checked live. Admission and propagation are independent.
+Superseded by v2; implement v2 for a new skill. Groceries and Tasks still provide v1, and Voice Hub
+reads it until they move.
+
+A v1 skill implements Voice Skill's `invoke` tool and its `skill` observable:
+
+- **`skill`** is a catalog: `name`, a lowercase `slug`, optional `description`, `tools` (each with
+  a `name`, a `description`, and JSON Schema `parameters`), and an optional `widget` (`peersUIId`,
+  `title`, `iconClassName`, `order`). Voice Hub prefixes the model's tool names with the slug.
+  It numbers colliding slugs and legacy slugs ending in `_` so each offered tool name identifies
+  one skill. Slugs containing `__` are omitted.
+- **`invoke({ tool, args })`** runs one catalog tool and returns `{ result, speech? }`. `speech`
+  is suggested wording for the model; leave it out after a change, and Voice Hub confirms with a
+  tone. `invoke` admits Readers and declares `authorityPropagation: "preserve"`, so it runs each
+  catalog tool with the caller's own level.
+- **`pkg.actionAliases`** maps each catalog tool's name to the provided tool it runs. The Runtime
+  uses it to list which catalog tools the caller may use (`authorizedActions` on
+  `listContractProviders`). Map each catalog name onto your own tools, and don't trust a name
+  that isn't in the catalog.
+
+Generate the v1 copy with `contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkill`.
