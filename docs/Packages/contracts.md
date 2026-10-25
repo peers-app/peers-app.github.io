@@ -758,7 +758,9 @@ outside the Electron host process. The host never evaluates provider source. Leg
 - **Providers.** A guest addresses one provider with
   `ctx.callConsumedTool(contractId, version, toolName, args, { providerPackageId })`.
   The local UI router honors the same field. Remote routers ignore it.
-  `listContractProviders` on the System Contract Catalog returns every installed provider.
+  `listContractProviders` on the System Contract Catalog returns every installed provider, and
+  `getContractDefinition` returns a registered version's definition with its tools' access levels
+  ([generating a declaration from it](./declaring-a-package#getting-a-declaration-you-dont-have)).
 - **Host.** Electron and peers-headless each register an `IIsolatedPackageRuntime`
   factory before `initializePeerDevice` (registration sites are under
   **Compatibility** below). `PackageLoader` installs the manifest into the per-data-context

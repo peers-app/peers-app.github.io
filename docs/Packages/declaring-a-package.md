@@ -583,7 +583,10 @@ observable, by name. The result is a contract to provide:
 
 ```ts
 import { deviceVar, implementContract } from "@peers-app/peers-sdk/define";
-import { VoiceSkill, type VoiceSkillCatalog } from "../../../voice-hub/src/contracts/voice-skill";
+// A generated copy of Voice Hub's declaration (see below).
+import { VoiceSkill, type VoiceSkillObservables } from "../contracts/voice-skill.v1";
+
+type Catalog = VoiceSkillObservables["skill"];
 
 export const TimersVoiceSkill = implementContract(VoiceSkill, {
   tools: {
@@ -592,7 +595,7 @@ export const TimersVoiceSkill = implementContract(VoiceSkill, {
       return { speech: "Done." };
     },
   },
-  observables: { skill: deviceVar<VoiceSkillCatalog>("skill", { defaultValue: catalog }) },
+  observables: { skill: deviceVar<Catalog>("skill", { defaultValue: catalog }) },
 });
 
 // In definePackage:
@@ -616,7 +619,44 @@ Consumers use the declaration as the reference: `pkg.consumes(VoiceSkill, { opti
 A declaration holds no handlers or sources, so other packages can import it or copy it. Once a
 stable package release freezes a contract version, its shape can't change (the Runtime refuses
 a provider whose shape differs); descriptions may still change. Contracts from dev and beta
-packages remain mutable. Today, official packages import Voice Hub's declaration by path.
+packages remain mutable.
+
+### Getting a declaration you don't have
+
+`peers-package contract add <source>` writes `src/contracts/<name>.v<version>.ts`, a declaration
+generated from a contract's IR. Check it in, and regenerate it rather than edit it. The source
+can be:
+
+- **A declaration module and its export**, when you have the owner's source:
+  `npx peers-package contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkill`.
+- **A provider's manifest or artifact**: `dist/manifest.json` or `dist/package.bundle.js`. Pass
+  `--contract <contractId>@<version>` when it provides more than one contract.
+- **A contract registered on a running Peers**, through the System Contract Catalog's
+  `getContractDefinition`. It returns the definition with each tool's access level on the active
+  provider. The definition is the one a provider registered, so it's as detailed as that
+  provider's IR: one built before nested fields and enum values were carried gives a copy that
+  checks only types. A registered definition doesn't keep a table's `versionNumber` or
+  `localOnly`, so a copy from it leaves them out (a local-only table's rows would sync); for a
+  contract with tables, generate from a provider's manifest or artifact.
+
+  ```bash
+  peers tools run getContractDefinition '{"contractId":"00muxgugn6xvs8f2r80ru205t","version":1}' --json > voice-skill.json
+  npx peers-package contract add voice-skill.json
+  ```
+
+The generated file exports the declaration (`VoiceSkill`), each event (`voiceSkillAlert`), and
+types by member name: `VoiceSkillObservables["skill"]`, `VoiceSkillEvents`, and, for a contract
+with tables, `VoiceSkillRows`. Names, types, optional fields, arrays, nested objects, enum and
+literal values, descriptions, and each tool's access level and authority propagation come
+through, along with defaults stored in the IR. Refinements such as a regex or a minimum, and
+defaults made by code, aren't part of the IR, so the copy checks only
+what the IR describes; objects keep keys their fields don't list. Where a zod schema alone would
+give different IR (an `any` field, a blob, a stored default, an object with no listed fields),
+the copy wraps it in `generatedField(...)`, which keeps the source's IR in your manifest.
+`--name <Name>` picks the export name, and `--check` writes nothing and fails when the file is
+missing or out of date, for a test or CI. The file's header names the source relative to the
+package, so `--check` gives the same answer however the source's path is spelled (from the
+package's directory, or from elsewhere with `--root <dir>`).
 
 ## Background work
 
@@ -838,6 +878,8 @@ bundling them with esbuild so React and the SDK stay single copies.
 - `peers-package build` also bundles the same `src/package.ts` for the sandbox, with a generated
   entry that registers every tool's handler, and writes `dist/package.bundle.js`, the artifact
   the Runtime installs.
+- `peers-package contract add <source>` generates a declaration of a contract the package
+  implements or calls ([above](#getting-a-declaration-you-dont-have)).
 - A failed provider build preserves the last successful manifest and artifact. Watch mode
   rebuilds both outputs, reloads the declaration's CommonJS dependencies, and updates its
   bundler settings when `executionMode` changes.

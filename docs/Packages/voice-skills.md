@@ -7,8 +7,8 @@ sidebar_position: 4
 A voice skill is a package that provides the Voice Skill contract. Voice Hub does not know the package at build time. It lists every provider, reads each `skill` catalog, and calls `invoke`.
 
 The contract id is `00muxgugn6xvs8f2r80ru205t`, version 1. Voice Hub declares it in
-`voice-hub/src/contracts/voice-skill.ts` with `declareContract`, and each skill implements that
-declaration ([Declaring a contract other packages implement](./declaring-a-package#declaring-a-contract-other-packages-implement)),
+`voice-hub/src/contracts/voice-skill.ts` with `declareContract`, and each skill implements a
+generated copy of that declaration ([Declaring a contract other packages implement](./declaring-a-package#declaring-a-contract-other-packages-implement)),
 so every skill has the same public shape. Once a stable package release freezes the contract
 version, a provider with a different public shape fails to install. Dev and beta packages leave
 their contracts mutable.
@@ -17,11 +17,14 @@ their contracts mutable.
 
 ```ts
 import { deviceVar, implementContract } from "@peers-app/peers-sdk/define";
-import { VoiceSkill, type VoiceSkillCatalog } from "../../../voice-hub/src/contracts/voice-skill";
+// Generated: npx peers-package contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkill
+import { VoiceSkill, type VoiceSkillObservables } from "../contracts/voice-skill.v1";
 
 export const TimersVoiceSkill = implementContract(VoiceSkill, {
   tools: { invoke: async ({ tool, args }, ctx) => runCatalogTool(tool, args, ctx) },
-  observables: { skill: deviceVar<VoiceSkillCatalog>("skill", { defaultValue: catalog }) },
+  observables: {
+    skill: deviceVar<VoiceSkillObservables["skill"]>("skill", { defaultValue: catalog }),
+  },
 });
 // In definePackage:
 pkg.provides(TimersVoiceSkill);
@@ -31,9 +34,14 @@ pkg.actionAliases = { set_timer: writeTimerTool /* one per catalog tool */ };
 List each catalog tool in `pkg.actionAliases`, naming the provided tool it runs: the Runtime
 uses the aliases to decide which catalog tools a caller may use.
 
+The comment's command works next to Voice Hub's source, as in the Peers repository. Without it,
+generate the copy from a skill's `dist/package.bundle.js` (add
+`--contract 00muxgugn6xvs8f2r80ru205t@1`) or from a running Peers with a skill installed: see
+[Getting a declaration you don't have](./declaring-a-package#getting-a-declaration-you-dont-have).
+
 ## Catalog
 
-`skill` is a read-only observable backed by a device variable named `skill`. For a package declared with `definePackage` (guest API 3), reading it goes through the package, so it starts the package's worker; with guest API 2 the host reads it without the worker. Make the catalog the variable's default value. `VoiceSkillCatalog` types it, and the build checks it against the declared schema:
+`skill` is a read-only observable backed by a device variable named `skill`. For a package declared with `definePackage` (guest API 3), reading it goes through the package, so it starts the package's worker; with guest API 2 the host reads it without the worker. Make the catalog the variable's default value. `VoiceSkillObservables["skill"]` types it, and the build checks it against the declared schema:
 
 ```json
 {
@@ -133,7 +141,7 @@ An alert without spoken detail uses the done tone instead.
 A package that implements the declaration sends it with the declaration's event:
 
 ```ts
-import { voiceSkillAlert } from "../../../voice-hub/src/contracts/voice-skill";
+import { voiceSkillAlert } from "../contracts/voice-skill.v1";
 
 await voiceSkillAlert.emit({ kind: "timer-expired", title: "Tea", detail: "Your Tea timer is done." });
 ```
