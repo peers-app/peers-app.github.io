@@ -135,6 +135,22 @@ The system validates that v2 is a structural superset of v1 — all v1 tables, t
 main.alsoImplements(contractId, { from: 1, to: 3 }); // v4 satisfies v1, v2, and v3
 ```
 
+### Exposing contracts through a hub's contract
+
+When the package provides a hub's contract, it can let that contract's consumers call the
+tools of another contract it provides, on this package, without consuming it:
+
+```typescript
+const groceries = pkg.contract(groceriesContractId, 1, "Groceries");
+const hub = pkg.contract(hubContractId, 2, "Hub");
+hub.exposes(groceriesContractId, 1);
+```
+
+The exposed contract must be one the package provides. Calls through it run as the signed-in
+user, at each tool's own level. See [Exposing your contracts through a hub's
+contract](./declaring-a-package.md#exposing-your-contracts-through-a-hubs-contract) for what a
+hub can reach and how it lists and calls the tools.
+
 ## Tools in contracts
 
 Tools are a core part of a contract's public interface — they are effectively **API calls between packages**. When you declare tools on a contract via `ContractBuilder.tools(...)`, `extractToolShape` reads `ITool.inputSchema.fields` and `ITool.outputSchema.fields` to produce an `IContractTool` with `inputFields` and `outputFields`.

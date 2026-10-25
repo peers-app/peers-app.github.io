@@ -344,6 +344,10 @@ Declare the contract the providers serve with `pkg.consumes(...)` as well (`{ op
 when the package works with none installed). Tools and observables can pick a provider this way;
 table calls can't yet, and fail if you pass one.
 
+When each provider offers different tools, as they would to a command palette or an assistant,
+the providers expose their own contracts through the hub's (see "Exposing your contracts through
+a hub's contract").
+
 ## Package-internal state
 
 A package keeps its own state in persistent variables, declared at module scope the same way
@@ -620,6 +624,69 @@ A declaration holds no handlers or sources, so other packages can import it or c
 stable package release freezes a contract version, its shape can't change (the Runtime refuses
 a provider whose shape differs); descriptions may still change. Contracts from dev and beta
 packages remain mutable.
+
+### Exposing your contracts through a hub's contract
+
+A package can only call contracts it declares with `pkg.consumes`, so a hub can't call a
+provider's own contracts directly: it doesn't know them when it's built. Instead, a provider's
+implementation of the hub's contract can name other contracts it provides. The hub contract's
+consumers may then call those contracts' tools on that provider:
+
+```ts
+// News
+pkg.provides(News);
+pkg.provides(
+  implementContract(Hub, {
+    observables: { widget: observable({ peersUIId: newsWidgetId }) },
+    exposes: [News],
+  }),
+);
+```
+
+- Each exposed contract must also be in `pkg.provides`; the build fails otherwise. It takes the
+  contract or its reference (`contractRef(contractId, version)`).
+- `exposes` isn't part of the hub's contract. It belongs to this provider, so it doesn't freeze
+  with the hub's contract, and a generated copy of the hub's contract doesn't carry it.
+  Changing it takes a new release of your package.
+- The hub reaches only the exposed contracts' tools, each at its own access level. Their tables,
+  observables, and events still need `pkg.consumes`.
+- Expose a small contract when your main one has tools a hub shouldn't reach, such as one your
+  scheduler calls back.
+
+Installing your package makes its exposed tools available to every package that consumes the
+hub's contract, including hubs installed later.
+
+A hub lists each provider's exposed contracts with `listContractProviders` (see "Calling every
+provider of a contract"). Each provider's `exposes` lists, per exposed contract, its name and
+description, and the tools the current caller may run there, with each tool's description,
+access level, and JSON Schema for its arguments. Then the hub calls the tool on that provider:
+
+```ts
+for (const provider of providers) {
+  for (const exposed of provider.exposes ?? []) {
+    // exposed.name, exposed.tools[i].name, .description, .inputSchema ...
+  }
+}
+
+// Later, the tool the user or model chose:
+await contractRef(exposed.contractId, exposed.version)(ctx, {
+  providerPackageId: provider.packageId,
+}).tools[toolName](args);
+```
+
+Such a call runs as the signed-in user, never with more than the user's own level, and fails
+when there's no signed-in user or when it names another device:
+
+- The hub's consume ceiling on the hub's contract applies, if an admin set one. When several
+  consumed hub contracts expose the same target on that provider, any eligible one may admit
+  the call.
+- If your package consumes or provides the target contract directly, its ordinary call rules
+  apply instead, including its direct consume ceiling and provider restrictions.
+- An ordinary calling tool caps it at that tool's own level; a calling tool declared
+  `authorityPropagation: "preserve"` passes the user's level through.
+- A call that names no provider, a provider that doesn't expose the contract, or one outside
+  the hub's `providerPackageIds` is refused as an undeclared consume.
+- The listing is a guide: the Runtime checks every call again.
 
 ### Getting a declaration you don't have
 
