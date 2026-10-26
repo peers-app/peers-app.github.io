@@ -66,8 +66,8 @@ With the uppercase contract ID `00MP287GDL5ATLTGS5BH0VM9Z`, version 1 and
 
 Reviewed legacy mappings take precedence: **every** explicit ID is preserved as
 an equal alias and no additional deterministic row is created. Tasks and Groceries,
-for example, retain both legacy IDs for Voice Skill v1 `invoke`; there is no primary
-winner. The tuple index is non-unique. Deterministic catalog IDs are an explicit
+for example, retain both legacy IDs for the retired Voice Skill v1 `invoke`; there is no
+primary winner. The tuple index is non-unique. Deterministic catalog IDs are an explicit
 exception to `newid()`; allocate genuinely new contract IDs with `newid()` once
 and commit the constants.
 
@@ -455,9 +455,9 @@ Both values are declared in the tool's metadata (`toolSchema({ authorityPropagat
 
 A Reader preserving router admits Readers and above; a direct Admin can dispatch Admin targets, but an Admin arriving through an ordinary Reader tool remains capped at Reader. A preserving router's Writer admission still rejects Readers. Omitted admission resolves to None (0) for a `preserve` tool; ordinary unclassified tools retain Self (100). None preserving entry still requires trusted identity and execution context and permits a level-0 caller to select only level-0 targets.
 
-The `cap` ceiling from an ordinary tool's own level applies inside the strict dispatch scope: whenever a `preserve` tool is on the chain, or the caller already runs under a strict frame (checked `dispatchAction`, an inherited strict principal). A direct package-to-package `callConsumedTool` from an ordinary tool outside that scope keeps the pre-existing user/assistant/tool policy. Declared tool levels, consume ceilings, and group roles always apply.
+The `cap` ceiling from an ordinary tool's own level applies inside the strict dispatch scope: whenever a `preserve` tool is on the chain, the caller already runs under a strict frame, a host tool uses `context.dispatchTool`, or a call is admitted through an `exposes` relationship. A direct package-to-package `callConsumedTool` from an ordinary tool outside that scope keeps the pre-existing user/assistant/tool policy. Declared tool levels, consume ceilings, and group roles always apply.
 
-Host providers select public tools through `context.dispatchTool({contractId, version, toolName, providerPackageId}, args)`. Checked package aliases use `context.dispatchAction`; isolated providers use `callConsumedTool`. They share the runtime authorizer. Consumed-contract declarations and ceilings still apply; private canonical actions stay pinned to their owner. Target admission levels are read live, separately for each provider. Arguments cannot provide a numeric role, user identity, or propagation mode.
+Host providers select public tools through `context.dispatchTool({contractId, version, toolName, providerPackageId}, args)`; isolated providers use `callConsumedTool`. They share the runtime authorizer. Consumed-contract declarations and ceilings still apply; a tool marked `private` is callable only by its own package. Target admission levels are read live, separately for each provider. Arguments cannot provide a numeric role, user identity, or propagation mode.
 
 Catalog filtering is advisory and execution rechecks the current role, ceiling, target metadata, and declared propagation mode. Strict calls deny approval-required outcomes and unsupported remote or cross-context forwarding. General table/observable writes remain outside this bounded dispatch scope.
 

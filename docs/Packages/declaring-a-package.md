@@ -306,7 +306,7 @@ const latest = await NewsRef(ctx).tables.Headlines.list({}, { pageSize: 5 });
 - Tool input and saved rows are copied as JSON would carry them: a field left `undefined` is
   omitted.
 - A contract [declared on its own](#declaring-a-contract-other-packages-implement) is its own
-  reference: `VoiceSkill(ctx).tools.invoke(...)`, with no `contractRef`.
+  reference: `VoiceSkill(ctx).observables.widget.get()`, with no `contractRef`.
 - Without the contract's types (another package's contract you don't have the source for), type
   just the tools, with the provider's tool signatures (`IHttpConsumer["tools"]`).
 
@@ -524,19 +524,19 @@ export default definePackage((pkg) => {
   News's widget, exposing News ([below](#exposing-your-contracts-through-a-hubs-contract)).
 - `pkg.consumes(ref, { optional })` declares a dependency.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
-  names. `pkg.actionAliases`, only for [Voice Skill v1](./voice-skills#voice-skill-v1), maps
-  action names to provided tools.
+  names.
 - `pkg.onStart(fn)` runs background work when the worker starts ([below](#background-work)).
 
 ## Declaring a contract other packages implement
 
-Some contracts have many providers: every voice skill provides Voice Skill, and Voice Hub calls
-each one. Declare such a contract on its own, with no handlers, in the package that owns it, and
-let each provider implement it. Voice Skill v1, the example here, has a tool and an observable
-([v2](./voice-skills) has an observable and an event):
+Some contracts have many providers: every voice skill provides Voice Skill, and Voice Hub works
+with each one. Declare such a contract on its own, with no handlers, in the package that owns it,
+and let each provider implement it. In this example a dashboard declares a Dashboard Card contract
+with a tool, an observable, and an event ([Voice Skill](./voice-skills) is a real one, with an
+observable and an event):
 
 ```ts
-// voice-hub/src/contracts/voice-skill.ts: no handlers, safe to import or copy
+// dashboard/src/contracts/dashboard-card.ts: no handlers, safe to import or copy
 import {
   AccessLevel,
   declareContract,
@@ -547,30 +547,33 @@ import {
 } from "@peers-app/peers-sdk/define";
 
 // Exported, so providers can emit it.
-export const voiceSkillAlert = defineEvent({
+export const cardAlert = defineEvent({
   name: "alert",
-  description: "Attention.",
-  payloadSchema: alertSchema,
+  description: "The card needs attention.",
+  payloadSchema: z.object({ title: z.string() }),
 });
 
-export const VoiceSkill = declareContract({
-  contractId: "00muxgugn6xvs8f2r80ru205t",
+export const DashboardCard = declareContract({
+  contractId: "00mvokbnd4asry58e038t5yuj", // from newid()
   version: 1,
-  name: "Voice Skill",
+  name: "Dashboard Card",
   tools: [
     declareTool({
-      name: "invoke",
-      usageDescription: "Run one tool from this skill's catalog.",
+      name: "summary",
+      usageDescription: "A one-line summary for the card.",
       accessLevel: AccessLevel.Reader,
-      authorityPropagation: "preserve",
-      inputSchema: z.object({ tool: z.string(), args: z.object({}).passthrough().optional() }),
-      outputSchema: z.object({ result: z.unknown().optional(), speech: z.string().optional() }),
+      inputSchema: z.object({}),
+      outputSchema: z.object({ text: z.string() }),
     }),
   ],
   observables: [
-    declareObservable({ name: "skill", description: "The catalog.", schema: catalogSchema }),
+    declareObservable({
+      name: "card",
+      description: "The card's title and icon.",
+      schema: z.object({ title: z.string(), iconClassName: z.string().optional() }),
+    }),
   ],
-  events: [voiceSkillAlert],
+  events: [cardAlert],
 });
 ```
 
@@ -585,23 +588,25 @@ observable, by name. The result is a contract to provide:
 
 ```ts
 import { deviceVar, implementContract } from "@peers-app/peers-sdk/define";
-// A generated copy of Voice Hub's declaration (see below).
-import { VoiceSkill, type VoiceSkillObservables } from "../contracts/voice-skill.v1";
+// A generated copy of the dashboard's declaration (see below).
+import { DashboardCard, type DashboardCardObservables } from "../contracts/dashboard-card.v1";
 
-type Catalog = VoiceSkillObservables["skill"];
-
-export const MyVoiceSkill = implementContract(VoiceSkill, {
+export const TasksCard = implementContract(DashboardCard, {
   tools: {
-    invoke: async ({ tool, args }, ctx) => {
-      // `tool` and `args` are typed from the declared input schema.
-      return { speech: "Done." };
+    summary: async (input, ctx) => {
+      // `input` is typed from the declared input schema, and the result from the output schema.
+      return { text: "3 tasks due today" };
     },
   },
-  observables: { skill: deviceVar<Catalog>("skill", { defaultValue: catalog }) },
+  observables: {
+    card: deviceVar<DashboardCardObservables["card"]>("card", {
+      defaultValue: { title: "Tasks", iconClassName: "bi-list-task" },
+    }),
+  },
 });
 
 // In definePackage:
-pkg.provides(MyVoiceSkill);
+pkg.provides(TasksCard);
 ```
 
 - Handlers are typed from the declaration: the parsed input in, the declared output back. A
@@ -609,14 +614,14 @@ pkg.provides(MyVoiceSkill);
   declaration; give its variable or `observable()` that full value type.
 - A missing or unknown member fails the build, so an implementation can't drift from the
   declaration: its manifest shape comes from the declaration.
-- A tool's entry may set this provider's deadline: `invoke: { handler, timeoutMs: 90_000 }`.
+- A tool's entry may set this provider's deadline: `summary: { handler, timeoutMs: 90_000 }`.
   Its access level and `authorityPropagation` come from the declaration.
-- A declared event is emitted with its own `emit` (`voiceSkillAlert.emit({ ... })`), from any
+- A declared event is emitted with its own `emit` (`cardAlert.emit({ ... })`), from any
   package that provides an implementation listing it. Export the declaration's events so
   providers can reach them.
 
-Consumers use the declaration as the reference: `pkg.consumes(VoiceSkill, { optional: true })`,
-`VoiceSkill(ctx).tools.invoke(...)` in a handler, and `hostContract(VoiceSkill)` in a UI.
+Consumers use the declaration as the reference: `pkg.consumes(DashboardCard, { optional: true })`,
+`DashboardCard(ctx).tools.summary({})` in a handler, and `hostContract(DashboardCard)` in a UI.
 
 A declaration holds no handlers or sources, so other packages can import it or copy it. Once a
 stable package release freezes a contract version, its shape can't change (the Runtime refuses
@@ -705,12 +710,12 @@ can be:
   contract with tables, generate from a provider's manifest or artifact.
 
   ```bash
-  peers tools run getContractDefinition '{"contractId":"00muxgugn6xvs8f2r80ru205t","version":1}' --json > voice-skill.json
+  peers tools run getContractDefinition '{"contractId":"00muxgugn6xvs8f2r80ru205t","version":2}' --json > voice-skill.json
   npx peers-package contract add voice-skill.json
   ```
 
 The generated file exports the declaration (`VoiceSkill`), each event (`voiceSkillAlert`), and
-types by member name: `VoiceSkillObservables["skill"]`, `VoiceSkillEvents`, and, for a contract
+types by member name: `VoiceSkillObservables["widget"]`, `VoiceSkillEvents`, and, for a contract
 with tables, `VoiceSkillRows`. Names, types, optional fields, arrays, nested objects, enum and
 literal values, descriptions, and each tool's access level and authority propagation come
 through, along with defaults stored in the IR. Refinements such as a regex or a minimum, and
@@ -864,7 +869,7 @@ function Feeds() {
   to tools, tables, observables, and events. Handler references can't select a table's provider
   yet.
 - **Initial observable values.** A local copy starts empty. Await
-  `client.observables.skill.loadingPromise` before relying on its first value. It resolves
+  `client.observables.widget.loadingPromise` before relying on its first value. It resolves
   after the initial read attempt (a failed read is logged), or when the client is disposed.
 - **Disposal.** Shared clients live for the window's lifetime. A client created with options is
   independent; call `dispose()` when its owner ends. Disposal cancels connection waits, ends

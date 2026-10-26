@@ -13,11 +13,11 @@ its catalog and `invoke`, is [retired](#voice-skill-v1).
 
 ## Providing Voice Skill
 
-Voice Hub declares Voice Skill in `voice-hub/src/contracts/voice-skill.ts` (`VoiceSkillV2`). Generate
+Voice Hub declares Voice Skill in `voice-hub/src/contracts/voice-skill.ts` (`VoiceSkill`). Generate
 your copy of the declaration, and implement it with your widget and the contracts you expose:
 
 ```bash
-npx peers-package contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkillV2
+npx peers-package contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkill
 ```
 
 ```ts
@@ -197,5 +197,12 @@ the Cancel button for active turns.
 
 ## Voice Skill v1
 
-Retired: Voice Hub no longer reads it. Version 1 had a catalog observable and an `invoke` tool
-that routed to the skill's own tools; a skill on v1 should move to v2 and expose its contracts.
+Retired: nothing provides or reads it, and the Runtime no longer supports its action aliases
+(`pkg.actionAliases`). Version 1 had a catalog observable and an `invoke` tool that routed to the
+skill's own tools. A skill on v1 should move to v2 and expose its contracts. An older package
+whose manifest still lists action aliases installs, and the aliases are ignored.
+
+Host-backed packages must also replace calls to `context.dispatchAction`: those calls no longer
+work, including calls from the package's own screens or other tools. Provide context-bound tools
+on the appropriate contracts and move callers to them; changing the voice declaration alone
+doesn't migrate those callers. See [context-bound tool providers](./contracts#context-bound-tool-providers).

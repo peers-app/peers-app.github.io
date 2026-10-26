@@ -11,14 +11,16 @@ written on one device reach the others, does a 32-device account respect the
 connection caps, does a hub that dies come back, what happens during a network
 partition.
 
-Nothing in the product is mocked. Every device is a separate Node process with
+The Peers hosts run real product code. Every device is a separate Node process with
 its own SQLite database, real handshakes and signatures, real sync, and the
 same `ws` protocol manager the headless host uses in production. Devices that
 opt in also run the real `peers-webrtc` sidecar and form `wrtc://` edges, and
 fleets that opt in run the real `peers-services` (with an in-memory Mongo) so
 pairing and the invite mailbox are exercised against the production server
-code. The only differences from a deployment are loopback addresses, ephemeral
-ports, and `--services-url none` on the scenarios that do not need the cloud.
+code. Fleets use loopback addresses, ephemeral ports, and `--services-url none`
+on scenarios that do not need the cloud. The voice-dispatch scenario replaces
+OpenAI's chat responses with a deterministic stand-in; it checks discovery and
+dispatch, not a real model's interpretation or response quality.
 
 ## Layout
 
@@ -183,7 +185,14 @@ it("a row written on one device reaches the others", async () => {
 - `fleet.connectContacts(a, b)`, `fleet.createGroup(founder, members, { role })`
   drive the invite contracts on the devices' handles, exactly as the UI does
   (`role` defaults to Reader; pass `GroupMemberRole.Writer` when a scenario
-  needs remote tool access).
+  needs remote tool access). A member given as `{ member, role }` gets its own
+  role, so one group can hold a Reader, a Writer, and an Admin.
+- `env` on `fleet.user(...)` or `fleet.addDevice(...)` adds environment
+  variables to that device's process, kept across restarts. A scenario can
+  preload a test double with `NODE_OPTIONS: "--require <file>"`, as the voice
+  scenario does with `scripts/fake-openai.cjs`.
+- `toolsContract(contractId, version, toolNames)` is a contract definition with
+  just those tools, enough for `device.handle.contract(...)` to call them.
 - `fleet.pairDevice(source)` spawns a `--pair` child against the fleet's real
   `peers-services` pairing namespace and approves it from `source` (which must
   have been started `services: true`).
@@ -206,6 +215,9 @@ it("a row written on one device reaches the others", async () => {
   call succeeds on each device, which proves the bundle was downloaded and the
   isolated worker booted. `PEERS_OFFICIAL_PACKAGES_DIR` overrides the default
   `<monorepo>/official-packages`.
+- `fleet.installLocalPeersCore(device, others, dataContextId)` imports the
+  monorepo's peers-core (Tasks) as a dev build and activates it on `others`:
+  the group may already run a released peers-core of the same version.
 - `package-lifecycle.e2e.test.ts` makes a fleet-private copy of the built
   `isolation-smoke` artifact and emits schema-v4/v5/v6 versions without
   modifying the official checkout. Its offline follower receives v4 and v5
@@ -396,5 +408,7 @@ real mail.
   NAT behaviour.
 
 `kitchen-tool-access.e2e.test.ts` exercises group Reader/Writer access to the contracts each Voice Skill v2 provider exposes and to the Groceries and Tasks screens' own contracts, catalog filtering, argument spoofing, and context-bound Grocery/Tasks/Timers actions. It also checks that nothing provides Voice Skill v1. Build Voice Hub, Timers, Weather, News, Groceries, and peers-core before running it. It installs into disposable fleet hosts, never the kitchen device.
+
+`voice-dispatch.e2e.test.ts` runs real voice turns through Voice Hub's `voice-hub-run-action` as a group Reader, Writer, and Admin, with Timers (isolated) and Groceries (host-backed) installed. Each host preloads `scripts/fake-openai.cjs`, a stand-in for OpenAI's chat model that asks for a tool only when Voice Hub offered it and logs every request it got. The scenario checks that a Reader is offered only read tools and changes nothing, that a Writer and an Admin set a timer and add groceries, that both are offered the same tools, and that no screen contract is ever offered. Build Voice Hub, Timers, and Groceries before running it.
 
 The `authority-dispatch.e2e.test.ts` scenario uses a generated non-Voice isolated package with Reader, Writer, and Admin group devices. It checks that the declared `authorityPropagation: "preserve"` is honored on every host directly after install, role and ordinary-tool caps, and persistence across a host restart through real headless package loading. `kitchen-tool-access.e2e.test.ts` relies on the same declared mode in the installed Voice packages when testing shared touch/voice gates; no operator grant step exists.

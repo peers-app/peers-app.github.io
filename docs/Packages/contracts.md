@@ -222,7 +222,7 @@ A host member can declare `requiresWorkflowRun`
 an in-process `IWorkflowRunContext` in the authorized group. Use
 `requireWorkflowRunContext(toolContext, toolName)` to require and validate it.
 The capability belongs only to the directly invoked host tool: nested
-`dispatchTool`/`dispatchAction`, remote callers and isolated workers never receive
+`dispatchTool` calls, remote callers and isolated workers never receive
 it. An ordinary catalog call rejects workflow-required members; clients use
 `runToolDirectly`. Isolated packages likewise declare
 public contract members; the runtime materializes their catalog IDs automatically.
