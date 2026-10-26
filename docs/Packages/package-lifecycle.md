@@ -146,9 +146,46 @@ To test with other devices before a stable release:
 
 ## Contracts and stable releases
 
-Contract maturity is tied to package promotion. New contract shapes can evolve freely in **dev** builds. The platform is designed to **finalize** contracts (remove dev tag, freeze shape) when a package version is promoted to **stable**.
+Contract maturity follows the package channel. New contract shapes can evolve freely in **dev** and **beta** builds. Stable releases of isolated packages freeze their provided contract versions when loaded. Host-backed packages do not yet freeze contracts at runtime; use the source-controlled guard below before releasing them.
 
-If you need to extend a **frozen** contract after stable, increment the contract version and use **`alsoImplements`** so providers remain compatible with older consumers. See [Package contracts](./contracts).
+If you need to extend a **frozen** contract after stable, increment the contract version and keep
+providing the old version for existing consumers. With `/define`, provide both versions
+explicitly. The host-backed builder also supports **`alsoImplements`** when the new shape
+satisfies the old version. See [Package contracts](./contracts).
+
+### Freeze your contracts before a stable release
+
+A stable release freezes every contract version it provides. Record them in your package, so a
+later build can't change one by accident. Before you promote a version to stable, run this in the
+package:
+
+```bash
+npx peers-package contract freeze
+```
+
+It writes `frozen-contracts.json` at the package root: each contract version the package
+provides, its shape, and the package version that froze it. Commit it with the release. From then
+on:
+
+- `peers-package build` fails when the build would change a frozen version's shape, and names the
+  table, tool, observable, or event that changed. New descriptions are fine, and so is a tool's
+  `remoteAccessLevel`.
+- `npx peers-package contract freeze --check` compares against the recorded versions without
+  writing anything, for a test or CI. It passes if no file exists; run `freeze` to record a release.
+- At the next stable release, `freeze` adds the contract versions that release introduced and
+  keeps the rest. If a frozen version changed, it writes nothing and fails.
+
+Malformed contract definitions and duplicate contract identities fail the check and cannot be frozen.
+
+To change a frozen contract, declare a new version. A package may stop providing a frozen version; the check notes it,
+since that version's consumers lose this provider. A package built some other way can point the
+command at its built bundle: `--bundle dist/package.bundle.js`. Build the exact version you intend
+to release first. For a host-backed package, add
+`npx peers-package contract freeze --check --bundle dist/package.bundle.js` after each build in
+your build script or CI; other build tools do not check this file automatically. Host-backed
+bundles execute in Node when read, so use your own trusted build. Isolated artifacts are read
+without running their provider code. Bundle paths are relative to your current directory, even
+with `--root`.
 
 ## Related
 

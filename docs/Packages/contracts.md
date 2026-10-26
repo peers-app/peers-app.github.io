@@ -102,13 +102,13 @@ permission model and routing.
 
 Contract maturity is **coupled to the package lifecycle**. Developers do not set `devTag` in code — the platform manages it:
 
-- **Dev package versions**: new contracts are registered with `devTag: "dev"` (shape can change freely). Previously-frozen contracts are preserved as stable.
+- **Dev package versions**: new contracts are mutable. A version already frozen in the registry cannot be reopened as dev; use a new contract version for a changed shape.
 - **Beta package versions**: same as dev — contracts can still evolve during testing.
-- **Stable package versions**: remaining dev contracts are **designed to be finalized** (devTag removed, shape frozen) when a package version is promoted to stable. Full automatic finalization on promote is still on the roadmap; see [Package lifecycle design](../Roadmap/package-lifecycle).
+- **Stable package versions**: isolated packages freeze every contract version they provide when loaded. Host-backed packages do not yet freeze contracts at runtime; run the [build-time guard](./package-lifecycle#freeze-your-contracts-before-a-stable-release) before releasing them.
 
 The lifecycle is one-way: once a contract version is frozen (stable), it **cannot** be re-registered as dev. The registry rejects such attempts.
 
-A frozen version's shape can't change, but its descriptions can: reword a tool's `usageDescription` or any `description` to clarify usage or point callers at a newer version. Reordering members or fields doesn't need a new contract version either, though a table still raises its own `versionNumber` whenever its field list changes, order included. Adding the [richer schema keys](./declaring-a-package#schemas-in-the-manifest) when rebuilding a provider preserves compatibility with the same frozen version. A rebuild that also changes a field's type or whether it is optional needs a new version: for example, a field declared `.optional().nullable()`, which SDKs before this release marked required.
+A frozen version's shape can't change, but its descriptions can: reword a tool's `usageDescription` or any `description` to clarify usage or point callers at a newer version. A tool's `remoteAccessLevel` is policy, not shape, so it can change too. Run `npx peers-package contract freeze` before a stable release, so your build refuses a change to a frozen version ([Package lifecycle](./package-lifecycle#freeze-your-contracts-before-a-stable-release)). Reordering members or fields doesn't need a new contract version either, though a table still raises its own `versionNumber` whenever its field list changes, order included. Adding the [richer schema keys](./declaring-a-package#schemas-in-the-manifest) when rebuilding a provider preserves compatibility with the same frozen version. A rebuild that also changes a field's type or whether it is optional needs a new version: for example, a field declared `.optional().nullable()`, which SDKs before this release marked required.
 
 Isolated artifacts follow the same mutable-development rule without trusting
 artifact data for maturity. The host reads the active `PackageVersion.versionTag`
@@ -437,9 +437,10 @@ const pingTool: ITool = {
    a direct connection. `remoteAccessLevel` is not consulted; an omitted data context selects
    the provider's personal context.
 3. Any other verified caller is treated as a **group member**. The call must name a shared
-   group data context, must be a tool run, the contract definition registered in that group
-   must give the tool a numeric `remoteAccessLevel`, and the caller's role in that group must
-   be above `None` and at least that level. Anything else is denied.
+   group data context, must be a tool run, and the selected provider must give the tool a
+   numeric `remoteAccessLevel`. The caller's role in that group must be above `None` and at
+   least that level. That same provider executes the authorized call; another provider's
+   policy does not grant access to it. Anything else is denied.
 
 Cross-account remote calls therefore require the package to be loaded in the shared
 group's data context (the handle's calls are scoped to the context the package loaded in),

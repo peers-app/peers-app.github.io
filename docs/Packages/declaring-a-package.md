@@ -626,7 +626,9 @@ Consumers use the declaration as the reference: `pkg.consumes(DashboardCard, { o
 A declaration holds no handlers or sources, so other packages can import it or copy it. Once a
 stable package release freezes a contract version, its shape can't change (the Runtime refuses
 a provider whose shape differs); descriptions may still change. Contracts from dev and beta
-packages remain mutable.
+packages remain mutable. `npx peers-package contract freeze` records what a stable release froze,
+so your build catches a change first
+([Package lifecycle](./package-lifecycle#freeze-your-contracts-before-a-stable-release)).
 
 ### Exposing your contracts through a hub's contract
 
@@ -944,12 +946,16 @@ bundling them with esbuild so React and the SDK stay single copies.
 ```
 
 - `peers-package manifest` loads `src/package.ts` in Node and writes `dist/manifest.json`. It
-  fails if the manifest doesn't validate.
+  fails if the manifest doesn't validate, or if it changes a contract version a stable release
+  froze (`frozen-contracts.json`).
 - `peers-package build` also bundles the same `src/package.ts` for the sandbox, with a generated
   entry that registers every tool's handler, and writes `dist/package.bundle.js`, the artifact
   the Runtime installs.
 - `peers-package contract add <source>` generates a declaration of a contract the package
   implements or calls ([above](#getting-a-declaration-you-dont-have)).
+- `peers-package contract freeze` records the contract versions a release provides as frozen,
+  before you release it as stable; `--check` only checks
+  ([Package lifecycle](./package-lifecycle#freeze-your-contracts-before-a-stable-release)).
 - A failed provider build preserves the last successful manifest and artifact. Watch mode
   rebuilds both outputs, reloads the declaration's CommonJS dependencies, and updates its
   bundler settings when `executionMode` changes.
