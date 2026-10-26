@@ -163,6 +163,11 @@ package boundary, provide Voice Skill v2. Groceries exposes Grocery List and Tas
 List: small contracts with the tools a person asks for by voice, which the assistant and the CLI
 can use too.
 
+Keep actions that Voice Hub shouldn't offer in a separate contract. Groceries and Tasks use
+Groceries Screen and Tasks Screen for those actions, which Voice Skill doesn't expose. Their
+widgets can still share exposed tools, such as Task List's `create-task`, when the same action
+makes sense by voice and on screen.
+
 ## Who a call runs as
 
 Voice Hub's calls to exposed tools run as the person speaking, in the active group, and never with

@@ -395,6 +395,6 @@ real mail.
 - Multi-host latency and NAT. The loopback proxy adds delay, not packet loss or
   NAT behaviour.
 
-`kitchen-tool-access.e2e.test.ts` exercises group Reader/Writer voice and touch envelopes, catalog filtering, argument spoofing, and context-bound Grocery/Tasks/Timers actions. Build Voice Hub, Timers, Weather, News, Groceries, and peers-core before running it. It installs into disposable fleet hosts, never the kitchen device.
+`kitchen-tool-access.e2e.test.ts` exercises group Reader/Writer access to the contracts each Voice Skill v2 provider exposes and to the Groceries and Tasks screens' own contracts, catalog filtering, argument spoofing, and context-bound Grocery/Tasks/Timers actions. It also checks that nothing provides Voice Skill v1. Build Voice Hub, Timers, Weather, News, Groceries, and peers-core before running it. It installs into disposable fleet hosts, never the kitchen device.
 
 The `authority-dispatch.e2e.test.ts` scenario uses a generated non-Voice isolated package with Reader, Writer, and Admin group devices. It checks that the declared `authorityPropagation: "preserve"` is honored on every host directly after install, role and ordinary-tool caps, and persistence across a host restart through real headless package loading. `kitchen-tool-access.e2e.test.ts` relies on the same declared mode in the installed Voice packages when testing shared touch/voice gates; no operator grant step exists.
