@@ -516,7 +516,9 @@ export default definePackage((pkg) => {
 ```
 
 - `defineContract` declares a contract: its id (from `newid()`), version, name, description,
-  and the `tables`, `tools`, `observables`, and `events` it exposes. It checks each member's
+  and the `tables`, `tools`, `observables`, and `events` it exposes. `alsoImplements: [1]` keeps
+  serving an older, frozen version's consumers with this version's handlers
+  ([Package contracts](./contracts#evolving-stable-contracts-with-alsoimplements)). It checks each member's
   kind and rejects a name used twice. The value and its member lists are frozen and typed
   read-only. Export it so the package's UI (and other packages) can reference it by type.
 - `pkg.provides(contract)` provides it. A contract another package declares is provided the same

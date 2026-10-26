@@ -119,21 +119,55 @@ an already-frozen definition cannot be reopened as mutable.
 
 ### Evolving stable contracts with `alsoImplements`
 
-When you need to extend a frozen contract, **increment the version number** and use `alsoImplements` to declare backward compatibility:
+When a frozen contract needs a backwards-compatible change, such as a new optional input,
+**increment the version number** and list the older versions it still serves in
+`alsoImplements`. One set of handlers then answers every one of them:
 
-```typescript
-const main = pkg.contract(contractId, 2, "My App");
-// Add new optional fields, tools, etc.
-main.alsoImplements(contractId, 1); // v2 satisfies v1
+```ts
+export const Notes = defineContract({
+  contractId,
+  version: 3,
+  name: "Notes",
+  tools: [add, list],
+  alsoImplements: [1, 2], // v1's and v2's consumers are served by v3's handlers
+});
 ```
 
-The system validates that v2 is a structural superset of v1 — all v1 tables, tools, observables, and events must exist in v2 with compatible shapes. Consumers of v1 continue to work with any provider of v2.
+- An older version is named by its number. The build reads its shape from the package's
+  `frozen-contracts.json`, so it has to have been frozen by a stable release
+  ([Package lifecycle](./package-lifecycle#freeze-your-contracts-before-a-stable-release)). A
+  version that was never released stable can simply change.
+- The new version has to satisfy each one, which the build checks. Every older tool, table,
+  observable, and event exists with a compatible shape: an input may become optional or gain
+  optional fields, and an output or event may gain fields. Required outputs and event payload
+  fields stay required; table fields keep their optionality. Nested fields and enum values
+  aren't checked for compatibility yet, so keep those compatible yourself.
+- The list doesn't chain: v3 names every older version it still serves. Drop a number to stop
+  serving it.
+- An older version's callers run the new version's tools under the new version's policy: its
+  `accessLevel` and `remoteAccessLevel` decide who may call each tool, whichever version the
+  caller names. The older release's settings no longer apply.
+- The manifest carries each older version's shape, so a device can serve its consumers after a
+  restart, even when nothing else provides that version.
+- `implementContract(declaration, { ..., alsoImplements: [1] })` works the same way, and another
+  contract can be named by its declaration (from `declareContract` or `peers-package contract
+  add`) instead of a number.
+- Hosts released before `alsoImplements` came to `/define` don't install a package that uses it.
 
-`alsoImplements` supports single versions or inclusive ranges:
+When an older version needs different behavior, or the change isn't backwards compatible, provide
+the older version as its own contract with `pkg.provides`, with handlers that call shared code.
+
+Host-backed packages declare it on the contract builder, with single versions or inclusive
+ranges:
 
 ```typescript
+const main = pkg.contract(contractId, 4, "My App");
 main.alsoImplements(contractId, { from: 1, to: 3 }); // v4 satisfies v1, v2, and v3
 ```
+
+That form carries no older shape: each older version must be registered by a package on the
+device. A version the package provides explicitly keeps its own handlers, even when it falls
+within a legacy `alsoImplements` range.
 
 ### Exposing contracts through a hub's contract
 

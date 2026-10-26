@@ -149,9 +149,9 @@ To test with other devices before a stable release:
 Contract maturity follows the package channel. New contract shapes can evolve freely in **dev** and **beta** builds. Stable releases of isolated packages freeze their provided contract versions when loaded. Host-backed packages do not yet freeze contracts at runtime; use the source-controlled guard below before releasing them.
 
 If you need to extend a **frozen** contract after stable, increment the contract version and keep
-providing the old version for existing consumers. With `/define`, provide both versions
-explicitly. The host-backed builder also supports **`alsoImplements`** when the new shape
-satisfies the old version. See [Package contracts](./contracts).
+serving the old version's consumers: list it in **`alsoImplements`** when the new shape satisfies
+it (`alsoImplements: [1]`), or provide both versions explicitly. See
+[Package contracts](./contracts#evolving-stable-contracts-with-alsoimplements).
 
 ### Freeze your contracts before a stable release
 
@@ -176,9 +176,13 @@ on:
   keeps the rest. If a frozen version changed, it writes nothing and fails.
 
 Malformed contract definitions and duplicate contract identities fail the check and cannot be frozen.
+The check also compares shapes carried by `alsoImplements` against previously frozen versions.
+Malformed `alsoImplements` declarations in a host-backed bundle fail the check too.
 
-To change a frozen contract, declare a new version. A package may stop providing a frozen version; the check notes it,
-since that version's consumers lose this provider. A package built some other way can point the
+To change a frozen contract, declare a new version, with `alsoImplements` naming the frozen one
+when the change is backwards compatible. A package may stop serving a frozen version, neither
+providing it nor listing it in `alsoImplements`; the check notes it, since that version's
+consumers lose this provider. A package built some other way can point the
 command at its built bundle: `--bundle dist/package.bundle.js`. Build the exact version you intend
 to release first. For a host-backed package, add
 `npx peers-package contract freeze --check --bundle dist/package.bundle.js` after each build in
