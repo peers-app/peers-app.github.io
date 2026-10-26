@@ -32,14 +32,17 @@ The fastest way to start a new package is from the Peers app
 (**Packages → Create**), which clones the
 [peers-package-template](https://github.com/peers-app/peers-package-template),
 patches IDs, builds bundles, registers the `Packages` record, and provisions a
-per-package author signing key in your personal space.
+per-package author signing key in your personal space. A package made from the template needs
+the latest Peers release; an older app refuses to install it, so update Peers first.
 
 You can also scaffold on disk and import:
 
 ```bash
-cp -r peers-package-template ~/peers/packages/my-app
+git clone https://github.com/peers-app/peers-package-template.git ~/peers/packages/my-app
 cd ~/peers/packages/my-app
-# replace placeholders in src/ids.json and peers.packageId, then:
+rm -rf .git
+# fill in src/consts.ts and peers.packageId in package.json (see Set up IDs below)
+# update README.md's title and first paragraph, then:
 npm install && npm run build
 ```
 
@@ -71,87 +74,61 @@ Importing the same local package by name into Personal or another group reuses i
 
 ### Project structure
 
-The template provides a standard package layout:
+The template starts as a small shared list, with one table, one tool, and one screen:
 
 ```
 my-app/
-├── build-package.mjs     # Builds the isolated manifest/provider artifact
 ├── src/
-│   ├── ids.json           # Package, contract, and screen IDs
-│   ├── consts.ts          # Typed renderer exports from ids.json
-│   ├── contract.ts        # Renderer-facing contract shape
-│   ├── provider-source.js # Code that may run only in the isolated worker
-│   ├── routes.ts          # URL path registrations (eager)
-│   ├── uis.ts             # React component registry (lazy)
-│   └── ui/
-│       └── app.tsx        # Your first screen component
+│   ├── consts.ts               # Package, contract, and screen IDs
+│   ├── package.ts              # The contract and the package's declaration
+│   ├── data/items.ts           # A table: zod schema + defineTable
+│   ├── tools/add-item.tool.ts  # A tool: definition + handler
+│   ├── ui/
+│   │   ├── client.ts           # The screen's client for the contract
+│   │   └── app.tsx             # The screen
+│   ├── routes.ts               # URL path registrations (eager)
+│   ├── uis.ts                  # React component registry (lazy)
+│   └── app.test.mjs            # Tests for the tool and the screen
 ├── webpack.routes.config.js
 ├── webpack.uis.config.js
+├── README.md                   # Its first paragraph is the package's description in Peers
 └── package.json
 ```
+
+`src/package.ts` declares what the package is: the tables, tools, observables, and events of
+the contracts it provides, and the contracts it consumes. **[Declaring a
+package](./declaring-a-package)** covers each of them.
 
 The build produces three output bundles:
 
 | Bundle | Built from | Purpose |
 |--------|-----------|---------|
-| `package.bundle.js` | `build-package.mjs` + `src/provider-source.js` | Isolated runtime manifest and provider source |
+| `package.bundle.js` | `src/package.ts`, by `peers-package build` | The manifest Peers reads, and the package's code for the sandbox |
 | `routes.bundle.js` | `src/routes.ts` | URL path mappings (loaded eagerly at startup) |
 | `uis.bundle.js` | `src/uis.ts` | React components (loaded lazily on navigation) |
 
-The template writes its manifest by hand. A package can instead declare its tables, tools,
-and contracts in `src/package.ts` with `definePackage` and build them with `peers-package`,
-as News does. See **[Declaring a package](./declaring-a-package)**.
+Peers reads a package's manifest without running its code, and runs the code in a supervised
+sandbox worker on Electron and headless hosts (a package can instead run as a privileged Node
+process; see [below](#provider-execution-modes)). Screens and widgets run in the app's window
+and reach the package through its contracts. See **[Routes and UI](./routes-and-ui)** for how
+those bundles are loaded and why they are split.
 
-New packages use an **isolated** `PEERS_ISOLATED_PACKAGE_V1` JSON envelope for
-`package.bundle.js`. Electron and headless run that provider source in a supervised sandbox
-worker by default, or a separate privileged Node process when explicitly declared. Existing legacy `definePackage()` bundles remain supported.
-Every package-owned table schema belongs once at
-`manifest.tables`. Authors declare a package-local name, primary key, fields, an
-optional schema version, and optionally `localOnly: true` to keep a table's rows on each
-device instead of syncing them
-([Local-only tables](../System/Tables#local-only-tables)); they do not provide a table ID or
-physical name. The host
-stores each table as `${logicalTableName}_${packageId}`. A hand-written manifest sets
-`guestApi: 2` (`definePackage` packages get `guestApi: 3`, which also serves their contracts
-through the worker; see [Declaring a package](./declaring-a-package)): each tool handler is
-`async (args, ctx) => { ... }`, and guest code reads or writes copied records through
-`ctx.callOwnedTable` (any table method, with filters for `list`), `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`, `ctx.listOwnedTableRecords`,
-and `ctx.deleteOwnedTableRecord`. Those calls, owned pvars, and
-event emits work at any time while the package's worker runs, including through a call's
-`ctx` after it returns, from a timer, and from `onWorkerStart(async (ctx) => { ... })`;
-calls into other packages' contracts need an active tool call. Calls run
-concurrently and the package orders the state they share: a handler that reads and then
-writes the same row runs that change through a small queue kept in module state. A call
-that times out is rejected while the worker keeps running
-([Guest API](./contracts#isolated-contract-packages-electron)). A
-provided contract can expose selected schemas using name-only table references;
-unreferenced schemas stay private. Contracts can also expose typed, optionally
-writable observables backed by package-prefixed pvars. Normal contract consumers
-get standard table CRUD and observable get/set/subscription, while isolated
-consumer workers use the corresponding consumed-state helpers. Routes and UI
-bundles stay in the renderer. Upgrade every peer that syncs a group before using
-isolated package tables there; older hosts derive a different physical table name.
-See
-**[Package contracts](./contracts#isolated-contract-packages-electron)** for the
-artifact boundary, Electron-only status, and legacy compatibility.
-
-See **[Routes and UI](./routes-and-ui)** for how these bundles are loaded and why they are split.
+Upgrade every peer that syncs a group before using a package's tables there; older hosts
+store package tables under a different name.
 
 ### Set up IDs
 
-The template ships with placeholder IDs in `src/ids.json`:
+The template ships with placeholder IDs in `src/consts.ts`:
 
-```json
-{
-  "packageId": "<package-id>",
-  "contractId": "<contract-id>",
-  "screenId": "<app-screen-id>",
-  "packageName": "<package-name>",
-  "stateObservableName": "state"
-}
+```ts
+export const packageId = "<package-id>";
+export const packageName = "<package-name>";
+export const contractId = "<contract-id>";
+export const contractVersion = 1;
+export const appScreenId = "<app-screen-id>";
 ```
 
-Replace each placeholder with a value generated by `newid()` from `@peers-app/peers-sdk`. All Peers IDs must be exactly 25 alphanumeric characters. You can generate IDs with the CLI:
+Replace the three ID placeholders with values generated by `newid()` from `@peers-app/peers-sdk`. All Peers IDs must be exactly 25 alphanumeric characters. You can generate IDs with the CLI:
 
 ```bash
 peers tools run new-id
@@ -162,7 +139,9 @@ use the runtime catalog and its active provider; the command and existing tool I
 remain unchanged.
 
 Update `packageName` to your package's display name and set `peers.packageId` in
-`package.json` to match. The desktop creator performs these replacements automatically.
+`package.json` to match `packageId`. Update the title and first paragraph in `README.md` too;
+Peers shows that paragraph as the package's description. The desktop creator fills in the IDs
+and name automatically.
 
 ### Build and run
 
@@ -171,9 +150,12 @@ npm install
 npm run build
 ```
 
-This produces `dist/package.bundle.js`, `dist/routes.bundle.js`, and `dist/uis.bundle.js`. After building, reload the UI to pick up the new package:
+This produces `dist/package.bundle.js`, `dist/routes.bundle.js`, and `dist/uis.bundle.js`. Import
+the directory once with `peers packages import <path>`. After subsequent builds, install the new
+bundles and reload the UI:
 
 ```bash
+peers packages reload <packageId>
 peers ui reload
 peers ui screenshot   # prints the path of a PNG of the Peers window
 ```
@@ -181,91 +163,23 @@ peers ui screenshot   # prints the path of a PNG of the Peers window
 Open the printed file to check what your package's screen looks like (an agent can open it
 too); `peers ui inspect --text` shows the visible text instead.
 
-During development, `npm run dev` watches the renderer routes and UI. Run
-`npm run build:package` after changing the manifest, IDs, or provider source, then restart
-Electron or reinstall the package so the isolated artifact is reloaded.
+During development, `npm run dev` rebuilds all three bundles as you change files. After a
+change to the package itself, `peers packages reload <packageId>` installs the new build.
+`npm test` runs the template's tests, the tool against a fake host and the screen against
+`mockHostContract`, without a running host ([Testing](./declaring-a-package#testing)).
 
 ### Webpack externals
 
-The renderer provides `React`, `@peers-app/peers-sdk`, and `@peers-app/peers-ui` as globals.
-The route and UI webpack configs list them as **externals** so they are not bundled. Provider source is not a webpack
-entry: a package declared with `definePackage` bundles `@peers-app/peers-sdk/define` (and any
-other libraries it imports) into its provider with `peers-package`.
+The renderer provides `React`, `@peers-app/peers-sdk`, `@peers-app/peers-ui`, and `zod` as
+globals. The route and UI webpack configs list them as **externals** so they are not bundled.
+The package's own code is not a webpack entry: `peers-package build` bundles it, with
+`@peers-app/peers-sdk/define` and any other libraries it imports.
 
-## Defining an isolated package
+## Provider execution modes
 
-This section describes the manifest the template writes by hand. A package can declare the
-same things in code instead; see [Declaring a package](./declaring-a-package).
-
-`build-package.mjs` combines a pure-data manifest with the text from
-`src/provider-source.js`:
-
-```javascript
-const artifact = {
-  manifest: {
-    packageId: ids.packageId,
-    version: packageJson.version,
-    tables: [],
-    provides: [{
-      contractId: ids.contractId,
-      version: 1,
-      name: ids.packageName,
-      tools: [],
-      observables: [{
-        name: "state",
-        description: "Shared application state.",
-        valueType: "object",
-        writable: true,
-        persistentVar: {
-          scope: "group",
-          name: "state",
-          defaultValue: {},
-        },
-      }],
-    }],
-    consumes: [],
-    appNavs: [{
-      name: ids.packageName,
-      iconClassName: "bi bi-app",
-      navigationPath: "app",
-    }],
-  },
-  providerSource,
-};
-```
-
-Every isolated package provides at least one contract, and each provided contract has at least
-one tool, table, or observable. The starter's writable observable gives UI-first packages a
-small reactive persistence path without starting a worker. Prefer declared tables for
-record-oriented data.
-
-`provider-source.js` is JavaScript stored inside the artifact. The template copies it in as
-is, so it can't import modules; bundle it to use libraries, as `peers-package` does. The
-default sandbox runs ordinary isomorphic JavaScript but has no Node modules
-([what it provides](./declaring-a-package#what-the-sandbox-provides)). Declare tools in the
-manifest and register matching handlers with the guest API `registerContractTool`. Privileged
-providers can use Node built-ins as described below.
-
-`appNavs` declares the navigation items that appear in the Apps launcher. The
-`navigationPath` corresponds to the route path registered in `src/routes.ts`.
-Omit `appNavs` when the package should appear only as a widget, which is how Weather stays out of
-the Apps list.
-
-Optional `manifest.network` names the HTTPS hosts an isolated package may call through
-[System HTTP](../System/HTTP.md). [System Scheduler](../System/Scheduler.md) wakes one of the
-package's own tools on this device. Packages that want Voice Hub to call them provide the shared
-[Voice Skill](./voice-skills) contract instead of being linked into Voice Hub at build time.
-
-Legacy packages may still build a CommonJS `src/package.ts` with `definePackage()`. That format
-is supported for compatibility but is no longer the default scaffold.
-
-Note: `versionTag` and contract `devTag` are **not** set in code. The platform assigns these based on the package's promotion state.
-
-### Provider execution modes
-
-`manifest.executionMode` accepts exactly `"sandbox"` or `"privileged"`. Omission keeps the
+`pkg.executionMode` accepts exactly `"sandbox"` or `"privileged"`. Omission keeps the
 SES sandbox: no ambient `process`, `require`, filesystem, or subprocess access. The field
-applies only to provider code; routes and UI do not gain Node access. Privileged providers
+applies only to the package's code; routes and UI do not gain Node access. Privileged providers
 are supported in Electron and headless. Browser/PWA provider execution remains unsupported.
 
 A privileged provider is **trusted device code**. It runs in its own Node process as the same
@@ -275,37 +189,33 @@ bridge checks still apply to ordinary contract, table, pvar, and event calls, bu
 access bypasses sandbox and network-policy confinement. There are no granular permissions or
 additional consent gate in this mode.
 
-To use a Node built-in, bundle a provider as CommonJS with `platform: "node"`:
+A privileged package imports Node built-ins as usual, and `peers-package build` bundles it for
+Node:
 
-```js
-// src/provider-source.js — use your existing generated contract ID.
+```ts
+// src/tools/platform.tool.ts
 import { platform } from "node:os";
-import ids from "./ids.json";
+import { AccessLevel, defineTool, z } from "@peers-app/peers-sdk/define";
 
-registerContractTool(ids.contractId, 1, "platform", () => ({ platform: platform() }));
-```
-
-```js
-// In build-package.mjs, after creating your normal manifest (including the platform tool):
-import { build } from "esbuild";
-import { serializeIsolatedPackageArtifact } from "@peers-app/peers-sdk";
-import { mkdir, writeFile } from "node:fs/promises";
-
-const built = await build({
-  entryPoints: ["src/provider-source.js"],
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  target: "node20",
-  write: false,
+export const platformTool = defineTool({
+  name: "platform",
+  usageDescription: "The operating system this device runs.",
+  accessLevel: AccessLevel.Reader,
+  inputSchema: z.object({}),
+  outputSchema: z.object({ platform: z.string() }),
+  handler: () => ({ platform: platform() }),
 });
-manifest.executionMode = "privileged";
-await mkdir("dist", { recursive: true });
-await writeFile("dist/package.bundle.js", serializeIsolatedPackageArtifact({
-  manifest,
-  providerSource: built.outputFiles[0].text,
-}));
 ```
+
+```ts
+// src/package.ts: list platformTool in the contract's tools, then
+export default definePackage((pkg) => {
+  // …
+  pkg.executionMode = "privileged";
+});
+```
+
+Use Node built-ins only in a privileged package; a sandboxed package cannot load them.
 
 Both IIFE and bundled CommonJS providers work, including bundles whose entrypoint has a
 leading `#!/usr/bin/env node` shebang. Node provides `require`, `module`, `exports`,
@@ -319,9 +229,9 @@ separate IPC channel, so provider logging does not interfere with contract repli
 
 A privileged provider can keep working after a tool call returns: a timer or a child process's
 output can write the package's own tables and pvars and emit its events, and consumers of a
-contract-exposed table see those writes through `dataChanged` as usual. The process starts
-lazily on its first tool call; subscribing to its events or tables does not start it.
-Starting it at activation isn't supported yet.
+contract-exposed table see those writes through `dataChanged` as usual. A declared package
+starts when its contract is first used, including table reads and subscriptions. Starting it
+at activation isn't supported yet.
 
 Startup stays lazy, with one session per package/data context. Normal deadlines still apply:
 Electron and headless allow 30 seconds for startup/evaluation and, by default, each tool call;
@@ -337,6 +247,85 @@ Downloading a version does not activate it. Termination kills only the provider 
 cannot undo filesystem, network, or other OS side effects. Any spawned descendants, including
 ordinary subprocesses created without `detached: true`, may survive timeouts, replacement, or
 shutdown. Providers must manage descendant cleanup; the runtime does not guarantee it.
+
+## Writing the manifest by hand
+
+A package can write its manifest and provider source itself instead of declaring them with
+`definePackage`, as Peers' isolation test packages do. Prefer
+[Declaring a package](./declaring-a-package): the manifest, the handlers, and the UI's types
+then come from one declaration, and the build checks them against each other.
+
+A build script combines a pure-data manifest with the provider's source text. This example
+uses `peers.packageId` from `package.json`; replace `<contract-id>` with a generated contract
+ID, and create `src/provider-source.js` for the provider code. The provider source can't be
+empty; for this observable-only example, a comment is enough:
+
+```javascript
+// build-package.mjs
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { serializeIsolatedPackageArtifact } from "@peers-app/peers-sdk";
+
+const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+const packageId = packageJson.peers.packageId;
+const contractId = "<contract-id>";
+
+const manifest = {
+  packageId, // 25-character Peers ids, from `peers tools run new-id`
+  version: packageJson.version,
+  guestApi: 2,
+  tables: [],
+  provides: [{
+    contractId,
+    version: 1,
+    name: "My App",
+    tools: [],
+    observables: [{
+      name: "state",
+      description: "Shared application state.",
+      valueType: "object",
+      writable: true,
+      persistentVar: { scope: "group", name: "state", defaultValue: {} },
+    }],
+  }],
+  consumes: [],
+  appNavs: [{ name: "My App", iconClassName: "bi bi-app", navigationPath: "app" }],
+};
+const providerSource = await readFile("src/provider-source.js", "utf8");
+await mkdir("dist", { recursive: true });
+await writeFile("dist/package.bundle.js", serializeIsolatedPackageArtifact({ manifest, providerSource }));
+```
+
+- Every isolated package provides at least one contract, and each provided contract has at
+  least one tool, table, observable, or event. A writable observable backed by a persistent variable
+  gives a UI-first package a small reactive store without starting a worker; prefer tables for
+  record-oriented data.
+- Each package-owned table is declared once, in `manifest.tables`: a package-local name, primary
+  key, fields, an optional schema version, and optionally `localOnly: true` to keep its rows on
+  each device ([Local-only tables](../System/Tables#local-only-tables)). There is no table id or
+  physical name to declare. A provided contract exposes a table by listing its name; the rest
+  stay private.
+- The provider source is JavaScript stored in the artifact. Copied in as is, it can't import
+  modules; bundle it to use libraries, as `peers-package` does. Declare each tool in the
+  manifest and register its handler with `registerContractTool`.
+- With `guestApi: 2`, each handler is `async (args, ctx) => { ... }`. `ctx.callOwnedTable` (any
+  table method, with filters for `list`), the owned persistent-variable helpers, and event emits
+  work whenever the package's worker runs, including from a timer and from
+  `onWorkerStart(async (ctx) => { ... })`; calls into other packages' contracts need an active
+  tool call. Calls run concurrently, so a handler that reads and then writes the same row runs
+  that change through a small queue kept in module state. A call that times out is rejected
+  while the worker keeps running ([Guest API](./contracts#isolated-contract-packages-electron)).
+- `appNavs` declares the entries in the Apps launcher (`pkg.appNavs` in a declaration). Each
+  `navigationPath` matches a route in `src/routes.ts`. Omit `appNavs` for a package that only
+  shows a widget, as Weather does.
+- `network` names the HTTPS hosts the package may call through [System HTTP](../System/HTTP.md)
+  (`pkg.network`), and `executionMode` is `pkg.executionMode`
+  ([above](#provider-execution-modes)). A privileged provider bundled by hand uses esbuild with
+  `platform: "node"` and `format: "cjs"`.
+- `versionTag` and contract `devTag` are **not** set in code. The platform assigns them from the
+  package's promotion state.
+
+Legacy host-backed packages, built with `definePackage` from `@peers-app/peers-sdk` rather than
+`@peers-app/peers-sdk/define`, still load for compatibility.
 
 ## Author signing keys
 

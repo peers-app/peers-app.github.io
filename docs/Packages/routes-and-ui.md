@@ -48,8 +48,8 @@ sequenceDiagram
 
 These three concepts serve different purposes in the package lifecycle:
 
-**appNavs** are declarative metadata stored on the `IPackageVersion` record. The default
-isolated template declares them in `build-package.mjs`; Peers copies them from the manifest
+**appNavs** are declarative metadata stored on the `IPackageVersion` record. A package
+declares them with `pkg.appNavs` in `src/package.ts`; Peers copies them from the manifest
 during install. They populate the Apps tab in the launcher so users can see what apps are
 available. An `IAppNav` has a `name`, `iconClassName`, and `navigationPath` — no executable code.
 

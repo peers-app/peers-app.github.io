@@ -23,8 +23,9 @@ declares without running any of its code. The same declaration is bundled for th
 each tool's handler is registered under its declared name.
 
 :::note Where this applies today
-News, Weather, Timers, and Voice Hub use these declarations. Packages that still write their
-manifest by hand can follow [Getting started](./getting-started#defining-an-isolated-package).
+The [package template](./getting-started#creating-a-new-package), News, Weather, Timers, and
+Voice Hub use these declarations. A package can still write its manifest by hand
+([Getting started](./getting-started#writing-the-manifest-by-hand)).
 :::
 
 ## Layout

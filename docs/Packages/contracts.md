@@ -660,8 +660,8 @@ Host shutdown drains scheduled invocations before disposing provider sessions, i
 privileged processes. Provider crashes or IPC disconnections reject pending bridge calls;
 a later invocation starts a fresh session for the same installed version.
 
-See [Provider execution modes](./getting-started#provider-execution-modes) for a Node built-in
-import/build example using bundled CommonJS (`platform: "node"`). Bundle dependencies: the
+See [Provider execution modes](./getting-started#provider-execution-modes) for a privileged
+package that imports a Node built-in. Bundle dependencies: the
 artifact carries source, not a package directory, assets, or `node_modules`.
 
 The default new-package scaffold uses an **isolated package** artifact so contract providers run
@@ -1039,12 +1039,10 @@ outside the Electron host process. The host never evaluates provider source. Leg
   existing device-local package preference; when isolation support becomes
   available, it retries and restores the originally selected version.
 
-The canonical template keeps identity in `src/ids.json`, writes the envelope from
-`build-package.mjs`, and keeps plain worker code in `src/provider-source.js`. A package
-declared with `definePackage` generates the same envelope with `peers-package build`
-([Declaring a package](./declaring-a-package)). Its starter
-contract exposes a group-scoped writable state observable so renderer-only packages have a
-reactive persistence path before they need tools or record tables.
+The package template declares its contract with `definePackage`, and `peers-package build`
+writes the envelope ([Declaring a package](./declaring-a-package)). A package can also write the
+manifest and provider source by hand
+([Writing the manifest by hand](./getting-started#writing-the-manifest-by-hand)).
 
 This is not a production security claim. An SES escape still reaches Worker ambient
 APIs; `Worker.terminate()` remains the availability path. See

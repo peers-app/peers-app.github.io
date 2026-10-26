@@ -229,7 +229,23 @@ builds, and tests. It commits and pushes only `package.json` and
 `package-lock.json` inside the `peers-headless` repo. Its own version stays
 `0.1.0`. It is not tagged or published.
 
-If that sync fails, the release stops before the later publish steps. A
+Step 4b does the same for `peers-package-template`, which `peers packages create` clones from
+its `main` branch: `@peers-app/peers-sdk` and `@peers-app/peers-ui` become the release version
+(peer ranges `^<version>`). Commit template source changes **locally**, on `main`, before
+running the release. Before it publishes anything, the release checks that the template is on
+`main` with a clean working tree and fast-forwards it; Step 4b checks again. After Step 2's
+builds, the release checks a copy of the committed files with real ids against this release's
+SDK and peers-ui, packed from those builds: installed, linted, built, and tested. A template
+that no longer builds or passes its tests stops the release there, before anything is
+published. Step 4b repeats that check with both installed from npm, as a new package gets
+them, commits the dependency pin in `package.json`, then pushes `main`, including any local
+template commits. The dependency pin stays unchanged until the checks pass, so a failed or
+interrupted check can be retried. If the template changes during validation, retry the release
+with its source committed and its tree clean. Pushing it after npm publish means a new package
+never asks for an SDK that isn't on npm yet; don't push template changes that need an unreleased
+SDK before a release.
+
+If either sync fails, the release stops before the later publish steps. A
 repeat of the same version skips the commit when those manifests are already
 pinned.
 
@@ -256,5 +272,5 @@ can install them; that build does not commit or publish those packages.
 2. Check the desktop artifacts (electron-builder / S3).
 3. Confirm `https://peers.app` is the just-released `peers-services`. Running
    desktop apps start checking for the new version as soon as it is.
-4. Commit the `peers-headless` submodule pointer at the monorepo root
-   (`git add peers-headless && git commit`).
+4. Commit the `peers-headless` and `peers-package-template` submodule pointers at the
+   monorepo root (`git add peers-headless peers-package-template && git commit`).
