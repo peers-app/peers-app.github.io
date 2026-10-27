@@ -52,7 +52,7 @@ Reading and writing use the observable call form: `myVar()` to read, `myVar(newV
 
 The first observable-driven save for a locally absent pvar with no deletion history is a **weak insert**. It still synchronizes, but any established normal write from another device has higher conflict priority. This prevents a newly connected device from replacing an existing `userVar`, `groupVar`, or `groupUserVar` value with locally initialized state before synchronization catches up. Once the row exists locally, subsequent writes are normal updates and take normal conflict priority.
 
-Saving a previously deleted pvar restores it with normal conflict priority. `PersistentVarsTable.save` defaults to `restoreIfDeleted: true`; callers can explicitly pass `false` to reject restoration. Re-declaring a name under another scope still drops the old scope's value; later writes under the new scope can reuse its ID.
+Saving a previously deleted pvar restores it with normal conflict priority. `PersistentVarsTable.save` defaults to `restoreIfDeleted: true`; callers can explicitly pass `false` to reject restoration. Re-declaring a name under another scope resets it to the new scope's default; the old scope's value is dropped. Changing a `user` variable to `device` (or `groupUser` to `groupDevice`) removes its synced copy from your other devices. Changing back shares the new default again.
 
 ## Secrets
 
