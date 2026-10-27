@@ -108,11 +108,14 @@ depends on the latest error:
   device can reject a row written by a newer schema, and after it upgrades the change
   is already known so it would never be written.
 - **Unique-key conflicts** (`UNIQUE constraint failed`) are resolved only when that
-  table defines a deterministic rule. `PersistentVars` keeps the deterministic record
-  id when either row has one (otherwise the lexicographically smaller id) and the
-  value from the row with the newer `modifiedAt`. The other id is tombstoned through
-  normal change tracking, so every device converges on the same row. Tables without
-  a rule are parked. Nothing is deleted by a generic guess.
+  table defines a rule for combining duplicates. `PersistentVars` combines duplicate
+  variables, retaining the newer value. `GroupMembers` combines duplicate memberships
+  for the same user and group when they grant the same access, as happens when several
+  devices approve one join at once. Memberships that grant different access, and
+  tables without a rule, stay parked for a person. If the conflicting record is later
+  removed, the entry can clear automatically after further sync or an app restart.
+  If a device on an older Peers version still shows a resolved conflict, update it and
+  use **Retry** on its recovery entry.
 - **Missing history** (`No full write found`, `Last full write has no value`, and
   similar) and **transient** errors (locks, closed connections, anything unrecognized)
   keep asking peers. The delay starts at one minute and doubles after each unresolved
