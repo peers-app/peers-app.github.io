@@ -91,17 +91,19 @@ system providers before their catalog rows have persisted.
 Unresolved legacy rows retain their historical primary keys and source. They are
 ordinary, deletable rows; deleting one is permanent and never restores it. They
 report unavailable and cannot block provider activation.
-Quarantine cannot be cleared by an ordinary metadata save or sync replay, even if
-the replacement supplies the canonical target. Startup or provider publication may
-restore a bare row only when `code` is the empty string, `catalogIdentity` is unset
-or `deterministic`, and all three target columns are unset. The published target
-must be valid, its `toolName` must exactly match the stored `name`, and its sole
-protocol-selected ID must equal the row ID and start with `000tool0`. Reviewed
-legacy aliases still suppress deterministic allocation and cannot use this repair.
-The catalog patches only identity and state, resolving the row in that same write
-and preserving policy and historical fields, then continues normal publication. That covers a catalog insert whose
-identity columns were dropped before startup reconciliation. Rows with executable
-source, another name or identity, or any stored target cannot be restored this way.
+A row quarantined only because its target was missing resolves once it receives a valid
+target whose `toolName` exactly matches the stored `name` and whose sole protocol-selected
+ID equals the row ID and starts with `000tool0`. The row's `code` must be the empty string
+and its `catalogIdentity` unset or `deterministic`. In Peers 0.27.2 and newer, that target
+may arrive from provider publication or sync; it may already be present on a still-quarantined
+row. The catalog marks the row resolved, patching only identity and state and preserving
+policy and historical fields. Older devices may keep the row quarantined until upgraded.
+Reviewed legacy aliases still suppress deterministic allocation and cannot be resolved
+this way, nor can rows with executable source, another name or identity kind, a partial
+or different target, or another quarantine reason. An ordinary metadata save that supplies
+no target never clears a quarantine. Startup or provider publication may also restore a
+bare row with all three target columns unset, whatever its quarantine reason, under the
+same conditions on the row and the published target.
 Any other quarantine stays sticky and blocks publication of that target; a real
 quarantine in the system catalog still aborts readiness before providers activate.
 Calls recheck retained identity evidence and current provider membership before

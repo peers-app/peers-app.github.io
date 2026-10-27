@@ -98,6 +98,8 @@ Elections run when a connection is added or a preferred one drops, and every `RE
 
 If a group temporarily stops syncing while its devices remain connected, current Peers versions resume syncing automatically. Recovery usually starts within a minute; repeated interruptions can delay it by up to 10 minutes. Keep participating devices up to date. You don't need to reconnect or restart for a group to resume syncing.
 
+After a device has been offline, leave the app open and connected to let it catch up. If the app quits or the connection drops, catch-up resumes from its saved progress when the device reconnects.
+
 ### Post-sync runtime work
 
 Applying synced rows is separate from runtime side effects that depend on several tables. Those effects are coalesced while pages are applied and run only after the sync watermark is durable. For example, `Packages`, `PackageVersions`, and `Files` may arrive in different pages; package activation evaluates their final combined state once instead of loading every intermediate version. A runtime load failure is reported as a package warning and does not roll back synchronized rows or freeze the peer watermark.
