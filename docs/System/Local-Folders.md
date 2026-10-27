@@ -140,7 +140,10 @@ manifest without hashing the file again.
 The job stays `running` while no peer can serve a block. If no block arrives
 for 10 minutes it ends with `error: "stalled"`. `cancelJob` and revoking the
 grant abort the job and leave `.part` in place. `getJob` on a finished assemble
-returns `{ bytesPulled, bytesReused, sources }`.
+returns `{ bytesPulled, bytesReused, sources }`: bytes received from peers (each
+block counted once, even if it arrived twice), bytes copied from this
+device's index, and how many peers sent blocks. Blocks a resumed job found
+already in `.part` count in neither total.
 
 ## Chunking
 
