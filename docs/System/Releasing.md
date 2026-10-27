@@ -249,6 +249,13 @@ If either sync fails, the release stops before the later publish steps. A
 repeat of the same version skips the commit when those manifests are already
 pinned.
 
+After `npm publish`, Step 3 waits for the version to be served before the next repo installs it.
+npm scans new versions first ("Your package is being processed and may take a few minutes to
+become available"), which has taken up to about 25 minutes, so the wait allows 45. If a release
+stops partway through Step 3, run it again without a release type (`npm run release`): it keeps the
+version, skips packages already on npm after tagging and pushing their release commits, and
+carries on from the first repo it hadn't finished.
+
 Steps 3 and 4 replace the local `@peers-app/*` links with registry installs,
 because the published builds and the desktop installer must use them. Step 7
 runs `link-deps.js --host-only` after Step 6 to put the links back; a release
