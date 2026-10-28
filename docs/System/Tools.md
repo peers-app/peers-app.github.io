@@ -294,10 +294,12 @@ assistant IDs and workflow variables are rejected. The wrapper admits at None an
 preserves authority; it supplies neither a system-package caller nor its own frame
 to the selected target. No delegated sessions or new approvals are introduced.
 
-Invocation accepts a plain argument object (omitted means `{}`), checks required
-fields against the requested version's public schema, and converts top-level Date
-strings to valid Dates. Unknown fields and nested object contents are forwarded
-unchanged; schema defaults are not inserted. Validation failures do not execute code.
+Invocation accepts a plain argument object (omitted means `{}`), checks it against
+the requested version's public schema (required fields, types, and top-level
+`enumValues`), and converts top-level Date strings to valid Dates. Every contract
+tool call gets the same check before its provider runs, whoever the caller.
+Unknown fields and nested object contents are forwarded unchanged; schema
+defaults are not inserted. Validation failures do not execute code.
 `alsoImplements` may select newer implementation code while validation still uses
 the requested version's definition.
 

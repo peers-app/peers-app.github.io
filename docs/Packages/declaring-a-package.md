@@ -223,10 +223,11 @@ more about the value:
 
 - When a value arrives, the Runtime checks a table row, a tool's input, or an event payload
   against `type`, `optional`, and `isArray`, and an observable's value against its
-  `valueType`. `fields` and `enumValues` describe values for consumers and for the models that
-  call tools; the package's schema enforces them when it parses. So a row synced from a device
-  running a newer version of the package isn't refused for a value the older schema doesn't
-  list.
+  `valueType`. A tool's input is also checked against each top-level field's `enumValues`,
+  before your handler runs. Otherwise `fields` and `enumValues` describe values for consumers
+  and for the models that call tools; the package's schema enforces them when it parses. So a
+  row synced from a device running a newer version of the package isn't refused for a value the
+  older schema doesn't list.
 - An object keeps keys its `fields` don't list.
 - Some schemas are described by type only: records (`z.record`), unions of objects, tuples,
   lazy schemas, a value inside a transform or a preprocess, and arrays of arrays.

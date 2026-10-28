@@ -209,6 +209,8 @@ const myTool: ITool = {
 };
 ```
 
+The Runtime checks every call's input against the tool's `inputFields` before your tool runs, whoever calls it: the UI, the CLI, an assistant, another package, or another device. A required field must be present (one typed `any` included), each value must have its declared type, and a field with `enumValues` takes only those values. `schemaToFields` records them for `z.enum`, `z.nativeEnum`, a literal, or a union of literals, including the elements of an array; a nullable enum gets none, since it also allows `null`. Nested object fields, keys the tool doesn't declare, and the input of a tool that declares no fields aren't checked. A call that fails never reaches your code; the caller gets an error naming each field, such as `Tool argument validation failed for write-task: operation: Required`.
+
 Contract validation (`validateProviderSatisfiesContract`) checks field-level compatibility — field names, types, optionality, and array flags — between a provider's tools and the contract it claims to implement via `alsoImplements`. If the `IField[]` on your `ITool` doesn't match the target contract's tool signature, registration will fail.
 
 See **[System: Tools](../System/Tools)** for the full tool authoring guide.
