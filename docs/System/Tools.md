@@ -104,6 +104,10 @@ or different target, or another quarantine reason. An ordinary metadata save tha
 no target never clears a quarantine. Startup or provider publication may also restore a
 bare row with all three target columns unset, whatever its quarantine reason, under the
 same conditions on the row and the published target.
+A quarantine's reason is part of its evidence: a write that changes or clears it while the
+row stays quarantined is rejected. When a peer resolves a row, its `catalogReason` and
+`catalogState` changes can arrive in separate pulls; the first one parks in sync recovery,
+and the row resolves once the second arrives.
 Any other quarantine stays sticky and blocks publication of that target; a real
 quarantine in the system catalog still aborts readiness before providers activate.
 Calls recheck retained identity evidence and current provider membership before
