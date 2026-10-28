@@ -46,8 +46,9 @@ When an update is available, the popover starts with its version, download progr
 Syncing contexts, groups offline, and sync errors appear only when their counts are above
 zero. Groups offline is shown in yellow. A simplified list of connected devices (user, device, and shared group count) is
 included for a quick check. **Open Network Viewer** opens the full diagnostics screen.
-**Sync recovery** appears in this popover only when records need attention; the same pane
-is always available from Network Viewer. On mobile, the same indicator appears beside the
+**Sync recovery** appears in this popover only when records need attention or changes are
+missing (see [Missing change check](#missing-change-check)); the same pane is always
+available from Network Viewer. On mobile, the same indicator appears beside the
 tabs menu.
 
 ## Platform-specific diagnostics
@@ -165,6 +166,31 @@ peers db query "SELECT * FROM SyncRecoveryQueue" --context <groupId> --json
 
 An entry indicates that change history was retained but its target row is not yet known to
 match. It does not stop other records or devices from synchronizing.
+
+### Missing change check
+
+Once a day, each device checks for changes it is missing from connected devices in its
+personal and group contexts. The check only reports; it does not repair anything automatically.
+Very recent changes may not appear in a check yet.
+
+Findings turn the tabs-strip indicator yellow and appear under **Missing changes** at the top
+of **Sync recovery**, one row per context and device. Expand **Show changes** to see the affected
+tables and records.
+
+| Action | Effect |
+| --- | --- |
+| Check now | Check every context against connected devices. For a large comparison, run it again to continue the check. |
+| Repair | Retrieve the missing changes from the listed device and apply them, then check again. Keep both devices connected. Large repairs may need another Repair. |
+
+After restarting Peers, run **Check now** or wait for the next daily check to see current
+findings. Devices on versions without this feature are skipped; an older local host shows
+that the missing change check is unavailable. If changes keep going missing after repair,
+report the problem with the affected context and device names.
+
+For package authors, **System Sync Check** exposes `countChanges` to devices with Reader access
+in the call's group context. Its `getSyncGaps`, `checkSyncGaps`, and `repairSyncGaps` tools serve
+local callers; `checkSyncGaps` and `repairSyncGaps` refuse package callers. The local `status`
+observable supplies `missingChangeCount` for status displays.
 
 ## Reading remote logs
 
