@@ -87,7 +87,10 @@ until that finishes, so a crash mid-way is picked up at the next start rather
 than leaving a value nothing can open. The memberships, group settings and package releases
 you signed with the old key are re-signed with the new one in every group, since other devices
 check those signatures against your current key (see
-[Groups](./Groups.md#who-can-change-what)). When a device is paired again onto an account whose
+[Groups](./Groups.md#who-can-change-what)). Your profile also carries the old key's signed
+handover to the new one, so the memberships others granted to your old key still count for the
+new key, even on devices that never saw the rotation. A recovered key has no handover: after a
+recovery, ask each group's founder or an Admin to re-sign your membership. When a device is paired again onto an account whose
 old database files it cannot open, those files are moved aside as
 `<file>.stale-<timestamp>` rather than deleted.
 

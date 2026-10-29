@@ -76,6 +76,10 @@ Group roles and settings require a signature from someone allowed to change them
 - A membership counts when an Admin or the founder signed it, for a role no higher than the
   signer's own. A member can't raise their own role, and an Admin can't change the founder's
   or an Owner's membership.
+- A membership names the member's signing key, and the role belongs to that key. A device that
+  proves the member's user ID with any other key gets only the group's public role, and a
+  profile someone else wrote for the member doesn't carry their role. When a member rotates
+  their key, their profile carries the old key's signed handover, so their role follows them.
 - Group settings (name, description, public role) count when an Admin or the founder signed
   them. The public role cannot exceed the signer's own role.
 - Each signature carries the time it was made. A copy of an earlier membership, setting or
@@ -90,6 +94,11 @@ again resolves that conflict.
 
 Readers can view group data and update their own profile and device information.
 
+Each device publishes its own entry in the group's device list, signed with its owner's key.
+Once a device's owner has signed for it, nobody else can claim that device or remove its entry.
+Messages relayed to a device you haven't connected to directly are encrypted only to a device
+whose owner signed its entry.
+
 **When an Admin's role changes.** Memberships an Admin granted count only while that Admin is
 still an Admin. Before you demote or remove an Admin, have the founder or another Admin re-sign
 the memberships they granted, or those members lose their roles too.
@@ -98,7 +107,9 @@ the memberships they granted, or those members lose their roles too.
 re-signs the memberships, settings and packages you signed (see [Identity](./Identity.md)). If
 you founded a group before devices started checking signatures, run `peers groups resign --all`
 once after updating, so its members keep their roles and its packages have approval for
-that group on every device. It vouches for the group's rows as they are on your device,
+that group on every device. Re-signing also binds each membership to the member's key as your
+device knows it, so run it again for a member who recovered a lost key: a recovered key has
+no handover from the old one. It vouches for the group's rows as they are on your device,
 so only re-sign a group whose current rows you trust.
 
 ## Display names

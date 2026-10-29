@@ -365,7 +365,7 @@ peers groups invite <groupId> --link    # shareable link (approve each join)
 peers groups invite <groupId> --link --mode open --expires 24h
 peers groups join <token|link>          # join a group from a link
 peers groups pending                    # pending group invites and join requests
-peers groups resign <groupId> | --all   # re-sign memberships, settings and packages with your key (--all: groups you founded)
+peers groups resign <groupId> | --all   # re-sign memberships (bound to each member's key), settings and packages with your key (--all: groups you founded)
 
 # Everything pending
 peers invites                           # show pending invites
