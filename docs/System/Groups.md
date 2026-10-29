@@ -27,6 +27,11 @@ data. Conflicting identities cause an error. If Peers cannot resolve a targeted 
 the message fails; it is never encrypted for the whole group as a fallback. Group broadcasts
 still require matching group keys.
 
+Peers waits for the recipient's signed identity before sending a targeted group message.
+Once a device's ownership is verified, rotating or recovering the owner's account key does
+not let another member take over that device's entry. An offline device may need to reconnect
+with the confirmed new key before it can receive targeted group messages again.
+
 ## Joining a group
 
 Open **Identity → Groups**. The list summarizes each group's description,

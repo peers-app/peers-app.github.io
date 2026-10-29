@@ -131,10 +131,9 @@ normal runtime, and commits to stable storage only if the pairing ceremony
 still owns the signed-out credential reservation. It then returns a signed
 installation receipt.
 
-When the receipt arrives, the signed-in device adds the new device to the
-`Devices` table of every group it belongs to, with the same trust level as
-itself. The new device can therefore sync and connect in those groups without
-any extra admission step.
+The new device syncs your groups from your other devices and publishes its own
+signed device entry in each group. Pairing needs no extra group admission step;
+group access follows your verified membership.
 
 ## Failure and cleanup
 
