@@ -37,36 +37,31 @@ Both commands are the same ceremony.
 
 ## What is encrypted, on which transport
 
-Every connection between two Peers devices starts with a signed handshake in
-which each side proves its device identity. From that handshake both sides
-derive a per-connection key pair (an ephemeral X25519 exchange combined with the
-devices' static keys, run through HKDF-SHA256), and from then on **every frame on
-the link is sealed with ChaCha20-Poly1305**: RPC calls, sync traffic, file and
-database chunk streams, everything. The only cleartext byte per frame is a type
-marker; frame types, payload shapes, and sizes of the inner messages are not
-visible on the wire. Keys are per connection and forward secret: a device key
-leaked later does not decrypt a captured session.
+Peers authenticates both devices and encrypts all traffic after connection
+setup, including RPC calls, sync traffic, and file streams. Encryption is
+required on every supported transport; you don't need to enable it separately
+for local connections, remote connections, or pairing.
 
-The frame layer runs the same way on every transport, so confidentiality never
-depends on classifying a URL or trusting a certificate:
+| Transport | Used for | What to expect |
+|---|---|---|
+| `ws://` (LAN, headless, Electron) | Same-network devices, `peers-headless` hosts | Device traffic is encrypted even without TLS |
+| `wss://` / `https://` (cloud relay, `peers-services`) | Devices that cannot reach each other directly | Device traffic is encrypted, with TLS providing additional protection |
+| `wrtc://` (WebRTC data channel) | Electron and PWA peers through NAT | Device traffic is encrypted |
+| Device pairing socket | Credential transfer to a new device | Encrypted, including the credential transfer; the rendezvous that sets it up runs through the Peers service (see [What the service can see](./Device-Pairing.md#what-the-service-can-see)) |
 
-| Transport | Used for | Frame layer | Underneath |
-|---|---|---|---|
-| `ws://` (LAN, headless, Electron) | Same-network devices, `peers-headless` hosts | ChaCha20-Poly1305 per frame | Plain TCP; the frame layer is the only encryption |
-| `wss://` / `https://` (cloud relay, `peers-services`) | Devices that cannot reach each other directly | ChaCha20-Poly1305 per frame | TLS, with the certificate verified for hostname URLs (LAN IP URLs are dialed without a certificate check because they never present one) |
-| `wrtc://` (WebRTC data channel) | Electron and PWA peers through NAT | ChaCha20-Poly1305 per frame | DTLS from WebRTC |
-| Device pairing socket | Credential transfer to a new device | ChaCha20-Poly1305 per frame | PAKE-derived admission token; credentials are additionally boxed to the new device's temporary identity |
+**Older devices.** A device on a build from before 0.25.7 can't encrypt frames,
+so connections to and from it are refused with "Device … does not support frame
+encryption; update Peers on that device to connect". Your other devices can't
+connect to it, so update it on the device itself:
 
-**Legacy peers.** A device running a build that predates the frame layer does
-not advertise it in its signed handshake. Against such a peer the connection
-falls back to the previous behaviour: each RPC message is individually signed
-and boxed when the transport is not already secure, and raw streams (file chunk
-downloads) are not encrypted at the application layer. The device logs
-one warning per legacy connection naming the remote device and transport. A
-future release will refuse handshakes from legacy peers.
+- **Desktop app:** it checks the release feed at launch, downloads the update,
+  and installs it the next time Peers quits (see [App updates](./App-Updates.md)).
+- **PWA:** reload the page.
+- **Headless host:** it doesn't update itself. Rebuild it from a current
+  `peers-headless` (`npm run build`) and start it again.
 
 `peers devices` ([CLI](./CLI.md#peers-devices--direct-connections)) marks each
-verified connection `encrypted` or `legacy`.
+verified connection `encrypted`.
 
 Your own devices trust each other as Self, so you can control one from another (see
 [Trust](./Trust.md)): administer its packages with `peers packages … --device <deviceId>`
