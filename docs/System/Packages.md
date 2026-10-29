@@ -135,6 +135,39 @@ calls until a replacement loads successfully.
 | Promote | Moves a stored version from `dev` to `beta` or `stable`, or from `beta` to `stable`; it never demotes. Re-tags the version, re-signs it with the package author key when this device has one (otherwise it is saved unsigned, with a warning, and a signature for the old tag is never kept), and appends `promoted:<tag>` to its history. Only the stored version's own fields are signed. When this device was running that version, the group is not pinned, and the group follows the new tag (default `stable`), the version is also activated: for the group, or only on this device when it overrides group settings. If that activation fails to load, the promotion is kept and the error says so. The Versions screen's **Promote** uses the same tool. Promotion refuses a build whose version number another build already holds as beta or stable; bump the version, rebuild, reload, and promote the new build. |
 | Install defaults | Installs the default packages into the context. The UI and the `create-group` tool call it for every new group. |
 
+## Who can release a version
+
+In a group, every member's device runs the version the group selects, so only an Admin can
+choose it:
+
+- A Writer can add a package without selecting a group version and store dev builds. A dev
+  build runs only on a device that activates it while it is tagged dev; automatic updates
+  never switch from a release to dev, even when following all tags.
+- Promoting a version to beta or stable, and selecting it for the group, needs an Admin. So does
+  changing a package's update settings (follow range, followed tags, update URL, publisher key,
+  repository, disabled).
+- An approval applies to the group where it was signed. Copying a release into another group
+  requires approval there, even when the same person administers both groups.
+- An Admin's device installs updates from a package's update URL, or copies in a release from
+  another of your groups, only for a package an Admin added or last saved. If a Writer added
+  the package, an Admin saves its settings once to turn automatic updates on.
+  Copying releases between contexts also requires a publisher key already trusted in the
+  destination. A missing publisher key is not filled from another group's package settings;
+  install from the publisher's release source to establish it.
+- An unauthorized release or group selection appears in **Sync recovery** as
+  *Parked, not authorized*. The device keeps running the version it had.
+- peers-core releases signed by the Peers publisher are accepted from any member, since every
+  device installs the bundled release.
+
+Removing a package or version does not let an older approval replace a newer decision that
+this device already received. Reinstalling requires a fresh signature from someone allowed
+to approve that package or version.
+
+If an existing dev selection stops loading after an update, activate that dev build again on
+that device. If a release fails verification, reinstall an approved release or ask an Admin
+for a new release. If the group's selection lacks an Admin's approval, ask an Admin to select
+an approved version again. You can also activate an approved release just for this device.
+
 ## Administering your other devices
 
 Add `--device <deviceId>` to any `peers packages` command to run it on another of your

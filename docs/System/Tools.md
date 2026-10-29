@@ -418,6 +418,11 @@ later reply in the same conversation does not need another prompt. Optional
 scopes allow the same tool for the current thread or data context without
 raising the Assistant globally during that 15-minute window.
 
+In shared groups, approval is always **Allow once** for the exact call shown. Shared
+Assistant settings do not grant automatic access above None, and earlier thread or
+context approvals in groups no longer authorize calls. Personal contexts retain those
+reusable approval options.
+
 Approve and reject are exposed only through the local host
 **System Tool Access Control** contract. Remote device connections cannot
 resolve that contract. Host tickets used to execute the frozen call

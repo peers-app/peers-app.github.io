@@ -58,6 +58,11 @@ Share my profile**) is a long-lived, reusable variant that produces contact
 Only Admin or Owner members can issue group invites, and a link cannot grant a
 role above the issuer's own.
 
+A link join completes through the person who issued that link, so one of their devices
+must become reachable before the link expires. If their identity keys change while your
+request is pending, ask for a fresh link. Another member cannot complete that request
+under a different identity.
+
 ## Pending invites
 
 Every invite you issue or receive is a row in your personal `Invites` table,

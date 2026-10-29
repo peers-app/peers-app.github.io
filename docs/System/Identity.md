@@ -84,7 +84,10 @@ key is stored separately from the signing key, so a rotation does not
 re-encrypt the database. Secret values (group keys, service tokens) are
 re-encrypted under the new key; the old key stays in the credential store
 until that finishes, so a crash mid-way is picked up at the next start rather
-than leaving a value nothing can open. When a device is paired again onto an account whose
+than leaving a value nothing can open. The memberships, group settings and package releases
+you signed with the old key are re-signed with the new one in every group, since other devices
+check those signatures against your current key (see
+[Groups](./Groups.md#who-can-change-what)). When a device is paired again onto an account whose
 old database files it cannot open, those files are moved aside as
 `<file>.stale-<timestamp>` rather than deleted.
 
@@ -119,6 +122,9 @@ does the same with the shorter list. With no anchors left, a lost key cannot
 be recovered. `peers keys anchors list`, `add --url`, and `remove --url` do
 the same from a signed-in host. A contact adopts the new list only after an
 anchor already on record publishes it.
+
+For a contact with no anchors yet, the first list must be authorized by that contact's
+identity key. Merely sharing an edited contact profile cannot add a recovery provider.
 
 ### How peers decide which key is yours
 

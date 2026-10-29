@@ -18,16 +18,14 @@ group context, so approvals and role checks see the same membership data joiners
 receive. Groups created before this row existed are repaired the first time the founder
 approves a join.
 
-Targeted device messages use the target user's public key from the shared group's `Users`
-and `Devices` records. This lets devices owned by different users exchange signaling and
-administration messages without depending on the sender's local copy of the group secret.
-Messages encrypted to the whole group continue to require matching group key material.
+Targeted device messages use the recipient's account keys. Requests and their application
+replies are signed and encrypted for the two accounts, including when other devices relay
+them. Update both ends together. An old reply cannot be reused for a new request.
 
-On receipt, Peers first verifies that the declared context is the device's personal context
-or an enabled `Groups` record. It then resolves the sender's `Devices` and `Users` records
-only inside that exact context and requires both the box and signature keys to match. Missing
-or conflicting identities fail before a device handler runs; stale personal records cannot
-override the identity recorded in the declared shared group.
+Previously observed device owners and contact keys take precedence over shared discovery
+data. Conflicting identities cause an error. If Peers cannot resolve a targeted recipient,
+the message fails; it is never encrypted for the whole group as a fallback. Group broadcasts
+still require matching group keys.
 
 ## Joining a group
 
@@ -68,6 +66,40 @@ approval is imported. A member can only approve a role at or below their own.
 
 From the CLI: `peers groups invite <groupId> <userId>`, `peers groups invite <groupId> --link`,
 and `peers groups join <token>`. See [CLI](./CLI#peers-contacts-peers-groups-peers-invites--invites).
+
+## Who can change what
+
+Group roles and settings require a signature from someone allowed to change them:
+
+- The founder is whoever you saw founding the group when you created or joined it. Only the
+  founder can hand the group to a new founder.
+- A membership counts when an Admin or the founder signed it, for a role no higher than the
+  signer's own. A member can't raise their own role, and an Admin can't change the founder's
+  or an Owner's membership.
+- Group settings (name, description, public role) count when an Admin or the founder signed
+  them. The public role cannot exceed the signer's own role.
+- Each signature carries the time it was made. A copy of an earlier membership, setting or
+  release can't replace a later one, so a role someone lost stays lost.
+- Package releases: see [Packages](./Packages.md#who-can-release-a-version).
+
+If **Sync recovery** shows *Parked, not authorized*, ask the founder or an Admin to review
+the affected membership, setting or release and save an authorized change. Your current
+roles and settings remain in effect until an authorized update is available.
+Conflicting changes signed at the same time also stay parked; saving the intended state
+again resolves that conflict.
+
+Readers can view group data and update their own profile and device information.
+
+**When an Admin's role changes.** Memberships an Admin granted count only while that Admin is
+still an Admin. Before you demote or remove an Admin, have the founder or another Admin re-sign
+the memberships they granted, or those members lose their roles too.
+
+**Re-signing.** Roles are checked against each signer's current key. Rotating your key
+re-signs the memberships, settings and packages you signed (see [Identity](./Identity.md)). If
+you founded a group before devices started checking signatures, run `peers groups resign --all`
+once after updating, so its members keep their roles and its packages have approval for
+that group on every device. It vouches for the group's rows as they are on your device,
+so only re-sign a group whose current rows you trust.
 
 ## Display names
 

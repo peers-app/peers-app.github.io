@@ -27,7 +27,14 @@ Every Assistant has an integer `accessLevel` from **0–100**. That value is
 both:
 
 1. the **minimum user role** required to invoke the Assistant, and
-2. the Assistant's **automatic delegated authority** when it runs tools.
+2. in your personal context, the Assistant's **automatic delegated authority** when it runs tools.
+
+In a shared group, an Assistant's settings can be edited by other members. Its automatic
+tool authority is therefore **None (0)**. Tools above None require your approval for each
+exact call. Setting a shared Assistant to Admin or Self does not authorize those calls.
+CLI coding Assistants run only in your personal context. Open a personal thread to use
+Cursor Agent, Claude Code, or OpenCode; shared settings cannot select a command to run on
+your computer.
 
 Named presets match group roles:
 
@@ -53,7 +60,7 @@ set.
 For a tool call, Peers compares three numbers:
 
 - **U** — current user's access in this data context
-- **A** — the Assistant's `accessLevel`
+- **A** — the Assistant's `accessLevel` in your personal context, or 0 in a shared group
 - **T** — the tool's `accessLevel`
 
 Rules:
@@ -93,6 +100,9 @@ workflow is **not** paused. An inline card on the thread offers:
 - **Allow in this context (15 min)** — same tool in this data context for
   15 minutes from approval
 - **Deny**
+
+Shared groups offer **Allow once** and **Deny**. Thread and context approvals are available
+only in your personal context; earlier reusable approvals in groups no longer authorize calls.
 
 Approval consumes a one-time nonce, rechecks the user's role and the stored
 tool metadata, and executes only the frozen arguments in a new host-owned run.

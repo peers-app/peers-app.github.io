@@ -69,6 +69,12 @@ Group details includes two synchronization actions:
 
 Both actions are intentionally absent from the compact status popover.
 
+After the authorization update, update both ends of a remote connection. Older builds
+cannot send accepted remote requests to an updated device. Keep device clocks accurate:
+requests more than five minutes in the future or a day old are refused. Restarting a device
+does not make a delivered request eligible to execute again; if a response was lost, check
+the result before submitting a new operation.
+
 ### Local database recovery
 
 Use **Settings → Advanced → Delete Local Database** when a device's local copy of the
@@ -117,6 +123,11 @@ depends on the latest error:
   removed, the entry can clear automatically after further sync or an app restart.
   If a device on an older Peers version still shows a resolved conflict, update it and
   use **Retry** on its recovery entry.
+- **Not authorized** (`Write not authorized`): the change isn't signed by someone allowed to
+  make it, such as a membership only an Admin may grant or a release only an Admin may make
+  (see [Groups](./Groups.md#who-can-change-what)). Ask the founder or an Admin to review the
+  affected change and save an authorized update. Your existing roles, settings and running
+  package version remain in effect until an authorized update is available.
 - **Missing history** (`No full write found`, `Last full write has no value`, and
   similar) and **transient** errors (locks, closed connections, anything unrecognized)
   keep asking peers. The delay starts at one minute and doubles after each unresolved
@@ -133,7 +144,7 @@ from **Sync recovery**, a pane of Network Viewer (like Troubleshoot). The networ
 
 | Action | Effect |
 | --- | --- |
-| Retry | Unpark the entry, rebuild it from local history, then ask peers once. If a schema or unique-key entry is still queued, it is parked again. |
+| Retry | Try the change again. An unauthorized change needs an authorized update; Retry alone does not approve it. |
 | Keep this device's version | Snapshot the row this device will keep: the queued row when it is stored here, otherwise the other row that holds the same unique value. When both rows are stored, the other record is deleted everywhere. When only the other row is stored, that row is kept and this queued id is tombstoned. Disabled when this device has no row to keep. |
 | Delete everywhere | Write a tracked delete for the queued record. |
 | Ignore on this device | Remove the local queue entry only. Other devices keep theirs. |
