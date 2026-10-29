@@ -199,8 +199,9 @@ the Cancel button for active turns.
 
 Retired: nothing provides or reads it, and the Runtime no longer supports its action aliases
 (`pkg.actionAliases`). Version 1 had a catalog observable and an `invoke` tool that routed to the
-skill's own tools. A skill on v1 should move to v2 and expose its contracts. An older package
-whose manifest still lists action aliases installs, and the aliases are ignored.
+skill's own tools. A skill on v1 should move to v2 and expose its contracts. A package whose
+manifest still lists action aliases is refused at install and at load ("manifest.actionAliases
+is not supported"); move it to v2 and rebuild it.
 
 Host-backed packages must also replace calls to `context.dispatchAction`: those calls no longer
 work, including calls from the package's own screens or other tools. Provide context-bound tools
