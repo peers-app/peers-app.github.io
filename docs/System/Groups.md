@@ -111,8 +111,12 @@ the memberships they granted, or those members lose their roles too.
 **Re-signing.** Roles are checked against each signer's current key. Rotating your key
 re-signs the memberships, settings and packages you signed (see [Identity](./Identity.md)). If
 you founded a group before devices started checking signatures, run `peers groups resign --all`
-once after updating, so its members keep their roles and its packages have approval for
-that group on every device. Re-signing also binds each membership to the member's key as your
+after updating, so its members keep their roles and its packages have approval for that group
+on every device. Run it again once the group's other devices (yours and other members') have
+updated too: a device that receives the re-signed rows while still on an older version stores
+them without the fields that version doesn't know, and after it updates it treats them as
+unsigned, so the group's apps don't start there and its roles don't count. Re-signing again
+replaces those rows, and it is safe to repeat. Re-signing also binds each membership to the member's key as your
 device knows it, so run it again for a member who recovered a lost key: a recovered key has
 no handover from the old one. It vouches for the group's rows as they are on your device,
 so only re-sign a group whose current rows you trust.
