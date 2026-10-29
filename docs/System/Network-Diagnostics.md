@@ -54,8 +54,8 @@ tabs menu.
 ## Platform-specific diagnostics
 
 Portable connection, group, device, and sync diagnostics work in Electron and PWA.
-**Troubleshoot** and raw database download require Node/OS capabilities and therefore
-appear only in the Electron desktop app.
+**Troubleshoot** requires Node/OS capabilities and therefore appears only in the
+Electron desktop app.
 
 ## Synchronization
 

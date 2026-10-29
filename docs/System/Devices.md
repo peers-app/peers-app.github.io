@@ -60,8 +60,8 @@ depends on classifying a URL or trusting a certificate:
 **Legacy peers.** A device running a build that predates the frame layer does
 not advertise it in its signed handshake. Against such a peer the connection
 falls back to the previous behaviour: each RPC message is individually signed
-and boxed when the transport is not already secure, and raw streams (chunk and
-database downloads) are not encrypted at the application layer. The device logs
+and boxed when the transport is not already secure, and raw streams (file chunk
+downloads) are not encrypted at the application layer. The device logs
 one warning per legacy connection naming the remote device and transport. A
 future release will refuse handshakes from legacy peers.
 
