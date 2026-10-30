@@ -88,14 +88,19 @@ Group roles and settings require a signature from someone allowed to change them
 - Group settings (name, description, public role) count when an Admin or the founder signed
   them. The public role cannot exceed the signer's own role.
 - Each signature carries the time it was made. A copy of an earlier membership, setting or
-  release can't replace a later one, so a role someone lost stays lost.
+  release can't replace a later one, so a role someone lost stays lost. When authorized
+  changes are signed around the same time on different devices, every device keeps the
+  later-signed change.
 - Package releases: see [Packages](./Packages.md#who-can-release-a-version).
 
 If **Sync recovery** shows *Parked, not authorized*, ask the founder or an Admin to review
 the affected membership, setting or release and save an authorized change. Your current
 roles and settings remain in effect until an authorized update is available.
-Conflicting changes signed at the same time also stay parked; saving the intended state
+Peers can apply a parked change once a missing signer's membership or verified profile
+becomes available.
+Conflicting changes signed in the same millisecond also stay parked; saving the intended state
 again resolves that conflict.
+If a save reports that the record changed while signing, review the latest state and save again.
 
 Readers can view group data and update their own profile and device information.
 
