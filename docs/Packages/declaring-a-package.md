@@ -78,7 +78,17 @@ page numbers start at 1. `save` parses
 the row with the schema first, so defaults apply and an invalid row is rejected in the package.
 An optional field saved as `null` or `undefined` is stored unset, a field with a default gets
 the default, and reads leave unset fields out ([Empty values](#empty-values)). `save` resolves
-to the row as stored.
+to the row as stored. Pass `{ restoreIfDeleted: true }` as its second argument to save a row
+whose id was deleted before; without it, that save is refused. It's the only save option a
+package can pass.
+
+In a filter, a field set to `undefined` matches rows where that field is empty, as `null` does:
+`list({ tag: undefined })` lists the untagged rows. Anywhere else, in options and in rows, a
+field left `undefined` is left out.
+
+One reply can carry about 16 MB. A `list` too large for that fails with an error that says so:
+page it (`list(filter, { page, pageSize })`), or keep large values out of rows read many at a
+time.
 Rows read from storage and passed to a table override follow the same empty-value rule,
 including nested fields written by an older package build.
 
@@ -129,6 +139,36 @@ await Stores(ctx).save({ storeId: idFromKey(`store:${name}`), name });
 
 Start the key with what it identifies (`store:`), so ids for different kinds of rows can't
 collide.
+
+### Watching your own tables
+
+A package can react to changes in its own tables, whoever made them: its own handlers, a UI or
+another package through a contract, or another device through sync. Subscribe in
+[`pkg.onStart`](#background-work):
+
+```ts
+pkg.onStart(async (ctx) => {
+  await Requests(ctx).subscribe(async ({ op, dataObject }) => {
+    if (op !== "delete" && dataObject.status === "pending") {
+      await runRequest(ctx, dataObject);
+    }
+  });
+});
+```
+
+- Changes arrive one at a time, in the order they happened. `op` is `insert`, `update`, or
+  `delete`; `source` is `local` for a change made on this device and `remote` for one synced
+  from another; `dataObject` is the row as `list` returns it.
+- The package's own writes arrive too, including the ones the handler makes, so make sure a
+  handler's write doesn't set it off again.
+- A handler that throws is logged, and later changes still arrive.
+- A handler gets the same deadline as a tool call. Past it, the overrun is logged and later
+  changes stop waiting for it, so start long work without awaiting it in the handler.
+- The subscription lasts until you call the function `subscribe` resolves to, or the worker
+  stops. Changes made while the worker isn't running aren't replayed: subscribe first, then
+  read what's already there.
+- This is for the package's own tables. A UI or another package subscribes to a contract
+  table's `dataChanged` instead ([Using the contract from a UI](#using-the-contract-from-a-ui)).
 
 ### Moving data from an old-style package
 
@@ -286,7 +326,8 @@ more about the value:
   and for the models that call tools; the package's schema enforces them when it parses. So a
   row synced from a device running a newer version of the package isn't refused for a value the
   older schema doesn't list.
-- An object keeps keys its `fields` don't list.
+- An object keeps keys its `fields` don't list. An object with no fields of its own
+  (`z.object({}).passthrough()`) is opaque: its entry has no `fields`, and any keys pass.
 - Some schemas are described by type only: records (`z.record`), unions of objects, tuples,
   lazy schemas, a value inside a transform or a preprocess, and arrays of arrays.
 - The IR can't say that an array's elements may be empty, and then lists no enum values for
@@ -826,6 +867,33 @@ export default definePackage((pkg) => {
 - Workers start on first use, so `onStart` runs when something first calls or reads the package
   on that device, not at install.
 
+`ctx.deviceId`, on every `ctx`, is the id of the device the worker runs on. Use it to keep work
+on one device, such as background work that needs tools or credentials only one machine has:
+save the chosen device's id in a group variable, and start the work in `onStart` only where
+`ctx.deviceId` matches. It says where the code runs, not who is calling, so never use it to
+decide what a caller may do.
+
+`pkg.onStop(fn)` runs `fn()` when the package's worker stops: when another version replaces
+this one, when the package is turned off or removed, and when Peers quits.
+
+```ts
+let watcher: ChildProcess | undefined;
+pkg.onStart(async (ctx) => {
+  watcher = startWatching(ctx);
+});
+pkg.onStop(() => {
+  watcher?.kill();
+});
+```
+
+- It's for local cleanup: ending child processes, closing files, flushing a buffer. `fn` gets no
+  `ctx`, because the package's tables, variables, and events are refused once the worker is
+  stopping.
+- The worker gets 5 seconds for its stop hooks, then it's ended. A crash or a forced kill runs
+  none, so check for leftovers in `onStart` if they matter.
+- In a privileged package, ordinary child processes end with the worker whether or not `onStop`
+  ends them ([Provider execution modes](./getting-started#provider-execution-modes)).
+
 ## Every call goes through the package
 
 A package is the server for its contracts, and its consumers (UIs and other packages) are its
@@ -943,6 +1011,17 @@ function Feeds() {
 - **Access.** A UI's calls act as the signed-in user today, as every UI call does
   ([Local UI-to-host contracts](./contracts#local-ui-to-host-contracts)).
 
+### Opening a link
+
+A UI opens a web page in the user's browser with `openLink` from `@peers-app/peers-ui`. It
+takes `http:`, `https:`, and `mailto:` links, and shows the user why when a link can't be opened:
+
+```tsx
+import { openLink } from "@peers-app/peers-ui";
+
+<button onClick={() => openLink(pullRequest.url)}>Open in GitHub</button>;
+```
+
 ### Testing a UI
 
 `mockHostContract` from `@peers-app/peers-sdk/testing` stands in for the host. The UI's own
@@ -1058,8 +1137,8 @@ provides the web platform basics that carry no authority:
 - `self` and `global`, both the package's own global object
 
 Timers return numeric ids. A timer or microtask callback that throws or rejects is logged with
-`console.error` instead of stopping the package. Package `console` output goes to the host's
-output, as it does for privileged packages.
+`console.error` instead of stopping the package. Package `console` output is recorded in the
+device's logs, as it is for privileged packages: `peers logs -p worker -s "<package name>"`.
 
 Anything that carries authority stays behind a contract: the network (System HTTP), files,
 processes, and other packages. There is no `fetch`, `process`, `require`, or `Buffer`.

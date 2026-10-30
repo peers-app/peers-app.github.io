@@ -649,15 +649,16 @@ declarations, host-owned tables/pvars/events, caller identity, access policy, an
 between sandbox and privileged packages. Arguments and bridge messages cannot select a mode.
 
 Privileged **provider code only** runs in a separate ordinary Node process, with the host's OS
-account, environment, working directory, filesystem, network, and subprocess access. It is
+account, environment, filesystem, network, and subprocess access, in the user's home directory. It is
 trusted device code, not root/admin elevation. Direct OS access bypasses sandbox/network
 confinement, so bridge checks are not a security boundary against it. Browser/PWA provider
 execution remains unsupported. Existing activation/version rules apply without an extra
 consent gate; replacing the active version switches modes and terminates the prior session.
-Normal startup and invocation deadlines remain in force. Termination kills only the provider
-process and cannot undo OS side effects. Any spawned descendants, including ordinary subprocesses
-created without `detached: true`, may survive timeouts, replacement, or shutdown. Providers must
-manage descendant cleanup; the runtime does not guarantee it.
+Normal startup and invocation deadlines remain in force. Stopping a provider runs its
+`pkg.onStop` hooks, then ends it and the processes it started; a process that detaches itself
+(`detached: true`, a daemon) survives, and stopping cannot undo OS side effects
+([Provider execution modes](./getting-started#provider-execution-modes)).
+On Windows, a provider crash can leave child processes running; check for leftovers on startup.
 Host shutdown drains scheduled invocations before disposing provider sessions, including
 privileged processes. Provider crashes or IPC disconnections reject pending bridge calls;
 a later invocation starts a fresh session for the same installed version.

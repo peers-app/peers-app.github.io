@@ -183,8 +183,10 @@ applies only to the package's code; routes and UI do not gain Node access. Privi
 are supported in Electron and headless. Browser/PWA provider execution remains unsupported.
 
 A privileged provider is **trusted device code**. It runs in its own Node process as the same
-OS account as Peers, without root/admin elevation. It inherits Peers' environment and working
-directory and can access the filesystem, network, and subprocesses directly. Existing host
+OS account as Peers, without root/admin elevation, in the user's home directory. It inherits
+Peers' environment; in the desktop app, `PATH` is the one the user's login shell sets, so tools
+installed with Homebrew and the like are found. It can access the filesystem, network, and
+subprocesses directly. Existing host
 bridge checks still apply to ordinary contract, table, pvar, and event calls, but direct OS
 access bypasses sandbox and network-policy confinement. There are no granular permissions or
 additional consent gate in this mode.
@@ -219,13 +221,16 @@ Use Node built-ins only in a privileged package; a sandboxed package cannot load
 
 Both IIFE and bundled CommonJS providers work, including bundles whose entrypoint has a
 leading `#!/usr/bin/env node` shebang. Node provides `require`, `module`, `exports`,
-`__filename`, and `__dirname`; the synthetic filename is `.peers-isolate-provider.cjs` under
-Peers' inherited working directory. It is not the author's package directory. Bundle dependencies
+`__filename`, and `__dirname`; the synthetic filename is `.peers-isolate-provider.cjs` in the
+user's home directory. It is not the author's package directory. Bundle dependencies
 into the source: the artifact format does not distribute package-directory assets or
 `node_modules`. Native modules and external files are not automatically installed on devices.
 The provider uses the Node version shipped with its host (Electron's embedded Node on desktop).
-Standard output and standard error go to the host's output streams; bridge traffic uses a
-separate IPC channel, so provider logging does not interfere with contract replies.
+What the provider and its child processes write to standard output and standard error is
+recorded in the device's logs, as process `worker` with the package's name as the source
+(`peers logs -p worker -s "<package name>"`), and also goes to the host's output. Very long
+lines are cut, and more than 100 lines a second are dropped and counted. Contract traffic uses a
+separate channel, so logging doesn't interfere with it.
 
 A privileged provider can keep working after a tool call returns: a timer or a child process's
 output can write the package's own tables and pvars and emit its events, and consumers of a
@@ -243,10 +248,17 @@ replacement, which stops the previous session. Invalid replacements retain the o
 
 Activation follows existing device/group version selection, pin, and follow rules. A version
 that becomes active on several devices can therefore run privileged code on each of them.
-Downloading a version does not activate it. Termination kills only the provider process and
-cannot undo filesystem, network, or other OS side effects. Any spawned descendants, including
-ordinary subprocesses created without `detached: true`, may survive timeouts, replacement, or
-shutdown. Providers must manage descendant cleanup; the runtime does not guarantee it.
+Downloading a version does not activate it.
+
+Stopping a provider, on replacement, removal, or shutdown, first runs its `pkg.onStop` hooks
+([Background work](./declaring-a-package#background-work)), then ends the provider and the
+processes it started (on Windows, its process tree). Ordinary child processes, such as a
+long-running watch command, end with it. A process that detaches itself on purpose (spawned
+with `detached: true`, or a daemon such as a tmux server) keeps running: end it in `onStop` if
+it should stop. If Peers itself is killed, the provider ends its processes as soon as it loses
+its connection to Peers. Stopping can't undo filesystem, network, or other OS side effects.
+On Windows, a provider crash can leave child processes running; check for leftovers when the
+package next starts.
 
 ## Writing the manifest by hand
 

@@ -311,7 +311,10 @@ peers logs --since 5
 peers logs -q "database" --full
 
 # Filter by process
-peers logs -p main
+peers logs -p electron
+
+# What a package's worker printed (privileged or sandboxed)
+peers logs -p worker -s "Kube Tools"
 
 # Output as JSON for processing
 peers logs --json | jq
@@ -329,8 +332,8 @@ peers logs --device <deviceId> -f
 | `-l, --level <levels>` | Filter by log level(s), comma-separated: `debug`, `info`, `log`, `warn`, `error` |
 | `-e, --error` | Shorthand for `--level error` |
 | `-w, --warn` | Shorthand for `--level warn,error` |
-| `-p, --process <name>` | Filter by process name (main, renderer, worker) |
-| `-s, --source <source>` | Filter by source file/module |
+| `-p, --process <name>` | Filter by process: `electron`, `ui`, `headless`, or `worker` (package workers) |
+| `-s, --source <source>` | Filter by source: a module, or the package's name for `worker` lines |
 | `-q, --search <text>` | Search in log messages |
 | `--since <minutes>` | Show logs from last N minutes |
 | `-n, --limit <count>` | Maximum logs to show (default: 50) |
