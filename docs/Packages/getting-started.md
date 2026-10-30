@@ -307,7 +307,9 @@ await mkdir("dist", { recursive: true });
 await writeFile("dist/package.bundle.js", serializeIsolatedPackageArtifact({ manifest, providerSource }));
 ```
 
-- Every isolated package provides at least one contract, and each provided contract has at
+- A package built with `definePackage` can [contain only screens](./declaring-a-package#a-package-with-only-screens)
+  and provide no contracts. Older manifests without `guestApi: 3` still require a contract.
+  Each provided contract has at
   least one tool, table, observable, or event. A writable observable backed by a persistent variable
   gives a UI-first package a small reactive store without starting a worker; prefer tables for
   record-oriented data.

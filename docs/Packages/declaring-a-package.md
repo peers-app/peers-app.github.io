@@ -28,6 +28,64 @@ Voice Hub use these declarations. A package can still write its manifest by hand
 ([Getting started](./getting-started#writing-the-manifest-by-hand)).
 :::
 
+## A package with only screens
+
+A package can provide no contracts. Keep its navigation, routes, and UIs, and omit
+`pkg.provides(...)`. For your own package, replace the example IDs with permanent values
+generated once with `newid()`, keeping the same package and screen IDs across the examples:
+
+```ts
+import { definePackage } from "@peers-app/peers-sdk/define";
+
+const packageId = "00mvvggkdhnt1sz53wxx4bza2";
+
+export default definePackage((pkg) => {
+  pkg.packageId = packageId;
+  pkg.version = "1.0.0";
+  pkg.appNavs = [
+    { name: "Games", iconClassName: "bi-controller", navigationPath: "games" },
+  ];
+});
+```
+
+Register the route and UI in their usual separate bundles:
+
+```ts
+import type { IPeersPackageRoutes } from "@peers-app/peers-sdk";
+
+const packageId = "00mvvggkdhnt1sz53wxx4bza2";
+const screenId = "00mvvggkdh1oak7q3f544nds7";
+
+declare const exportRoutes: (routes: IPeersPackageRoutes) => void;
+exportRoutes({
+  routes: [{ packageId, peersUIId: screenId, path: `package-nav/${packageId}/games`, uiCategory: "screen" }],
+});
+```
+
+```tsx
+import type { IPeersPackageUIs } from "@peers-app/peers-sdk";
+import { zodAnyObject } from "@peers-app/peers-sdk";
+
+const screenId = "00mvvggkdh1oak7q3f544nds7";
+
+declare const exportUIs: (uis: IPeersPackageUIs) => void;
+exportUIs({
+  uis: [{ peersUIId: screenId, propsSchema: zodAnyObject, content: () => <p>Choose a game</p> }],
+});
+```
+
+Build with `peers-package build` and build the routes and UIs as usual. With no tables,
+provided contracts, or background hooks, this package runs no worker. Its screens can still consume
+other packages' contracts through `hostContract`; declare those dependencies with
+`pkg.consumes(...)`. See [Routes and UI](./routes-and-ui) for the complete screen setup.
+
+UI calls currently act as the signed-in user. Peers checks `pkg.consumes(...)` for calls
+from provider code; it does not yet enforce those declarations on UI `hostContract` calls.
+
+Older versions of Peers refuse packages that provide no contracts. Update all of a group's
+devices to the current Peers before promoting one to beta or stable. A contract you do declare
+must still have at least one member.
+
 ## Layout
 
 News, for example:
