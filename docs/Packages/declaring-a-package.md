@@ -89,13 +89,71 @@ a transform keep `any`, so the host can accept every value the schema allows. Th
 describes nested objects and enum values ([Schemas in the manifest](#schemas-in-the-manifest)).
 
 List a table on a contract (`tables` in [`defineContract`](#the-declaration)) to expose it to
-other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device, and
-raise `versionNumber` when its fields change.
+other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device,
+declare [indexes](#indexes) for the fields you query by, and raise `versionNumber` when its fields
+or indexes change.
 
 Every call on a table goes through the package, its own handlers' and its consumers' alike: a
 UI's or another package's `save` reaches the package's table and is parsed with its schema, so
 defaults apply to them too
 ([Every call goes through the package](#every-call-goes-through-the-package)).
+
+### Indexes
+
+`indexes` lists the fields your queries filter or sort by, each index in order. A field is its
+name, or `{ name, order: "DESC" }` for descending. An index only speeds up reads; it doesn't
+change what a query returns:
+
+```ts
+export const Headlines = defineTable({
+  // …
+  versionNumber: 2,
+  indexes: [{ fields: ["feedId", { name: "publishedAt", order: "DESC" }] }],
+});
+```
+
+Adding, changing or removing an index is a schema change, so raise `versionNumber`.
+
+**One row per key.** Add `unique: true` to an index only on a `localOnly` table. Remove duplicate
+values before adding it: if existing rows already repeat a value, the table's calls fail until a
+later version removes the index. On a synced
+table, two devices could each save a row the other's unique index refuses. To keep one row per
+key on a synced table, derive the row's id from the key with `idFromKey`. Two devices saving the
+same key then write the same row, and sync merges it:
+
+```ts
+import { idFromKey } from "@peers-app/peers-sdk/define";
+
+await Stores(ctx).save({ storeId: idFromKey(`store:${name}`), name });
+```
+
+Start the key with what it identifies (`store:`), so ids for different kinds of rows can't
+collide.
+
+### Moving data from an old-style package
+
+A package ported from the old host-backed style to `/define` gets new, empty tables: the new
+tables are named after the package, the old ones after the table ids the old version chose. To
+keep the data, the new version copies it once, on each device:
+
+- **Read the old table from the package's UI.** The UI can still open it with the old table
+  definition (`getTableContainer().getTable(oldMetaData, oldSchema)`). Save each row through
+  the new table, keeping its id.
+- **Copy only rows the new table doesn't have yet.** On a synced table every device runs the
+  copy, and the copies merge because the ids match. A device that copies before it has caught up
+  with the group can copy a stale row over a newer one another device already copied, so let the
+  device sync first, and pause the package's writes during the copy.
+- **Record that the copy is done**, for example in a `groupDeviceVar`, and have background work
+  wait for it.
+- **Release the new version to the group**, so devices switch together. Until a device switches,
+  it keeps writing the old table. Its new rows carry over when it switches, but an edit it makes
+  to a row another device already copied doesn't. Deletions from the old table don't remove
+  copied rows either, so keep the switch short.
+- **Remove the copy code** in a later version, once every device has run it. The old tables
+  stay in storage; nothing reads them any more.
+
+Package settings stored with `deviceVar` and the like don't carry over either: new-style
+variables are named per package. Copy the ones worth keeping the same way.
 
 ### Overriding table methods
 
