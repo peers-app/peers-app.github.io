@@ -72,15 +72,21 @@ export const Headlines = defineTable({
 ```
 
 In a handler, `Headlines(ctx)` has `get(id)`, `list(filter?, options?)`, `count(filter?)`,
-`findOne(filter?)`, `save(row)`, and `delete(id)`. `list` takes the same filters and paging
+`findOne(filter?)`, `save(row, options?)`, and `delete(id)`. `list` takes the same filters and paging
 options as any Peers table (`Headlines(ctx).list({ feedId }, { page: 1, pageSize: 20 })`);
 page numbers start at 1. `save` parses
 the row with the schema first, so defaults apply and an invalid row is rejected in the package.
 An optional field saved as `null` or `undefined` is stored unset, a field with a default gets
 the default, and reads leave unset fields out ([Empty values](#empty-values)). `save` resolves
-to the row as stored. Pass `{ restoreIfDeleted: true }` as its second argument to save a row
-whose id was deleted before; without it, that save is refused. It's the only save option a
-package can pass.
+to the row as stored. Its second argument accepts these options, enabled by setting them to `true`:
+
+- `weakInsert`: seed a default row that yields to any real write, even an older edit from another
+  device that hasn't synced yet. It has no effect when updating an existing row.
+- `insertOnly`: create the row if missing; otherwise leave it untouched and return the stored row.
+  Combine it with `weakInsert` when seeding defaults.
+- `saveAsSnapshot`: reset the whole row to this value, replacing earlier field changes from other
+  devices even if they haven't synced yet. Later writes still win.
+- `restoreIfDeleted`: save a row whose id was deleted before; without it, that save is refused.
 
 In a filter, a field set to `undefined` matches rows where that field is empty, as `null` does:
 `list({ tag: undefined })` lists the untagged rows. Anywhere else, in options and in rows, a
@@ -139,6 +145,18 @@ await Stores(ctx).save({ storeId: idFromKey(`store:${name}`), name });
 
 Start the key with what it identifies (`store:`), so ids for different kinds of rows can't
 collide.
+
+To seed a default row for a key:
+
+```ts
+await Stores(ctx).save(
+  { storeId: idFromKey(`store:${name}`), name },
+  { weakInsert: true, insertOnly: true },
+);
+```
+
+Use both flags: `insertOnly` preserves a row already stored on this device, while `weakInsert`
+lets an edit from another device win when it arrives, even if it was made before this seed.
 
 ### Watching your own tables
 
