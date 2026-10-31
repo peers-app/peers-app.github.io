@@ -132,6 +132,15 @@ Build the UI bundle with a dedicated webpack config (entry: `src/uis.ts`, output
 
 For spreadsheet-style package screens, see [Editable grids and lookups](./editable-grids) for observable-backed cell editing, sorting, and relationship typeahead.
 
+## Theme colors
+
+Use the theme's Bootstrap classes and CSS variables for your screens. Use `bg-body`
+for page areas and `.card` for content surfaces; use `var(--bs-body-bg)`,
+`var(--bs-body-color)`, and `var(--bs-border-color)` when you need custom styles.
+Avoid hard-coded white or black backgrounds, text, and borders. Your screen will
+then follow the user's light or dark mode automatically, with content surfaces
+distinct from the page in light mode. Keep Bootstrap button classes for actions.
+
 ## Global overlays
 
 Screens render inside the active tab and unmount when you switch tabs. When a package needs UI that stays visible **across all tabs and apps** — a floating widget, a persistent indicator, a heads-up panel — it can register a **global overlay** instead.
