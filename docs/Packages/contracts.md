@@ -178,43 +178,15 @@ current policy decides whether a caller may run it. See
 
 ### Migrating from toolInstances
 
-Replace executable builder assignments with a context-bound resolver. The old API
-is a warning-only compatibility setter; TypeScript assignments are rejected.
+Replace `toolInstances` assignments with tools declared using `defineTool` and
+provided through `definePackage` from `@peers-app/peers-sdk/define`. Rebuild with
+`peers-package`. See [Declaring a package](./declaring-a-package).
 
-Before (old SDK):
-
-```ts
-const items = pkg.contract(contractId, 1, "Items");
-items.tools = [{ tool: addItemTool }];
-items.toolInstances = [{ tool: addItemTool, toolFn: addItem }];
-```
-
-After:
-
-```ts
-const items = pkg.contract(contractId, 1, "Items");
-items.tools = [{ tool: addItemTool }]; // Includes runner/config metadata if present.
-registerContractResolver(contractId, 1, ({ dataContext }) => ({
-  contractId,
-  version: 1,
-  tools: {
-    "add-item": {
-      tool: addItemTool,
-      toolFn: (args) => addItem(dataContext, args),
-    },
-  },
-}), { providerPackageId: packageId });
-```
-
-Use the exact public member name and the supplied data context. Keep shipped IDs
-in the reviewed alias inventory; arbitrary shape `toolId` values cannot allocate
-catalog identities. `IToolInstance` remains deprecated for source compatibility;
-it is never registered or dispatched.
-
-Legacy-format bundles carrying a non-empty `toolInstances` array fail to load.
-Rebuild them with `definePackage()` and resolvers. Older `definePackage()` bundles
-still load tables and UI, discard executable assignments with a warning, and expose
-unimplemented members as unavailable. See [Legacy execution removed](../System/Tools.md#legacy-execution-removed).
+For an existing host-backed `definePackage()` package, supply implementations
+through `registerContractResolver`, using `IContractToolImplementation` and the
+resolver's data context. Use the exact public member names. Update saved workflow
+and Assistant references to the contract's catalog IDs; arbitrary `toolId` values
+cannot allocate catalog identities. See [Legacy execution removed](../System/Tools.md#legacy-execution-removed).
 
 ## Consuming a contract through a proxy
 

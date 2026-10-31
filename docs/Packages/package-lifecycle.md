@@ -28,14 +28,12 @@ The platform assigns `versionTag` (dev / beta / stable). Do not set it in
 
 **Metadata vs bundle bytes:** `PackageVersions` (and related `Files` records) sync as group data. As soon as a version record arrives, this device also downloads that version’s package, routes, and UI bundles into the local chunk cache so later activation or UI load does not wait on a peer. A downloaded version is **not** automatically activated. The device waits until the current sync has applied every page and saved its watermark, then evaluates the final package state once using its pin, follow, and device-override rules. An incompatible bundle can fail to load without blocking metadata sync or preventing a newer version from arriving. If a peer cannot provide a bundle yet, metadata sync still succeeds and the missing chunks retry when another peer becomes available.
 
-## Legacy bundle compatibility
+## Rebuilding old bundles
 
-Host bundles in the old format with non-empty `toolInstances` are rejected before
-activating tables, staged resolvers or package state; an existing active instance
-stays intact. Tool-free bundles still load. Older `definePackage()` bundles load
-tables and UI but discard executable assignments with a migration warning. Rebuild
-with [contract resolvers](./contracts.md#migrating-from-toolinstances) to restore
-execution; pinned versions otherwise retain actionable unavailable catalog records.
+Old raw package bundles fail to load, including bundles with no tools. Rebuild
+with `definePackage()` and `peers-package`. The package's status shows the rebuild
+instruction in the UI and in `peers packages get <packageId>`. If an update fails,
+the previously running version keeps serving, and other packages can still load.
 
 ## Group defaults vs this device
 

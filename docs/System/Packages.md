@@ -93,7 +93,7 @@ Each package summary has two parts.
 The other runtime fields:
 
 - `running`: the version that is serving. Gives `packageVersionId`, `version`,
-  `versionTag`, `kind` (`isolated`, `contract`, or `legacy`), and `executionMode`. For
+  `versionTag`, `kind` (`isolated` or `contract`), and `executionMode`. For
   isolated packages it also gives `provides` and `consumes`, and each `consumes` entry
   says whether a provider was found (`satisfied`).
 - `lastError`: the most recent load failure. Gives `phase`, `message`, `version`, and

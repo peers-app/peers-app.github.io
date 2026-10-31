@@ -29,7 +29,7 @@ plan below is historical and describes earlier APIs.
 
 ## Background (original motivation)
 
-The package system migrated from a legacy `IPeersPackage` export model to `definePackage()` + contracts. Early gaps included:
+Packages use `definePackage()` and contracts. Rebuild old raw bundles with `peers-package`. Early gaps included:
 
 1. **App discovery** — `appNavs` from `definePackage()` not reaching the UI (e.g. Tasks missing from launcher). Addressed via PV-backed `appNavs` and loader enrichment.
 2. **Competing tag conventions** — tags set in code vs installer vs follow policy. Platform-assigned `versionTag` on promotion is the target model.
@@ -183,7 +183,7 @@ After peers-core is on S3, `full-release.js` runs `yarn release:local` in `peers
 
 ### Phase 1: Fix the immediate bug (Tasks not showing)
 
-- In `PackageLoader._evaluateBundle()`, when the contract path runs, construct a proper `IPeersPackage` return value that includes `appNavs` from the `packageDefinition`.
+- Ensure navigation declared with `definePackage()` appears after the package loads.
 - `await` the `installContractPackage()` call (currently missing `await` on an async function).
 - Fix `syncPeersCoreBundle` appNavs refresh to read from `packageDefinition` when present.
 - Investigate the broken `peers-pwa/src/peers-init.ts` import of `installPeersCoreFromBundles`.
@@ -239,7 +239,7 @@ After peers-core is on S3, `full-release.js` runs `yarn release:local` in `peers
 | `peers-sdk/src/contracts/builder.ts` | Remove versionTag setter, remove devTag param from `contract()` |
 | `peers-sdk/src/contracts/types.ts` | Remove versionTag from `IPackageDefinitionResult` |
 | `peers-sdk/src/package-loader/contract-package-loader.ts` | Handle appNavs propagation |
-| `peers-sdk/src/package-loader/package-loader.ts` | Fix `IPeersPackage` construction, `await` contract install |
+| `peers-sdk/src/package-loader/package-loader.ts` | Preserve declared navigation and finish installation before reporting success |
 | `peers-sdk/src/data/package-permissions.ts` | Allow Writer role for dev versions |
 | `peers-sdk/src/data/package-version-permissions.ts` | Allow Writer role for dev versions |
 | `peers-sdk/src/data/package-versions.ts` | Remove versionTag from hash, update `doesTagMatch`, add history field |

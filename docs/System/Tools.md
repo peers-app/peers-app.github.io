@@ -303,7 +303,7 @@ The executable Tools registry and source execution are removed. Dispatch is eith
 tool through a contract resolver.” Without package provenance it reports
 `legacy-execution-removed`: “Legacy tool execution has been removed; implement this
 tool through a contract resolver.” Both messages link to the
-[migration example](../Packages/contracts.md#migrating-from-toolinstances).
+[migration note](../Packages/contracts.md#migrating-from-toolinstances).
 A provider declaring a member without a resolver reports `no-implementation`,
 names the provider and member, and asks for a version that implements it.
 Missing providers, removed members and quarantined identities remain actionable
@@ -313,7 +313,8 @@ resolver’s catalog ID. The old custom row remains deletable.
 
 For package implementations, declare tools and handlers with `defineTool`, provide their
 contracts through `definePackage` from `@peers-app/peers-sdk/define`, and rebuild with
-`peers-package`. See [Declaring a package](../Packages/declaring-a-package) and the
+`peers-package`. Raw package bundles no longer load, including tool-free bundles;
+the package status includes a rebuild instruction. See [Declaring a package](../Packages/declaring-a-package) and the
 [older-format migration note](../Packages/contracts#isolated-contract-packages-electron).
 
 `code` and `codeRepository` remain historical columns at Tools schema version 2.
