@@ -30,10 +30,15 @@ The platform assigns `versionTag` (dev / beta / stable). Do not set it in
 
 ## Rebuilding old bundles
 
-Old raw package bundles fail to load, including bundles with no tools. Rebuild
+Old raw package bundles fail to load, including bundles with no tools. So do
+isolated packages whose manifest says `guestApi: 2` or has no `guestApi`. Rebuild
 with `definePackage()` and `peers-package`. The package's status shows the rebuild
 instruction in the UI and in `peers packages get <packageId>`. If an update fails,
 the previously running version keeps serving, and other packages can still load.
+
+If a package was built for a newer guest API, Peers instead reports that it
+“needs a newer version of Peers; update Peers to use it.” Update Peers before
+installing or loading that package.
 
 ## Group defaults vs this device
 

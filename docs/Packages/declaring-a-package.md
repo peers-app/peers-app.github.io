@@ -992,8 +992,9 @@ would. The package's own calls to its tables and variables go straight to Peers,
 sync: a change that arrives from another device already went through the package on the
 device that made it.
 
-The manifest says `guestApi: 3` for this (`peers-package` sets it). Hosts that predate it
-reject the package, rather than serve its tables without it.
+Build with `peers-package build`; it generates the required guest API 3 manifest.
+Rebuild older packages with `peers-package` before installing or updating them.
+If Peers says the package needs a newer version of Peers, update Peers to use it.
 
 ## Using the contract from a UI
 

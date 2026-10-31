@@ -309,10 +309,11 @@ workers on Electron and headless. Peers reads the generated manifest without exe
 package, then starts its code when a contract is first used. The build selects guest API 3;
 authors don't set a guest API version.
 
-:::note Older package formats
-Older raw bundles, isolated packages without a guest API version, and guest API 2 packages
-are deprecated. An upcoming release stops loading them with “Rebuild it with peers-package”.
-Move them to `definePackage` from `@peers-app/peers-sdk/define` and rebuild with `peers-package`.
+:::note Migrating older packages
+Older formats are no longer supported. Peers refuses them at install, update, and load
+with “Rebuild it with peers-package”. Use `definePackage` from `@peers-app/peers-sdk/define`
+and rebuild with `peers-package`. See [Rebuilding old bundles](./package-lifecycle#rebuilding-old-bundles).
+If a package needs a newer version of Peers, update Peers to use it.
 :::
 
 - **Isolation.** The default `pkg.executionMode` is `"sandbox"`: no ambient filesystem,
