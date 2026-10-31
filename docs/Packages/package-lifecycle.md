@@ -193,6 +193,7 @@ with `--root`.
 
 ## Related
 
+- [Development and production groups](./development-and-production) — separate test data, release propagation, and current setup limits
 - [Getting started](./getting-started) — isolated package structure and build basics
 - [Package contracts](./contracts) — versioned interfaces, validation, `alsoImplements`
 - [Package lifecycle design](../Roadmap/package-lifecycle) — design doc, shipped vs planned work
