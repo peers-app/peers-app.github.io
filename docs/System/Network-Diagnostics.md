@@ -59,6 +59,13 @@ Electron desktop app.
 
 ## Synchronization
 
+A group starts syncing with a newly connected peer once that peer reports it has
+set the group up too. If the report doesn't arrive within 15 seconds
+(`groupReady timeout for device …` in the log), the device tries the peer anyway.
+A peer that isn't syncing the group (`… dropping it until it is ready`) is tried
+again with backoff for as long as the connection stays open, so you don't need to
+reconnect it.
+
 Group details includes two synchronization actions:
 
 - **Sync now** notifies connected peers that the selected personal or group context may

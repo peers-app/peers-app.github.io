@@ -239,7 +239,9 @@ finished the handshake, on every transport. The smaller `deviceId` keeps its
 outbound connection and the other device keeps that connection's inbound side
 (`Keeping the deterministic connection to … after dial glare`). Without that
 shared choice each endpoint keeps its own outbound socket and closes the
-other, so both links go down and redial backs off.
+other, so both links go down and redial backs off. A winner that arrives
+second replaces the loser at once and answers the peer's calls straight away;
+the losing socket closes in the background.
 
 ## What it does
 

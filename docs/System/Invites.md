@@ -109,6 +109,11 @@ Accepting an invite sends a reply to the inviter. Peers tries, in order:
 4. otherwise the reply is kept locally as `queued` and retried when connections
    change and every five minutes.
 
+On each device, reconnects, periodic polling, and the `syncMailbox` tool share
+one mailbox sync at a time. A trigger during a sync requests another pass before
+the sync finishes, so restored connectivity and newly queued sends are picked up
+without posting a completed invite again.
+
 Both halves are durable: the accepting device retains its request until an
 inviter device handles it, and the inviter retains the resulting confirmation
 until the accepting device receives it. If a different inviter device receives
