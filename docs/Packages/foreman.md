@@ -55,6 +55,9 @@ a future lease/leader-election design. The local PID file is not a distributed l
 
 ## Sequential child batches
 
+After a job changes stage, Foreman refreshes its children before choosing between
+Children and the current document. A tab you choose during that refresh stays selected.
+
 On a job that has only draft children, Children can stay on **Review each child**
 or switch to **Run sequentially, review once**. Start is available from a draft
 or a plan that is ready for review. Every direct child must still be a draft,
@@ -98,8 +101,8 @@ first when the answer should change the code. If a change request arrives during
 review, or a repair, Foreman runs the implementer with that feedback and checks and reviews
 the result before including the child. A withdrawn decision requires implementation again,
 even after a restart; the saved acceptance line alone cannot approve continuation.
-Retry plan replans the child, or cancel the run. A retry can select a new model; an omitted or null
-model keeps the frozen route and an invalid model is rejected.
+Retry plan replans the child, or cancel the run. A retry can select a new model; omitting it
+or naming it in `clear` keeps the frozen route, and an invalid model is rejected.
 Canceling the parent, including from the combined review, also cancels children
 that are not already done. A child reopened as a draft after that cancel can
 run on its own through later planning and implementation, including automatic
@@ -116,3 +119,36 @@ actions. Direct or indirect later sibling dependencies added after the run
 starts are rejected. A paused batch does not offer a partial subset as the
 final review. The fixed snapshot can start again from
 draft or plan-review only when every direct child is a draft again.
+
+
+## Updating and clearing fields
+
+Foreman 0.2.0 requires Peers 0.28.5 or later. Upgrading keeps existing jobs, notes,
+and attempts, with no data migration or reset. The same six tools remain available:
+`write-job`, `add-note`, `record-attempt`, `delete-job`,
+`create-job-from-task-comment`, and `recover-task-comments`.
+
+For `write-job`, omit a field to leave it unchanged. To remove an optional field,
+name it in the `clear` array. Sending `null` leaves the field unchanged. For example,
+to remove a job's prerequisites and return its children to individual review:
+
+```json
+{
+  "operation": "update",
+  "jobId": "<job-id>",
+  "clear": ["dependsOnJobIds", "childExecutionMode"]
+}
+```
+
+Clearing follows the same actor, stage, and batch rules as setting a field. Humans
+can clear `summary` only with an update outside daemon-owned stages. The daemon
+can clear dependencies only while the job is a draft. A started sequential run
+keeps its execution mode and snapshot; its child models remain frozen except for
+the supported retries. Required fields, unknown field names, and fields the actor
+cannot change are rejected. If a field has both a value and an entry in `clear`,
+the clear request takes precedence, subject to those rules.
+
+The UI sends these clear requests when you remove the last dependency or choose
+**Review each child**. The updated daemon also sends `clear` and converts legacy
+operator calls containing `null` into clear requests. Activate Foreman 0.2.0 before
+using clears through that daemon; ordinary writes continue to work with 0.1.0.

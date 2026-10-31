@@ -272,6 +272,10 @@ stable). A host release does not bump their `@peers-app/*` pins or push the
 `official-packages` repo. Step 2b still builds `isolation-smoke`,
 `isolation-consumer`, and `timers` so the Tier 1 package and scheduler scenarios
 can install them; that build does not commit or publish those packages.
+The two isolation fixtures build their guest API 3 declarations with
+`peers-package build` through `npm run build`, as do the isolate test-artifact
+builder and Electron's release workflow. Keep their SDK build dependency and
+`esbuild` installed when preparing a fresh checkout.
 
 ## After the script
 

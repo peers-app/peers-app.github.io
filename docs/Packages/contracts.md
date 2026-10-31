@@ -1054,19 +1054,26 @@ runtime surface.
 
 ### Observing lazy worker startup
 
-The standalone `official-packages/isolation-smoke` package provides contract v4
-with one `observeWorker` tool, a package-private `IsolationSmokeState` table and
-`invocationCount` device pvar, plus a public `IsolationSmokeSharedState` table
-and writable `sharedInvocationCount` pvar-backed observable. Contract v3/v2
-remain tool-only fallbacks. The private table's physical name is
-`IsolationSmokeState_00mt4wmj0h50697f5l3zz6mka`; the pvar's physical name is
-`00mt4wmj0h50697f5l3zz6mka_invocationCount`. The screen tries the personal
-data context first (then the selected group) and falls back through v3/v2/v1 if v4
-is not installed yet. It is useful for checking the production lifecycle
-without relying on Jest fixtures:
+The `official-packages/isolation-smoke` and `isolation-consumer` packages are e2e
+and runtime-test fixtures. Both declare their members in `src/package.ts` with
+`@peers-app/peers-sdk/define`; `npm run build` runs `peers-package build` and builds
+their renderer bundles. Their manifests declare `guestApi: 3`.
 
-1. Build and import the package. The Electron host logs
-   `Registered …; worker dormant until first tool call`.
+Isolation Smoke provides contract versions 2–5 under the same contract id.
+v4 provides `observeWorker`, backed by a package-private `IsolationSmokeState` table and
+`invocationCount` device pvar, plus a public `IsolationSmokeSharedState` table
+and writable `sharedInvocationCount` device-variable observable. The private
+table and `invocationCount` are reachable only through the tool. v3/v2 remain
+tool-only contracts; v5 adds `probeGrant`, `watchGrant`, and `lastFolderEvent`,
+consuming System Local Folders v1 through `contractRef`. v4/v5's `observeWorker`
+allows remote group Writers (access level 40); the other tools remain local-only.
+The private table's physical name is
+`IsolationSmokeState_00mt4wmj0h50697f5l3zz6mka`; the pvar's physical name is
+`00mt4wmj0h50697f5l3zz6mka_invocationCount`. Both fixture screens use `hostContract`
+in the selected context; Smoke's screen calls v5. To check them manually in a test context:
+
+1. Build and import the package, then select its context. Registration leaves
+   its worker dormant until a contract call needs it.
 2. Open the package screen. This loads its renderer bundle but does not start its
    provider worker.
 3. Click **Call isolated tool**. The host logs `Starting worker …` and
@@ -1076,7 +1083,8 @@ without relying on Jest fixtures:
 5. After a worker restart or package reload, the worker-local count resets to
    one while both persisted counts continue.
 6. Click **Increment public state** to update the public table and observable
-   directly through a renderer contract consumer without starting the worker.
+   through the provider worker. This action also starts the worker if needed:
+   guest API 3 table and observable calls run through the package.
 7. Import `official-packages/isolation-consumer`; its worker consumes v4 and
    increments the same public values. Private names, guessed physical/system
    names, and undeclared members fail closed.

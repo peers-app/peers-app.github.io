@@ -88,6 +88,7 @@ The pre-flight budget check warns when free memory or `ulimit -n` look too small
   `peers-headless`, `peers-e2e`, or an official package. The scenarios in Tier 1
   need `official-packages/isolation-smoke`, `isolation-consumer`, and `timers` built
   (`npm run build` in each); a missing package build fails its scenario.
+  The isolation fixtures use `src/package.ts` and `peers-package build` (guest API 3).
   `webrtc.e2e.test.ts` needs a `peers-webrtc`
   binary (`cd peers-webrtc && make local`, requires Go); without one it prints
   a warning and skips rather than failing. `pairing.e2e.test.ts`,
@@ -227,6 +228,13 @@ it("a row written on one device reaches the others", async () => {
   a process restart. Reading the historical v4 bundle while the devices are
   partitioned verifies eager all-version bundle caching rather than an
   on-demand fetch.
+- The fixture copier requires guest API 3, keeps `manifest.json` consistent with
+  the bundle, and rewrites the bundled runtime message for each version. Replacement
+  probe sources receive table/observable member and delivery handlers, so
+  `privileged-packages.e2e.test.ts` still exercises consumer reads, subscriptions,
+  timer and child-process writes, table watches, and cleanup. `isolated-concurrency.e2e.test.ts`
+  exercises concurrent calls, timeouts, and stuck-worker replacement in both
+  sandbox and privileged guest API 3 providers.
 - `packages-cli.e2e.test.ts` drives one headless host entirely through
   `peers packages`: it imports a fixture copy of `isolation-smoke`, runs its tool,
   writes a version with a corrupt manifest (`writeVersion({ corruptManifest: true })`)
