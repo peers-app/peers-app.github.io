@@ -81,9 +81,8 @@ the package identity and consume limits do not cross devices. A Self-level tool 
 package contract can therefore run with that user's authority on the target. The
 system-contract refusal does not solve this broader authority propagation problem.
 
-The forwarding guard also covers legacy `pkg.remote(...)` handles. Legacy bundles execute
-inside the trusted host process; they are not a sandbox for untrusted code. Isolated
-packages use the host gateway, which supplies their package identity and enforces the guard.
+This restriction applies to remote calls from both sandboxed and privileged packages.
+Use `ctx.callRemoteTool` from a handler for remote package-contract tools.
 
 A coding agent that runs the `peers` CLI on your device acts as you, locally and on your
 other devices.

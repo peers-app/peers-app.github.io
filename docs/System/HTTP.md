@@ -4,9 +4,10 @@ sidebar_position: 11
 
 # System HTTP
 
-System HTTP (`system.http`) is the Runtime contract that performs outbound HTTPS for an isolated package. The guest has no `fetch`. It calls the `request` tool, and the host in `peers-device` runs Node `fetch`.
-
-The desktop app and `peers-headless` provide it by importing `@peers-app/peers-device/http`. That entry is not on the package root, so the PWA bundle does not load it.
+System HTTP (`system.http`) performs outbound HTTPS for a sandboxed package, which has no
+`fetch`. Declare `pkg.consumes(SystemHttp)` with `SystemHttp` from
+`@peers-app/peers-sdk/define`, then call `SystemHttp(ctx).tools.request(...)` from a handler.
+It is available on desktop and headless hosts.
 
 System HTTP, System Scheduler, System Contract Catalog, System Tool Catalog,
 System Host Tools, and System Desktop Tools are local-only contracts.
@@ -16,27 +17,30 @@ their contracts or the local CLI catalog instead.
 
 ## Allowlist
 
-An isolated artifact opts in with `manifest.network`:
+A package opts in with `pkg.network` inside `definePackage`:
 
-```json
-{
-  "allowedHosts": ["api.openai.com"],
-  "credentials": [
+```ts
+pkg.network = {
+  allowedHosts: ["api.openai.com"],
+  credentials: [
     {
-      "ref": "openai",
-      "secretVar": "openaiApiKey",
-      "header": "Authorization",
-      "format": "Bearer {secret}"
-    }
-  ]
-}
+      ref: "openai",
+      secretVar: "openaiApiKey",
+      header: "Authorization",
+      format: "Bearer {secret}",
+    },
+  ],
+};
 ```
 
-`allowedHosts` entries are exact lowercase DNS hostnames; IP address literals are rejected. URLs must be `https`, must not embed credentials, and redirects are rejected. Omitting `network` denies every request. The declaration is honored the way `suggestedAccessLevel` is: install-time approval is not part of this contract. The Packages info tab shows the allowlist and credential refs. It never shows secret values.
+`allowedHosts` entries are exact lowercase DNS hostnames; IP address literals are rejected. URLs must be `https`, must not embed credentials, and redirects are rejected. Omitting `pkg.network` denies every request. Installing the package accepts this declaration; there is no separate approval step. The Packages info tab shows the allowlist and credential refs. It never shows secret values.
 
 ## Credentials
 
-The guest passes `credentialRef`. The host reads the package-prefixed secret persistent variable (`${packageId}_${secretVar}`), decrypts it in the host process, and sets the declared header. A guest header of the same name is removed before the request is sent. `scope` is `user` (the default) or `device`. The plaintext is not returned to the guest or the renderer.
+Pass a declared `credentialRef` with the request. Peers reads the package's secret persistent
+variable (`${packageId}_${secretVar}`) and injects its value into the declared header, replacing
+any request header of the same name. The credential's `scope` is `user` (the default) or
+`device`. The secret value is not returned to package code or the renderer.
 
 ## Requests
 
@@ -53,4 +57,6 @@ A non-2xx response is returned with `ok: false`. It is not thrown. `cancel` abor
 
 ## Tool time
 
-The host's default isolated tool timeout is 30 seconds. A package whose HTTP call may run longer sets `timeoutMs` on that tool in the manifest, up to 120 seconds. The HTTP `AbortController` is a separate timer inside that budget.
+The default package tool timeout is 30 seconds. If an HTTP call may run longer, set
+`timeoutMs` in that tool's `defineTool` declaration, up to 120 seconds. The HTTP request's
+timeout is a separate timer inside that budget.

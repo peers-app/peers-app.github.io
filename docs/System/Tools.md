@@ -11,14 +11,14 @@ has an integer `accessLevel` from **0–100**. Missing or unclassified tools
 default to **100 (Self)** so a new package tool cannot run until someone
 explicitly lowers it.
 
-Access levels are **authorization**, separate from isolation. Legacy package
-bundles evaluate on the host; isolated provider code starts in its worker on
-first invocation.
+Access levels are **authorization**, separate from isolation. Package authors use
+`defineTool` and `definePackage` from `@peers-app/peers-sdk/define`, then build with
+`peers-package`. Provider code starts in its worker on first contract use.
 
 ## Permanent runtime catalog
 
 The Runtime owns `Tools` as the permanent index of every public contract tool.
-It derives rows from validated system, host and isolated contract definitions,
+It derives rows from validated system and package contract definitions,
 without starting workers, calling resolvers or creating executable tool instances.
 Each personal and group context gets system catalog rows, regardless of role.
 Local and remote contract routing waits for catalog readiness before selecting a
@@ -132,18 +132,11 @@ and system upgrades and changed development members.
 Refresh runs only after preparation succeeds. Unchanged metadata writes nothing;
 identity, source, provenance and live access policy remain unchanged.
 
-Install/replacement persists catalog rows before publishing a provider. Host and
-isolated replacements keep candidate table declarations staged until the final
-catalog writes succeed. Isolated schema registration publishes live bindings in
-the same synchronous turn as guarded provider activation. The catalog guard stays
-live during awaited table persistence, so a synced quarantine blocks installation
-or replacement at that final boundary. Cancellation, catalog conflict or storage
-failure restores the previous durable definitions before table calls resume.
-Host contract and legacy bundles stage the entire table-definition batch; an invalid
-later table cannot change an earlier live binding.
-Reinstalling the old artifact therefore cannot encounter an abandoned schema upgrade.
-Failed replacements keep the previous provider usable. Disable,
-uninstall, removal of a development member and context disposal retain catalog
+Installing or replacing a package validates its complete table and contract declarations
+before making them active. A catalog conflict, invalid schema, or storage failure leaves
+the previous provider and table definitions usable.
+
+Disable, uninstall, removal of a development member and context disposal retain catalog
 history. Synced metadata
 does not activate a provider. A row proves neither current availability nor
 permission to execute: the contract registry supplies availability and the selected
@@ -151,7 +144,7 @@ live provider supplies authorization. Catalog reconciliation does not overwrite
 provider-specific policy.
 
 Workflow and assistant references resolve through the catalog on every invocation.
-They can run package contract tools (host or isolated), and
+They can run package contract tools, and
 system tools only from **Host Tools** or **Desktop Tools**. Tool Access Control,
 Identity, Invites, Device Operations, App Updates, Packages, both catalogs, HTTP, Scheduler,
 Local Folders and Network remain excluded. This prevents a workflow from approving itself or
@@ -171,26 +164,14 @@ workflow adapter. Local-only targets are always rejected remotely.
 CLI `--assistant` uses catalog lookup and the workflow path; `--device` sends the
 original lookup query to Device Operations.
 
-Host bundle resolver registrations are staged during evaluation and published in
-the owning context only after successful activation. Failed or invalidated
-replacements leave the previous implementation intact. Unloading removes owned
-executable registrations and resolvers and invalidates pending host and isolated
-loads, including dependency resolution, dev-version correction and catalog writes.
-Host `remote()` and `consumes()` handles settle after guarded activation, allowing
-a fresh installation to reference contracts provided by that same package.
-Successful host replacement invalidates cached `consumes()` endpoints so subsequent
-calls resolve the new implementation. Retained host endpoints check the active
-provider generation, resolver and catalog identity again after authorization awaits,
-immediately before entering the tool function; replacement, unload and
-disposal prevent them from invoking retired code. Failed replacement preserves the
-previous endpoint generation. Routers owned by external transports refresh a retired
-endpoint once when it rejects before invoking provider code. Errors from inside a
-provider, including a downstream endpoint's retirement, do not replay that provider.
+Successful replacement makes subsequent calls use the new implementation. Failed replacement
+keeps the previous one available. Uninstall makes its tools unavailable while retaining
+catalog history. Calls that have already started are not replayed automatically.
 
 ## Contract-owned shipped tools
 
-Ordinary Common, Tasks, Groceries, host and desktop executables now belong to
-context-bound contract resolvers. `Tools` supplies permanent discovery metadata;
+Common, Tasks, Groceries, host and desktop tools belong to their contract providers.
+`Tools` supplies permanent discovery metadata;
 it does not own their code. Their existing IDs remain equal reviewed aliases:
 
 | Catalog ID | Contract v1 → member |
@@ -330,11 +311,10 @@ unavailable records; catalog history is retained. Unreviewed custom IDs stay
 unresolved after migration: update saved workflow and Assistant references to the
 resolver’s catalog ID. The old custom row remains deletable.
 
-A legacy-format host bundle with a non-empty `toolInstances` array is rejected
-before tables, staged resolvers or package instances activate. Tool-free legacy
-bundles still load. Older `definePackage()` bundles retain tables and UI; assigning
-`ContractBuilder.toolInstances` warns once per builder and discards executables.
-Their declared members report `no-implementation` until a resolver is registered.
+For package implementations, declare tools and handlers with `defineTool`, provide their
+contracts through `definePackage` from `@peers-app/peers-sdk/define`, and rebuild with
+`peers-package`. See [Declaring a package](../Packages/declaring-a-package) and the
+[older-format migration note](../Packages/contracts#isolated-contract-packages-electron).
 
 `code` and `codeRepository` remain historical columns at Tools schema version 2.
 Their saved bytes are preserved and never refreshed or executed by this runtime.
@@ -400,7 +380,7 @@ Both checks apply on the executing device: a remote group member must clear
 `accessLevel` is Self stay effectively local-only for other accounts even if
 `remoteAccessLevel` is set. Remote callers never receive step-up approval
 prompts; a denied call simply fails. Packages reach remote tools through
-`pkg.remote(contractId, version)` and then `remote.device(deviceId).tools.<name>(...)` — see
+`ctx.callRemoteTool(contractId, version, deviceId, toolName, args)` from a handler — see
 [Package contracts](../Packages/contracts#remote-tool-calls-across-devices).
 
 ## Step-up approval
@@ -464,13 +444,24 @@ workflow logs are retained.
 
 `accessLevel` sets the role required to enter a tool. `authorityPropagation` controls the authority it may pass to a dynamically selected target. The default is `"cap"`: in strict dispatch the outgoing ceiling is the minimum of the current signed caller role, inherited ceiling, consume ceiling, and ordinary calling tool level. A `"preserve"` tool omits only its own level from that minimum. It cannot raise an inherited ceiling.
 
-Both values are declared in the tool's metadata (`toolSchema({ authorityPropagation: "preserve" })` for host tools, `tools[].authorityPropagation` in an isolated manifest) and the runtime honors the declaration the same way it honors the declared level: **installing the package is the trust decision.** There is no separate operator grant, permission table, or installation generation to approve; the mode is reread from the live tool metadata on every call, so a package update that changes the declaration takes effect as soon as the new version loads. Review a package's tool levels and propagation modes before installing it into a group. A follow-up security audit of this install-time trust model is tracked in the project task list.
+Set `accessLevel` and `authorityPropagation` in `defineTool` from
+`@peers-app/peers-sdk/define`; `peers-package` carries them into the generated manifest.
+**Installing the package is the trust decision.** There is no separate operator grant;
+each call uses the active version's declaration, so an update's policy takes effect when
+that version loads. Review a package's tool levels and propagation modes before installing
+it into a group.
 
 A Reader preserving router admits Readers and above; a direct Admin can dispatch Admin targets, but an Admin arriving through an ordinary Reader tool remains capped at Reader. A preserving router's Writer admission still rejects Readers. Omitted admission resolves to None (0) for a `preserve` tool; ordinary unclassified tools retain Self (100). None preserving entry still requires trusted identity and execution context and permits a level-0 caller to select only level-0 targets.
 
-The `cap` ceiling from an ordinary tool's own level applies inside the strict dispatch scope: whenever a `preserve` tool is on the chain, the caller already runs under a strict frame, a host tool uses `context.dispatchTool`, or a call is admitted through an `exposes` relationship. A direct package-to-package `callConsumedTool` from an ordinary tool outside that scope keeps the pre-existing user/assistant/tool policy. Declared tool levels, consume ceilings, and group roles always apply.
+The `cap` ceiling from an ordinary tool's own level applies inside the strict dispatch scope:
+whenever a `preserve` tool is on the chain, the caller is already under strict dispatch,
+a built-in tool dispatches to another tool, or a call is admitted through an `exposes`
+relationship. A direct call through a contract reference from an ordinary tool outside
+that scope uses the ordinary user/assistant/tool policy. Declared tool levels, consume
+ceilings, and group roles always apply.
 
-Host providers select public tools through `context.dispatchTool({contractId, version, toolName, providerPackageId}, args)`; isolated providers use `callConsumedTool`. They share the runtime authorizer. Consumed-contract declarations and ceilings still apply; a tool marked `private` is callable only by its own package. Target admission levels are read live, separately for each provider. Arguments cannot provide a numeric role, user identity, or propagation mode.
+Package handlers call public tools through a declared contract reference, such as
+`Target(ctx).tools.run(args)`. Every call is authorized. Consumed-contract declarations and ceilings still apply; a tool marked `private` is callable only by its own package. Target admission levels are read live, separately for each provider. Arguments cannot provide a numeric role, user identity, or propagation mode.
 
 Catalog filtering is advisory and execution rechecks the current role, ceiling, target metadata, and declared propagation mode. Strict calls deny approval-required outcomes and unsupported remote or cross-context forwarding. General table/observable writes remain outside this bounded dispatch scope.
 

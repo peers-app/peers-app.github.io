@@ -260,86 +260,26 @@ its connection to Peers. Stopping can't undo filesystem, network, or other OS si
 On Windows, a provider crash can leave child processes running; check for leftovers when the
 package next starts.
 
-## Writing the manifest by hand
+## Building the package declaration {#writing-the-manifest-by-hand}
 
-A package can write its manifest and provider source itself instead of declaring them with
-`definePackage`, as Peers' isolation test packages do. Prefer
-[Declaring a package](./declaring-a-package): the manifest, the handlers, and the UI's types
-then come from one declaration, and the build checks them against each other.
+Declare the package in `src/package.ts` with `definePackage` from
+`@peers-app/peers-sdk/define`, then build it with:
 
-A build script combines a pure-data manifest with the provider's source text. This example
-uses `peers.packageId` from `package.json`; replace `<contract-id>` with a generated contract
-ID, and create `src/provider-source.js` for the provider code. The provider source can't be
-empty; for this observable-only example, a comment is enough:
-
-```javascript
-// build-package.mjs
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { serializeIsolatedPackageArtifact } from "@peers-app/peers-sdk";
-
-const packageJson = JSON.parse(await readFile("package.json", "utf8"));
-const packageId = packageJson.peers.packageId;
-const contractId = "<contract-id>";
-
-const manifest = {
-  packageId, // 25-character Peers ids, from `peers tools run new-id`
-  version: packageJson.version,
-  guestApi: 2,
-  tables: [],
-  provides: [{
-    contractId,
-    version: 1,
-    name: "My App",
-    tools: [],
-    observables: [{
-      name: "state",
-      description: "Shared application state.",
-      valueType: "object",
-      writable: true,
-      persistentVar: { scope: "group", name: "state", defaultValue: {} },
-    }],
-  }],
-  consumes: [],
-  appNavs: [{ name: "My App", iconClassName: "bi bi-app", navigationPath: "app" }],
-};
-const providerSource = await readFile("src/provider-source.js", "utf8");
-await mkdir("dist", { recursive: true });
-await writeFile("dist/package.bundle.js", serializeIsolatedPackageArtifact({ manifest, providerSource }));
+```bash
+npx peers-package build
 ```
 
-- A package built with `definePackage` can [contain only screens](./declaring-a-package#a-package-with-only-screens)
-  and provide no contracts. Older manifests without `guestApi: 3` still require a contract.
-  Each provided contract has at
-  least one tool, table, observable, or event. A writable observable backed by a persistent variable
-  gives a UI-first package a small reactive store without starting a worker; prefer tables for
-  record-oriented data.
-- Each package-owned table is declared once, in `manifest.tables`: a package-local name, primary
-  key, fields, an optional schema version, and optionally `localOnly: true` to keep its rows on
-  each device ([Local-only tables](../System/Tables#local-only-tables)). There is no table id or
-  physical name to declare. A provided contract exposes a table by listing its name; the rest
-  stay private.
-- The provider source is JavaScript stored in the artifact. Copied in as is, it can't import
-  modules; bundle it to use libraries, as `peers-package` does. Declare each tool in the
-  manifest and register its handler with `registerContractTool`.
-- With `guestApi: 2`, each handler is `async (args, ctx) => { ... }`. `ctx.callOwnedTable` (any
-  table method, with filters for `list`), the owned persistent-variable helpers, and event emits
-  work whenever the package's worker runs, including from a timer and from
-  `onWorkerStart(async (ctx) => { ... })`; calls into other packages' contracts need an active
-  tool call. Calls run concurrently, so a handler that reads and then writes the same row runs
-  that change through a small queue kept in module state. A call that times out is rejected
-  while the worker keeps running ([Guest API](./contracts#isolated-contract-packages-electron)).
-- `appNavs` declares the entries in the Apps launcher (`pkg.appNavs` in a declaration). Each
-  `navigationPath` matches a route in `src/routes.ts`. Omit `appNavs` for a package that only
-  shows a widget, as Weather does.
-- `network` names the HTTPS hosts the package may call through [System HTTP](../System/HTTP.md)
-  (`pkg.network`), and `executionMode` is `pkg.executionMode`
-  ([above](#provider-execution-modes)). A privileged provider bundled by hand uses esbuild with
-  `platform: "node"` and `format: "cjs"`.
-- `versionTag` and contract `devTag` are **not** set in code. The platform assigns them from the
-  package's promotion state.
+The build writes `dist/manifest.json` and `dist/package.bundle.js` from that declaration.
+The manifest describes the package's tables, provided and consumed contracts, navigation,
+and permissions. Peers reads it without running your code; the bundle also contains the
+code that serves those declarations in the package's worker. Edit the declaration and
+rebuild when either changes.
 
-Legacy host-backed packages, built with `definePackage` from `@peers-app/peers-sdk` rather than
-`@peers-app/peers-sdk/define`, still load for compatibility.
+[Declaring a package](./declaring-a-package) covers the authoring APIs and
+[build options](./declaring-a-package#building). A package can
+[contain only screens](./declaring-a-package#a-package-with-only-screens) and provide no
+contracts. Build routes and UI separately as described above. The platform assigns
+`versionTag` and contract `devTag` when you promote a version; don't set them in code.
 
 ## Author signing keys
 
@@ -361,7 +301,7 @@ Explicitly deleting `packageSigningKey_<packageId>` removes your local author si
 - **[Declaring a package](./declaring-a-package)** — `definePackage`, tables, tools, contracts, the `peers-package` build, and what the sandbox provides.
 - **[Routes and UI](./routes-and-ui)** — how routes and UI bundles work, how to author them, and why to prefer route-based rendering.
 - **[Package lifecycle](./package-lifecycle)** — develop, release, and run versions (dev / beta / stable).
-- **[Package contracts](./contracts)** — versioned interfaces, isolated manifests, validation, and the registry.
+- **[Package contracts](./contracts)** — versioned interfaces, validation, and worker isolation.
 - **[Voice skills](./voice-skills)** — how a package becomes voice-addressable and contributes a widget.
 - **[System HTTP](../System/HTTP)** — host-mediated HTTPS, allowlists, and credential refs.
 - **[System Scheduler](../System/Scheduler)** — device-local wake-ups of a package's own tool.

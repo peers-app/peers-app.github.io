@@ -8,6 +8,9 @@ title: "Package lifecycle"
 **Status:** Partially implemented
 
 **How to use the lifecycle today:** [Package lifecycle](../Packages/package-lifecycle) (user-facing guide).
+For package authoring, use [Declaring a package](../Packages/declaring-a-package):
+`definePackage` from `@peers-app/peers-sdk/define` and `peers-package build`. The implementation
+plan below is historical and describes earlier APIs.
 
 ## Shipped vs planned
 
@@ -61,11 +64,11 @@ Strict immutability is maintained on frozen contracts. When a developer needs to
 
 1. Increment the contract version (e.g., v1 → v2).
 2. Add the new fields/tools/observables (new fields must be optional for backward compat).
-3. Declare `alsoImplements(contractId, previousVersion)`.
+3. List the frozen version in `defineContract`'s `alsoImplements`, for example `alsoImplements: [1]`.
 4. The system validates that v2 is a structural superset of v1 (`validateProviderSatisfiesContract`).
 5. Consumers of v1 continue to work with any provider of v2, because v2 satisfies v1's shape.
 
-This keeps contracts frozen once released while making backward-compatible evolution trivial. The `alsoImplements` declaration can target a single version or an inclusive range (`{ from: 1, to: 3 }`).
+This keeps contracts frozen once released while making backward-compatible evolution trivial. List each older version the package still serves; the build reads its shape from `frozen-contracts.json`.
 
 **Re-registration of frozen contracts:** When a dev build includes a contract version that was previously frozen (promoted to stable in an earlier release), the installer re-registers it as stable (no devTag). The `validateImmutability` check correctly rejects attempts to register a dev version of a stable contract, so the installer must preserve the frozen state rather than trying to mark it dev.
 

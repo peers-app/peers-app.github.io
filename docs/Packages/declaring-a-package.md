@@ -22,11 +22,9 @@ package's manifest. The manifest is plain JSON in Peers IR, so the Runtime learn
 declares without running any of its code. The same declaration is bundled for the sandbox, so
 each tool's handler is registered under its declared name.
 
-:::note Where this applies today
-The [package template](./getting-started#creating-a-new-package), News, Weather, Timers, and
-Voice Hub use these declarations. A package can still write its manifest by hand
-([Getting started](./getting-started#writing-the-manifest-by-hand)).
-:::
+Every installed package uses this declaration model and is built with `peers-package`.
+Start from the [package template](./getting-started#creating-a-new-package), or move an
+existing package's declarations and handlers into `src/package.ts`.
 
 ## A package with only screens
 
@@ -350,7 +348,7 @@ export const refreshTool = defineTool({
 - The handler gets the input as `inputSchema` parses it, and its own `ctx`: host calls made
   through it act for that call's caller. Calls run concurrently, so a handler that reads and
   then writes shared state runs that change through a small queue
-  ([Guest API](./contracts#isolated-contract-packages-electron)).
+  ([Worker isolation](./contracts#isolated-contract-packages-electron)).
 - An input with a `.default()` or `.catch()` is optional in the manifest, including one wrapped
   with `.refine()`, `.readonly()`, or `.brand()`. The guest applies the fallback before the
   handler runs, so it also works for calls through the tools catalog. A `z.preprocess` that
@@ -492,8 +490,9 @@ For example, Timer Controls calls Timers' `write-timer` through the Runtime for 
 
 ### Calling every provider of a contract
 
-A call through a reference goes to the contract's active provider. A hub that works with every
-installed provider, the way Voice Hub works with every voice skill, declares
+A call through a reference uses the provider selected by `pkg.consumes`, including its
+provider preferences; calls to the package's own provided contracts use that package. A hub
+that works with every installed provider, the way Voice Hub works with every voice skill, declares
 `SystemContractCatalog` too, lists the providers, and passes `{ providerPackageId }` when it
 calls the reference:
 

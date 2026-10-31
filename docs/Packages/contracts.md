@@ -7,96 +7,73 @@ title: Package contracts
 
 **Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
-The implementation lives in **`@peers-app/peers-sdk`** under `src/contracts/` and is integrated into the package install flow. Newly scaffolded packages declare contracts in an isolated pure-data manifest; legacy packages can still use `definePackage()`. The `PackageLoader` handles registration at install time — including settling declared dependencies and registering each package’s provided contracts into that data context’s in-memory `ContractRegistry`. Built-in **system contracts** (Logs, Device Operations, System Local Folders, …) self-register via `registerSystemContract` and are installed into every loader registry when its catalog readiness boundary completes; adding another system contract is one self-registration call, with no loader changes. System Local Folders is local-only (another device cannot call it) and is documented in [System Local Folders](../System/Local-Folders.md). Package administration (import, reload, activate, uninstall, runtime state) is the [System Packages](../System/Packages.md) contract, which another device can call only when this device trusts it as Self.
+Declare packages with `definePackage` from `@peers-app/peers-sdk/define` and build them
+with `peers-package build`. Peers reads the generated declarations at install time, so
+contracts are discoverable before the package's worker starts. See
+[Declaring a package](./declaring-a-package) for the complete authoring guide.
+
+Built-in system contracts are available alongside package contracts. [System Local
+Folders](../System/Local-Folders.md) is local-only; [System Packages](../System/Packages.md)
+provides package administration, including from another device when this device trusts it
+as Self.
 
 ## Core components
 
 | Piece | Role |
 | --- | --- |
-| **`definePackage` / `PackageBuilder` / `ContractBuilder`** | Authoring API: declare **zero or more** contracts per package via `pkg.contract(contractId, version, name)`. Assign tables, tools, observables, events, and `alsoImplements` on each `ContractBuilder`. Declare dependencies with `pkg.consumes(...)` and cross-device tool targets with `pkg.remote(...)` on `PackageBuilder`. |
-| **Shape extraction** | Builds pure-data contract shapes from `IField[]` (derived from Zod schemas via `schemaToFields`). |
-| **Validation** | Checks that a provider's shape is a **superset** of a contract (field names, types, optionality, arrays, tools, observables, and event payloads), validates **immutability** rules, and validates **`alsoImplements`** against stored contract definitions. |
-| **`ContractRegistry`** | In-memory registry: register providers, resolve the active definition, select a provider for a `consumes` declaration (`providerPackageIds` / `fallbackToDefaultProvider`), swap providers, unregister, finalize contracts, and check consumer dependencies. Each data context’s `PackageLoader` owns one, seeds it with built-in **system contracts** after catalog readiness, and registers package providers when contract packages are installed. SQLite persistence of the registry is still a follow-up. |
-| **Contract proxies** | `createContractConsumer`, `createContractProvider`, `createContractProviderEndpoint`, and `createContractProviderSession` turn the same contract into transport-independent calls, observable mirrors, and subscriptions. |
-| **Provider router** | `createContractProviderRouter` owns one connection's request channel, authorizes before resolution, multiplexes contracts and data contexts, and disposes cached provider endpoints. |
-
-The user-context routers await catalog readiness before selecting a provider,
-including an explicit `providerPackageId`, or checking group remote access metadata.
-Cold-context calls wait for system registration. Failed catalog initialization
-rejects the call without invoking a provider; a later call retries initialization.
+| **`definePackage`** | Lists the contracts the package provides and consumes, plus navigation, network access, and lifecycle hooks. |
+| **`defineContract`** | Groups tables, tools, observables, and events into a versioned interface. Provide it with `pkg.provides(...)`. |
+| **`declareContract` / `implementContract`** | Declare an interface other packages implement, then supply its handlers and observable sources. |
+| **`contractRef`** | Gives provider code a typed client for a contract, bound to a handler's `ctx`. |
+| **`hostContract`** | Gives a screen or widget a typed client, with subscriptions and reconnect handling. |
+| **`peers-package`** | Builds the manifest and worker code, validates declarations, and checks frozen contract versions. |
 
 ## Declaring a consumed contract
 
-Call `pkg.consumes(contractId, version, opts?)` on **`PackageBuilder`** (not on `ContractBuilder`). It returns a deferred handle immediately:
+Create a reference to the contract and list it with `pkg.consumes(...)`. Use the reference
+from a handler with that call's `ctx`:
 
-```typescript
-const tasks = pkg.consumes(TASKS_CONTRACT_ID, 1, {
-  providerPackageIds: [preferredTasksPackageId],
-  fallbackToDefaultProvider: true,
+```ts
+import { contractRef, definePackage } from "@peers-app/peers-sdk/define";
+import type { Tasks } from "./contracts/tasks";
+
+const TasksRef = contractRef<typeof Tasks>(tasksContractId, 1);
+
+export default definePackage((pkg) => {
+  // Package identity and provided contracts …
+  pkg.consumes(TasksRef, {
+    providerPackageIds: [preferredTasksPackageId],
+    fallbackToDefaultProvider: true,
+  });
 });
 
-// Later, outside definePackage — do not await inside the define callback:
-const consumer = await tasks.consumer;
-await consumer.tables.Tasks.list({}, { pageSize: 20 });
+// Inside a tool handler:
+const rows = await TasksRef(ctx).tables.Tasks.list({}, { pageSize: 20 });
 ```
 
-Pass a type argument to narrow the resolved proxy beyond the default `IContractConsumer`.
-Typed consumers only need to extend `IContractConsumerBase` and may omit empty
-`tools` / `events` / `observables` bags. Table members should use `ITableProxy<TTable>`
-(the remotely callable Table method surface + `dataChanged`) — not a literal `Table`
-instance. Built-in contracts may export a ready-made consumer type (hand-maintained for now):
+A declaration from `declareContract` is already a reference. If you don't have one, use
+[`peers-package contract add`](./declaring-a-package#getting-a-declaration-you-dont-have)
+to generate it from the provider.
 
-```typescript
-import { type ILogsConsumer, logsContractId } from "@peers-app/peers-sdk";
-
-const logs = pkg.consumes<ILogsConsumer>(logsContractId, 1, { optional: true });
-logs.consumer.then(async (consumer) => {
-  if (!consumer) return;
-  // Autocomplete: contractId, version, tables, loadingPromise, dispose — no empty bags
-  await consumer.tables.ConsoleLogs.list({ level: "error" });
-  await consumer.tables.ConsoleLogs.deleteOldLogs();
-});
-```
-
-- Required dependencies resolve to `T` (defaults to `IContractConsumer`).
-- `{ optional: true }` may resolve to `undefined` when no matching provider is available.
-- Options (`optional`, `providerPackageIds`, `fallbackToDefaultProvider`) are honored when the package-loader settles the handle after install.
-
-After activating a host package, `PackageLoader` settles each `consumes` handle against the active providers, including the package’s own contracts: it selects a provider from the registry, resolves its live endpoint, builds a consumer proxy, and resolves (or rejects) `handle.consumer`. System contracts such as Logs already ship with resolvers; a package-provided contract without a live endpoint is treated as missing (optional → `undefined`, required → reject).
-
-```typescript
-// Outside definePackage — the promise settles after the package finishes installing:
-const consumer = await logs.consumer;
-if (consumer) {
-  await consumer.tables.ConsoleLogs.list({ level: "error" });
-}
-```
-
-:::warning Resolvers run during package install
-Settling a `consumes` handle **awaits the provider's `ContractResolver`**, and package
-install happens inside `initializePeerDevice`. A resolver must therefore only await
-things that are already available at that point — `networkManagerPromise` and
-`connectionManagerPromise` both resolve before packages load. Awaiting a promise that
-is only resolved *after* package loading (such as `peersDeviceInitializedPromise`)
-deadlocks device initialization, and the app never leaves its loading screen.
-:::
+- `{ optional: true }` marks a dependency your package can work without.
+- Peers reports missing dependencies but currently doesn't block installation, even for a
+  required one. Calls fail until a matching provider is available.
+- `providerPackageIds` selects the first listed package registered for that contract version.
+  `fallbackToDefaultProvider: true` permits the active provider when none of those packages
+  provides it. Without a provider list, calls use the active provider.
+- Calls to a contract the package itself provides use that package.
+- Supported calls can select a `providerPackageId`, which must be in `providerPackageIds`
+  when that list is nonempty, even if fallback is enabled.
+  See [Calling every provider](./declaring-a-package#calling-every-provider-of-a-contract).
 
 ### Declaring a remote contract
 
-`pkg.remote(contractId, version)` is the sibling of `consumes` for calling a contract's
-tools on **other devices**. It follows the same deferred-handle pattern, but needs no
-local provider and has no `optional` flag:
-
-```typescript
-const gameRemote = pkg.remote<IGameConsumer>(GAME_CONTRACT_ID, 1);
-
-// Later, outside definePackage:
-const remote = await gameRemote.consumer;
-await remote.device(peerDeviceId).tools.offer({ sdp });
-```
-
-See [Remote tool calls across devices](#remote-tool-calls-across-devices) for the
-permission model and routing.
+Declare a contract with `pkg.consumes(...)` when calling another package's tools on another
+device. Use `{ optional: true }` if it need not have a provider on this device. Your own
+provided contracts are available too. From a handler, call
+`ctx.callRemoteTool(contractId, version, deviceId, toolName, args)`; the target device
+selects its provider and authorizes the call. See
+[Remote tool calls across devices](#remote-tool-calls-across-devices).
 
 ## Contract lifecycle and promotion
 
@@ -104,18 +81,14 @@ Contract maturity is **coupled to the package lifecycle**. Developers do not set
 
 - **Dev package versions**: new contracts are mutable. A version already frozen in the registry cannot be reopened as dev; use a new contract version for a changed shape.
 - **Beta package versions**: same as dev — contracts can still evolve during testing.
-- **Stable package versions**: isolated packages freeze every contract version they provide when loaded. Host-backed packages do not yet freeze contracts at runtime; run the [build-time guard](./package-lifecycle#freeze-your-contracts-before-a-stable-release) before releasing them.
+- **Stable package versions**: packages freeze every contract version they provide when loaded. Run the [build-time guard](./package-lifecycle#freeze-your-contracts-before-a-stable-release) before releasing them too.
 
 The lifecycle is one-way: once a contract version is frozen (stable), it **cannot** be re-registered as dev. The registry rejects such attempts.
 
 A frozen version's shape can't change, but its descriptions can: reword a tool's `usageDescription` or any `description` to clarify usage or point callers at a newer version. A tool's `remoteAccessLevel` is policy, not shape, so it can change too. Run `npx peers-package contract freeze` before a stable release, so your build refuses a change to a frozen version ([Package lifecycle](./package-lifecycle#freeze-your-contracts-before-a-stable-release)). Reordering members or fields doesn't need a new contract version either, though a table still raises its own `versionNumber` whenever its field list changes, order included. Adding the [richer schema keys](./declaring-a-package#schemas-in-the-manifest) when rebuilding a provider preserves compatibility with the same frozen version. A rebuild that also changes a field's type or whether it is optional needs a new version: for example, a field declared `.optional().nullable()`, which SDKs before this release marked required.
 
-Isolated artifacts follow the same mutable-development rule without trusting
-artifact data for maturity. The host reads the active `PackageVersion.versionTag`
-when it installs an artifact: `dev` and `beta` definitions receive
-`devTag: "dev"`, while stable or untagged definitions are frozen. Reloading a
-changed dev/beta artifact restarts its worker and updates its contract shape;
-an already-frozen definition cannot be reopened as mutable.
+Reloading a changed dev/beta build restarts its worker and updates its contract shape.
+An already-frozen definition cannot be reopened as mutable.
 
 ### Evolving stable contracts with `alsoImplements`
 
@@ -157,183 +130,51 @@ export const Notes = defineContract({
 When an older version needs different behavior, or the change isn't backwards compatible, provide
 the older version as its own contract with `pkg.provides`, with handlers that call shared code.
 
-Host-backed packages declare it on the contract builder, with single versions or inclusive
-ranges:
-
-```typescript
-const main = pkg.contract(contractId, 4, "My App");
-main.alsoImplements(contractId, { from: 1, to: 3 }); // v4 satisfies v1, v2, and v3
-```
-
-That form carries no older shape: each older version must be registered by a package on the
-device. A version the package provides explicitly keeps its own handlers, even when it falls
-within a legacy `alsoImplements` range.
-
 ### Exposing contracts through a hub's contract
 
-When the package provides a hub's contract, it can let that contract's consumers call the
-tools of another contract it provides, on this package, without consuming it:
-
-```typescript
-const groceries = pkg.contract(groceriesContractId, 1, "Groceries");
-const hub = pkg.contract(hubContractId, 2, "Hub");
-hub.exposes(groceriesContractId, 1);
-```
-
-The exposed contract must be one the package provides. Calls through it run as the signed-in
-user, at each tool's own level. See [Exposing your contracts through a hub's
-contract](./declaring-a-package.md#exposing-your-contracts-through-a-hubs-contract) for what a
-hub can reach and how it lists and calls the tools.
+When a package implements a hub's contract, its `implementContract` declaration can list
+other contracts it provides in `exposes`. Consumers of the hub's contract can then call
+those contracts' tools on that provider. Each tool still checks the caller's access.
+See [Exposing your contracts through a hub's
+contract](./declaring-a-package#exposing-your-contracts-through-a-hubs-contract).
 
 ## Tools in contracts
 
-Tools are a core part of a contract's public interface — they are effectively **API calls between packages**. When you declare tools on a contract via `ContractBuilder.tools(...)`, `extractToolShape` reads `ITool.inputSchema.fields` and `ITool.outputSchema.fields` to produce an `IContractTool` with `inputFields` and `outputFields`.
+Define each tool with `defineTool` from `@peers-app/peers-sdk/define`: its name, description,
+access level, input and output schemas, and handler. List it in `defineContract`'s `tools`
+and provide that contract with `pkg.provides(...)`. The build derives the manifest's fields
+from your schemas; the handler and its public shape stay together.
 
-**Always derive `IField[]` from Zod using `schemaToFields()`** rather than writing field arrays by hand. This ensures:
-
-1. The TypeScript types (inferred from Zod) match the contract-facing metadata exactly.
-2. No silent drift between what the `toolFn` accepts and what the contract advertises to consumers.
-3. A single place to update when adding or changing a field.
-
-```typescript
-const inputSchema = z.object({
-  name: z.string().describe("Item name"),
-});
-
-const myTool: ITool = {
-  // ...
-  inputSchema: {
-    type: IOSchemaType.complex,
-    fields: schemaToFields(inputSchema), // derived, not hand-written
-  },
-};
-```
-
-The Runtime checks every call's input against the tool's `inputFields` before your tool runs, whoever calls it: the UI, the CLI, an assistant, another package, or another device. A required field must be present (one typed `any` included), each value must have its declared type, and a field with `enumValues` takes only those values. `schemaToFields` records them for `z.enum`, `z.nativeEnum`, a literal, or a union of literals, including the elements of an array; a nullable enum gets none, since it also allows `null`. Nested object fields, keys the tool doesn't declare, and the input of a tool that declares no fields aren't checked. A call that fails never reaches your code; the caller gets an error naming each field, such as `Tool argument validation failed for write-task: operation: Required`.
-
-Contract validation (`validateProviderSatisfiesContract`) checks field-level compatibility — field names, types, optionality, and array flags — between a provider's tools and the contract it claims to implement via `alsoImplements`. If the `IField[]` on your `ITool` doesn't match the target contract's tool signature, registration will fail.
-
-See **[System: Tools](../System/Tools)** for the full tool authoring guide.
+The Runtime checks input fields before a call reaches your code, and the package parses the
+input with its Zod schema before invoking the handler. A rejected call reports the invalid
+fields to the caller. Keep the schemas compatible with every contract version the package
+serves. See [Tools](./declaring-a-package#tools) for authoring and
+[Tools and access](../System/Tools) for permissions.
 
 ### Context-bound tool providers
 
-Executable ownership belongs to the contract resolver. Author the public shape
-with `contract.tools = [{ tool: myTool }]`, then register a resolver at the top
-level of the package bundle with `{ providerPackageId: packageId }`. The loader
-stages that registration and binds it to the installing data context.
+A tool handler receives `(args, ctx)`. Use that `ctx` with the package's table and contract
+handles, so each operation stays bound to the current call and data context. Keep it with
+that call; don't save one caller's context for use by another. The same package installed
+in two groups has separate workers and group data.
 
-```typescript
-registerContractResolver(contractId, 1, ({ dataContext }) => ({
-  contractId,
-  version: 1,
-  forwardCallContext: true,
-  tools: {
-    add: {
-      tool: { name: "add", usageDescription: "Add an item", accessLevel: AccessLevel.Writer },
-      inputSchema,
-      toolFn: (args, context) => {
-        if (!context.actorUserId) throw new Error("Missing trusted actor");
-        return addItem(dataContext, args, context.actorUserId);
-      },
-    } satisfies IContractToolImplementation,
-  },
-}), { providerPackageId: packageId });
-```
-
-`IContractToolImplementation` requires only `tool.name`, `tool.usageDescription`
-and `toolFn`; schemas and access/authority metadata are optional. It needs no
-`toolId`, persisted `Tools` row or `registerTool` call. The contract member name
-supplies identity. Existing `IToolInstance` values remain assignable. Use the
-supplied `dataContext` for every lookup/write; reject cross-context arguments and
-require the forwarded `actorUserId` for writes instead of falling back to global
-user state. `forwardCallContext: true` appends trusted host context and rejects
-additional positional arguments.
-
-Runner shapes may carry `isAssistantRunner`, `configSchema` and
-`detailedDescription`. The builder emits these as target-keyed `toolMetadata`;
-installation persists them without executable registration or policy changes.
-
-A host member can declare `requiresWorkflowRun`
-(policy, excluded from shape identity). Its forwarded `toolContext.workflow` is
-an in-process `IWorkflowRunContext` in the authorized group. Use
-`requireWorkflowRunContext(toolContext, toolName)` to require and validate it.
-The capability belongs only to the directly invoked host tool: nested
-`dispatchTool` calls, remote callers and isolated workers never receive
-it. An ordinary catalog call rejects workflow-required members; clients use
-`runToolDirectly`. Isolated packages likewise declare
-public contract members; the runtime materializes their catalog IDs automatically.
+For a contract declared elsewhere, supply handlers with
+[`implementContract`](./declaring-a-package#declaring-a-contract-other-packages-implement).
+The build checks that every declared member is implemented.
 
 ### Runtime-owned tool identity
 
-`Tools` is the permanent runtime catalog for public contract members. Installation
-validates and persists catalog metadata before provider publication. Await
-`dataContext.packageLoader.catalogReady` before discovering system providers or
-reading the initial catalog. The coordinator is bound to the loader's shared
-`ContractRegistry`, so host and isolated installs serialize preparation and
-activation in the same context. It never evaluates provider code to build rows.
-Reviewed legacy aliases are rechecked after awaited preparation. Host `remote()` and
-`consumes()` handles settle after guarded activation, so a fresh package can
-reference its own newly registered contracts. Settlement runs outside catalog
-publication; host removal invalidates pending loads, including handle settlement,
-and waits for queued publication. Isolated loads recheck their generation after dev
-version correction and before runtime activation and loader bookkeeping.
-Host resolver registrations made during bundle evaluation stay staged until the
-guarded activation turn; failed replacements preserve the previous context-owned
-resolver. Unload and disposal retire those resolvers.
-Successful replacement invalidates cached host `consumes()` endpoints, allowing the
-same consumer to resolve the new implementation. Retained endpoints reject calls
-after their provider generation or resolver retires, including across awaited
-catalog validation and authorization. Catalog identity and provider lifetime are
-rechecked immediately before the tool function runs; failed replacements keep
-the previous generation usable.
-External routers refresh a retired cached endpoint once when its lifetime guard
-rejects before execution. Provider errors and downstream retirement errors are not
-retried, so refreshing a route cannot replay an already-started tool's effects.
-Direct host resolver lookups supply the owner with
-`getContractResolver(contractId, version, packageId, dataContext)`; system resolvers
-registered outside package evaluation remain process-wide.
-Host and isolated table declarations stay staged until all final catalog writes
-succeed. Isolated gateways then persist the prepared definitions and run guarded
-provider activation synchronously with live table publication. Cancellation or
-storage failure restores the previous stored definitions before queued table calls
-resume, so the old provider remains usable and its artifact can be reinstalled.
-The coordinator also watches the candidate's catalog identities through awaited
-table persistence. Its activation guard rejects newly quarantined or conflicting
-evidence before any provider, worker generation or live binding changes. Host
-contract and legacy table batches validate together before any binding is replaced.
-No worker starts during this process.
-Disposal prevents a prepared isolated install from
-publishing after shutdown. Backfill updates only catalog-owned columns, preserving
-legacy descriptions and access metadata that may arrive concurrently through sync.
-After preparation succeeds, each install or system start refreshes descriptive
-metadata (name, descriptions, IO and config schemas, runner flags) on existing rows,
-so package upgrades and changed development members do not leave tool search, the
-CLI or the UI stale. Catalog writes are explicit column patches that never change
-identity or access policy (`accessLevel`, `remoteAccessLevel`, `authorityPropagation`).
-The public definition refreshes descriptions when `packageId` is absent or matches
-the publishing provider. Historical source and provenance are never refreshed.
-Validated catalog writes can restore historical deletion tombstones; startup remains
-retryable if storage or SQLite schema initialization fails. System startup guards
-the entire catalog snapshot before publishing any system provider, so a conflict
-in an earlier row during a later save or read rejects readiness. Catalog identities
-are permanent, and reserved aliases and deterministic IDs reject deletes even before
-materialization. Rejected synced writes, including an older runtime's delete of a
-catalog identity, are parked in the recovery queue. Unresolved legacy rows
-remain deletable, are never restored and report actionable unavailability.
+Peers adds public contract tools to its permanent `Tools` catalog from their declarations,
+without starting package workers. Authors name contract members; they don't allocate tool
+catalog IDs. Each `(contractId, version, toolName)` has a deterministic ID or reviewed
+historical aliases. Provider selection does not change those IDs. Generate new contract
+IDs once with `newid()` and keep them in source.
 
-The exact `(contractId, version, toolName)` tuple selects either every reviewed
-legacy alias or one deterministic ID. Aliases have equal status; provider/install
-order never selects a primary ID. `alsoImplements` catalogs the requested older
-definition's members, without adding newer-only members to the older version.
-See [Tools identity protocol](../System/Tools#permanent-runtime-catalog) for the
-frozen encoding and narrow shipped-ID exceptions. This is an explicit exception
-to `newid()`; new contract identities still use `newid()` once, committed as constants.
-
-Catalog rows survive unload, uninstall and mutable member removal. They describe
-identity and history, while the registry describes current availability and the
-live provider enforces authorization. Neither synchronized rows nor catalog
-metadata grant execution rights. Workflow arguments use the current public member
-schema. Device Operations selects only runnable contract targets by ID, name or text.
+`alsoImplements` keeps older versions' catalog identities, without exposing newer-only
+members through the older version. Catalog rows survive uninstall and member removal;
+a row can remain discoverable while its tool is unavailable. The selected provider's
+current policy decides whether a caller may run it. See
+[Tools identity protocol](../System/Tools#permanent-runtime-catalog).
 
 ### Migrating from toolInstances
 
@@ -377,229 +218,88 @@ unimplemented members as unavailable. See [Legacy execution removed](../System/T
 
 ## Consuming a contract through a proxy
 
-`createContractConsumer(definition, transport, { dataContextId? })` returns a live proxy with:
-
-- `tables[name].method(...args)` for asynchronous table calls;
-- `tools[name](...args)` for tool calls;
-- `observables[name]()` for synchronous mirrored reads and `observables[name](value)` for writes;
-- `events[name].subscribe(handler)` and `tables[name].dataChanged.subscribe(handler)` for provider pushes;
-- `loadingPromise`, which waits for observable snapshots and queued writes;
-- `dispose()`, which releases every subscription and transport listener owned by that consumer.
-
-To run a contract's tools on another device, declare `pkg.remote(...)` instead of (or alongside) `pkg.consumes(...)` — see [Remote tool calls](#remote-tool-calls-across-devices).
-
-For in-process wiring, pair the consumer with a stateful provider session:
-
-```typescript
-const [consumerTransport, providerTransport] = inProcessTransportPair();
-const session = createContractProviderSession(resolution, providerTransport, {
-  permissionCheck,
-});
-const consumer = createContractConsumer(definition, consumerTransport, {
-  dataContextId,
-});
-
-try {
-  await consumer.loadingPromise;
-  const rows = await consumer.tables.Items.list({}, { pageSize: 20 });
-} finally {
-  consumer.dispose();
-  session.dispose();
-}
-```
-
-Always dispose both sides. Consumer disposal is idempotent, unsubscribes generic events, table events, and observable streams, and removes only that consumer's notify handler. New remote calls and subscriptions reject after disposal. Cached observable reads remain available, but writes throw.
+In provider code, use a [contract reference](./declaring-a-package#calling-contracts)
+with the current `ctx`. In a screen or widget, use
+[`hostContract`](./declaring-a-package#using-the-contract-from-a-ui). Both call the selected
+provider's implementation; consumers don't import its handlers or storage.
 
 ### Remote tool calls across devices
 
-A package can run a contract **tool** on another device instead of the local provider.
-`pkg.remote(contractId, version)` is the mesh sibling of `pkg.consumes(...)`: it returns
-a deferred handle whose `consumer` resolves to a per-device factory. `device(deviceId)`
-hands out a tools-only consumer of the contract whose calls execute on that device. The
-target does not need a direct connection — the call travels through `sendDeviceMessage`,
-so any device reachable through the peers mesh works.
+From a tool handler, call a tool on a contract your package consumes or provides:
 
-```typescript
-// Inside definePackage(...)
-const sessionRemote = pkg.remote<ISessionConsumer>(SESSION_CONTRACT_ID, 1);
-
-// From runtime code, after the package has loaded.
-const remote = await sessionRemote.consumer;
-await remote.device(otherDeviceId).tools.join({ sessionId });
+```ts
+await ctx.callRemoteTool(
+  sessionContractId, 1, otherDeviceId, "join", { sessionId },
+);
 ```
 
-Unlike `consumes`, `remote` needs **no local provider**: the executing device selects
-its own. That makes it the natural way for a package to call its *own* contract on a
-peer's device (a signaling channel, a shared game session, and so on) without declaring
-itself as its own consumer. There is also no `optional` flag — whether the remote device
-can serve a call is only known per call. The handle settles as long as the contract
-definition is registered on this device (from the package's own `provides` or another
-installed package) and rejects otherwise.
+The target device selects its active provider. It can be reached through the Peers mesh
+without a direct connection. Only tools cross devices through this API; tables, observables,
+and event subscriptions remain local. Remote calls have a 30-second round-trip deadline,
+even if the target tool declares a longer `timeoutMs`. A timeout or dropped connection
+doesn't prove the tool made no changes; calls that may already have run aren't automatically
+retried.
 
-Only tools cross devices today. `tables`, `observables`, and `events` on a device
-consumer throw on access, and `loadingPromise` resolves immediately. Device consumers are
-cached per device id; passing this device's own id resolves locally. Disposing the factory
-disposes every device consumer; a device consumer may also be disposed on its own.
-Isolated packages use the same feature through
-`ctx.callRemoteTool(contractId, version, deviceId, toolName, args)`, for any contract the
-package provides or consumes.
+**Opting a tool in.** Set `remoteAccessLevel` in `defineTool` to allow callers from other
+accounts in a shared group. Both it and the tool's ordinary `accessLevel` must admit the
+caller. For example, `accessLevel: AccessLevel.Reader` and
+`remoteAccessLevel: AccessLevel.Writer` let group Writers call from another device.
+Omit `remoteAccessLevel` to deny other accounts unless they are Self-trusted.
 
-**Opting a tool in.** Tools are local-only by default. To allow callers on other devices,
-set `remoteAccessLevel` on the tool definition (or on the `tools[]` entry of an isolated
-package's `provides` declaration) to the minimum group access level a caller needs, using
-the same 0–100 scale as `accessLevel` (`AccessLevel.Reader` = 20, `Writer` = 40, `Admin` =
-60, `Owner` = 80). Omit it to keep the tool local-only. The ordinary `accessLevel` check
-still runs on the executing device as well. Isolated packages also need
-`suggestedAccessLevel` at or below that same floor when that level is supplied,
-because the supplied value is the worker's effective admission level. A tool
-that sets only `remoteAccessLevel` remains Self in the isolated worker unless
-it declares `preserve`, in which case omitted admission is None.
+**Who may call.** The receiving device verifies the caller's identity and authorizes every call:
 
-```typescript
-const pingTool: ITool = {
-  // ...
-  accessLevel: AccessLevel.Reader,
-  remoteAccessLevel: AccessLevel.Writer, // group Writers on other devices may call this
-};
-```
+1. The caller's signing and box keys must match a valid, known, self-signed user record.
+2. The provider's own account, or an account granted exact `TrustLevel.Self` in its personal
+   context, keeps full access. `remoteAccessLevel` does not restrict Self.
+3. Other verified callers must name a shared group. Their role must be above None and meet
+   both access levels on the selected provider's tool. The package must be loaded in that group.
 
-**Who may call.** The receiving device authorizes every inbound call itself, in layers:
-
-1. The sender's signing and box keys must match a valid self-signed `Users` record the
-   provider already knows (personal or shared-group data). Unknown or mismatched identities
-   fail closed.
-2. A **Self-trusted** caller — the provider's own account, or an account granted exact
-   `TrustLevel.Self` in the provider's personal context — keeps full access, exactly as over
-   a direct connection. `remoteAccessLevel` is not consulted; an omitted data context selects
-   the provider's personal context.
-3. Any other verified caller is treated as a **group member**. The call must name a shared
-   group data context, must be a tool run, and the selected provider must give the tool a
-   numeric `remoteAccessLevel`. The caller's role in that group must be above `None` and at
-   least that level. That same provider executes the authorized call; another provider's
-   policy does not grant access to it. Anything else is denied.
-
-Cross-account remote calls therefore require the package to be loaded in the shared
-group's data context (the handle's calls are scoped to the context the package loaded in),
-because that is the context whose membership is checked and whose keys seal the message.
-
-**How it is routed.** The device consumer stamps `targetDeviceId` on each call. The trusted local
-host router (the package loader, the Electron/PWA local-user router, or an isolated
-package's host gateway) recognizes the target, skips local provider selection, and forwards
-the call over a `sendDeviceMessage`-backed transport registered by the `ConnectionManager`
-(`setRemoteContractTransportFactory`). Before sending it **strips** `targetDeviceId`, so the
-receiving device sees an ordinary call addressed to itself, signed by the forwarding device.
-Routers that serve *remote* callers reject any call that still carries `targetDeviceId`: one
-device can never relay another device's call under its own identity. Multi-hop delivery
-happens inside `sendDeviceMessage`, not by chaining contract routers.
-Because the receiving device cannot tell that a package made a forwarded call, it would
-treat the call as the user's, with the user's full Self authority on their own devices.
-So the forwarding host refuses every package call to a **system contract** on another
-device (System Packages, App Updates, Device Operations, Logs, …). Packages reach other
-devices only through package contracts, their own or ones they consume; the user's own
-calls (UI, CLI) reach system contracts as usual.
-
-Legacy `pkg.remote(...)` bindings retain the owning package's identity too. Cached remote
-endpoints select a current verified direct connection for each personal-context call,
-falling back to device messages when none is available. Group-scoped calls keep their
-group context and use device messages. Calls already sent are never automatically retried
-when a connection drops, because they may already have executed.
-
-On the receiving side the `ConnectionManager` owns one `contract-call` device-message
-handler and lazily builds a per-sender provider router — the same
-`createUserContextContractProviderRouter` used for direct connections — so provider
-selection, endpoint caching, and trust-change resets behave identically. Unreachable
-targets reject with a clear error rather than hanging, and each round trip has a 30 s
-deadline. Provider pushes (events, observables) do not cross the mesh yet.
+Packages cannot call system contracts on another device. The user's own UI and CLI calls
+can reach remote system contracts where those contracts permit it. Forwarded package calls
+currently arrive as the sending user; package identity and consume limits do not cross
+devices. See [Trust](../System/Trust.md) for that limitation.
 
 ### Local UI-to-host contracts
 
-Electron renderers and the PWA can use the same typed contract consumers:
+Use `hostContract<typeof Contract>(contractId, version)` from `@peers-app/peers-sdk` in a
+screen or widget. Import the contract with `import type` so its handlers stay out of the UI
+bundle. The client follows the active group, waits for a connection, and reattaches
+subscriptions after reconnecting. `useRows` and `useTool` from `@peers-app/peers-ui` keep
+React views current. Tests can use `mockHostContract` from `@peers-app/peers-sdk/testing`.
 
-- Electron adapts its authenticated frontend Socket.IO connection with
-  `socketIoContractTransport`. The server creates one local-user provider router per socket
-  and disposes it on disconnect.
-- PWA installs an `inProcessTransportPair` and the same local-user provider router.
-- `registerHostContractTransport`, `waitForHostContractTransport`, and
-  `subscribeHostContractTransport` expose transport readiness and reconnect lifecycle to UI
-  modules. Consumers must be disposed and recreated when the transport changes.
-- A package's own screens use `hostContract<typeof Contract>(contractId, version)`: a client
-  typed from the package's `defineContract`, with members made on first use, so no
-  definition is needed at runtime. It waits for the transport, re-attaches subscriptions and
-  observables after a reconnect, and binds the active group. `useRows` in `peers-ui` keeps a
-  table's rows current, and `useTool` runs a tool with its pending and error state. UI tests use
-  `mockHostContract` from `@peers-app/peers-sdk/testing`. See
-  [Using the contract from a UI](./declaring-a-package#using-the-contract-from-a-ui).
-- System screens share one cache via `hostContractConsumer(definition, options)` from the SDK.
-  `useHostContract(accessor)` in `peers-ui` returns `{ consumer, error }` and refreshes
-  when the host transport is replaced. Read `consumer.observables.*` with `useObservable`.
-  System Identity is the example that resolves before sign-in: the handle passes no
-  `dataContextId`, and the screen subscribes to `consumer.observables.state`.
-
-The local router registers its request listener before the user context is ready, then
-resolves that context lazily per call. It accepts only the user's personal context and
-known local group contexts. The authenticated local UI session is trusted as one authority
-today; this is not installed-package renderer isolation.
-
-Today the renderer talks to the host router directly: it waits for
-`registerHostContractTransport`, builds `createContractConsumer` proxies over that
-transport, and the host router resolves tools from the global `ContractResolver`
-registry. There is no package involvement in that path — `pkg.consumes()` settles only
-while `package.bundle.js` runs in the host, and its handle does not cross into separately
-built renderer bundles.
-
-The intended security model is narrower: UI elements should eventually call only their
-own package's contract code through a proxy, and that package code should forward to
-other contracts via its `consumes` handle. Direct renderer access to arbitrary system
-tools is a temporary seam, not the long-term boundary.
-
-Provider tools that opt into host call context (`toolContext` or
-`forwardCallContext`) receive exactly one input argument followed by the trusted context.
-The provider rejects calls carrying more than one input argument so a caller cannot
-shadow `callerPackageId` or another host-only context field positionally.
+UI calls act as the signed-in user. Provider-side `pkg.consumes(...)` declarations do not
+yet restrict UI calls; keep the UI's dependencies declared anyway. See
+[Using the contract from a UI](./declaring-a-package#using-the-contract-from-a-ui).
 
 ### Device connections
 
-Verified device connections use one provider router per connection. A consumer wraps its `Connection` with `connectionContractTransport`; the remote `ConnectionManager` routes all `contractCall` requests through the router. The router:
-
-- invokes a trusted host authorization/data-context hook before any contract resolver;
-- derives caller context only from trusted connection/session state and ignores extra wire arguments;
-- verifies that connection keys match a valid self-signed `Users` record known in the provider's personal or shared-group data;
-- grants full access to callers with exact `TrustLevel.Self` in the provider's personal data context, and limits every other verified caller to group tool runs marked with `remoteAccessLevel` (see [Remote tool calls](#remote-tool-calls-across-devices));
-- rejects calls that still carry a `targetDeviceId` so the device is never used as a relay;
-- normalizes omitted personal context and an explicitly named personal context to the same route;
-- lazily caches stateful provider endpoints by contract id, version, and authorized data context;
-- sends event, table `dataChanged`, and observable notifications back on `contractNotify` over the same duplex connection;
-- tracks subscription ownership so unsubscribe is idempotent and does not need a second authorization decision;
-- disposes every endpoint and live provider subscription when the connection closes or the caller's personal trust assignment changes.
-
-No separate notify RPC registration is required. The consumer's existing notify listener receives reverse traffic through the symmetric transport. Multiple consumers may share a connection and keep independent subscription IDs and listeners.
-
-The same router also serves calls that arrive as `contract-call` device messages (the mesh path behind `pkg.remote(...)`), keyed by sending device and data context instead of by connection. Those routers are evicted after ten idle minutes and reset on the same trust changes.
+Peers verifies device identities and applies the receiving device's trust and group roles
+before running a contract call. Lowering trust ends affected subscriptions and causes
+later calls to be checked again. An unavailable device produces an error; a connection
+failure does not prove that a tool made no changes, so check its result before retrying
+an operation with side effects.
 
 ### Table-call boundary
 
-Contract table proxies accept the standard serializable data operations:
-
-`get`, `list`, `count`, `findOne`, `save`, `insert`, `update`, and `delete`.
-
-Custom remotely callable methods must use `@ProxyClientTableMethodCalls()`. The provider uses that marker and calls the method's `__original` implementation when a client proxy exists. Internal/private helpers, prototype and event properties, cursors, and document helpers are rejected.
-
-Table property reads and synchronous return values are not transparent across the proxy boundary: supported method calls return promises.
+Package contracts expose `get`, `list`, `count`, `findOne`, `save`, and `delete`, plus
+`dataChanged` subscriptions. Each call runs through the providing package's table class.
+Custom methods and private tables aren't exposed. Use a contract tool for operations that
+don't fit the standard table methods. See
+[Overriding table methods](./declaring-a-package#overriding-table-methods).
 
 ### Observables and events
 
-Contract observables are always mirrored so consumers can read them synchronously. Await `consumer.loadingPromise` before the first read. Writable values update optimistically and send ordered, fire-and-forget `set` calls; awaiting the current `loadingPromise` waits for those writes. A failed set is logged and the next provider push reconciles the mirror.
+Define observables with `defineObservable`, backed by a package variable or an in-memory
+source. Consumer reads, writes, and subscriptions go through the provider's worker;
+only observables declared `writable` accept consumer writes. In a UI, use `useObservable`
+and wait for the observable's `loadingPromise` when the initial value matters. Provider
+code reads or writes through `Contract(ctx).observables.name.get()` or `.set(value)`.
 
-Writability is enforced twice:
-
-- a consumer write to an observable declared `writable: false` throws before changing the mirror or sending traffic;
-- the provider accepts `set` only when `IContractResolution.observableWritability[name]` is explicitly `true`.
-
-Events and table `dataChanged` differ from observables: they are subscription-gated. The provider attaches to the live source only while at least one consumer subscription exists and detaches after the last unsubscribe.
-
-Events are fire-and-forget with no replay: a payload emitted before a consumer subscribes is not delivered to it later. A package that needs durability (for example a signaling mailbox) must buffer in its own tool or table; that is an application concern, not an `Event` feature. Events are local to the device that emits them — `pkg.remote()` and the mesh carry tool calls only.
-
-A provider can set `IContractResolution.eventFilter`. The endpoint calls it once per generic-event subscriber with the payload and the caller context captured at subscribe time. Returning false, or rejecting, drops that notification for that subscriber only. Table and observable streams are not filtered. System Local Folders uses this so an isolated package receives `changed` and job events only for its own grants and jobs.
+Define events with `defineEvent` and emit them with the event's `emit(payload)`. Events
+have no replay: subscribers receive only events emitted while subscribed. Store durable
+state in a table or variable. Table `dataChanged` reports writes made through the contract,
+by the package itself, or by device sync. Events and table notifications remain local to
+the device; remote tool calls do not carry subscriptions.
 
 ## Permission and transport limits
 
@@ -626,438 +326,89 @@ only to an identity that should have the same control as the local user. Lowerin
 level resets every provider route for that connection, disposes live subscriptions, and
 causes subsequent calls to re-evaluate and fail.
 
-`sameUserContractPermissionCheck` remains exported only as a deprecated compatibility
-helper for isolated providers. Production connection routing does not use it.
-
-`connectionContractTransport` supports multiple consumer notify listeners without one consumer removing another. Its request channel intentionally has one owner: the connection-wide provider router.
-
-Still deferred are precise generic `createContractConsumer<T>()` typing for contracts not
-declared with `defineContract` (a `hostContract` client is typed from its declaration),
-granular per-package UI permissions, and remote
-access to tables, observables, and events (remote consumers are tools-only). Desktop and
-headless hosts raise the isolated wire cap to 16 MB. The codec default is 64 KB.
-Browser worker infrastructure exists (`createBrowserWorkerPort` in
-`peers-isolate/src/container/browser-worker.ts`), but the PWA does not register
-a production isolated runtime, so that default is not a PWA production worker limit.
+Granular per-package UI permissions and remote subscriptions remain deferred. Desktop and
+headless limit values crossing a package's worker boundary to 16 MB. PWA provider execution
+is not supported yet.
 
 ## Isolated contract packages (Electron and headless) {#isolated-contract-packages-electron}
 
-The isolated artifact's optional `manifest.executionMode` selects `"sandbox"` (the default
-when omitted) or `"privileged"`. Both modes use the same contract registry, consumed-contract
-declarations, host-owned tables/pvars/events, caller identity, access policy, and bridge codec
-(including `Date` and `Uint8Array`). Ordinary bridge calls retain their checks in both directions
-between sandbox and privileged packages. Arguments and bridge messages cannot select a mode.
+Packages declared with `definePackage` and built with `peers-package build` run in supervised
+workers on Electron and headless. Peers reads the generated manifest without executing the
+package, then starts its code when a contract is first used. The build selects guest API 3;
+authors don't set a guest API version.
 
-Privileged **provider code only** runs in a separate ordinary Node process, with the host's OS
-account, environment, filesystem, network, and subprocess access, in the user's home directory. It is
-trusted device code, not root/admin elevation. Direct OS access bypasses sandbox/network
-confinement, so bridge checks are not a security boundary against it. Browser/PWA provider
-execution remains unsupported. Existing activation/version rules apply without an extra
-consent gate; replacing the active version switches modes and terminates the prior session.
-Normal startup and invocation deadlines remain in force. Stopping a provider runs its
-`pkg.onStop` hooks, then ends it and the processes it started; a process that detaches itself
-(`detached: true`, a daemon) survives, and stopping cannot undo OS side effects
-([Provider execution modes](./getting-started#provider-execution-modes)).
-On Windows, a provider crash can leave child processes running; check for leftovers on startup.
-Host shutdown drains scheduled invocations before disposing provider sessions, including
-privileged processes. Provider crashes or IPC disconnections reject pending bridge calls;
-a later invocation starts a fresh session for the same installed version.
+:::note Older package formats
+Older raw bundles, isolated packages without a guest API version, and guest API 2 packages
+are deprecated. An upcoming release stops loading them with “Rebuild it with peers-package”.
+Move them to `definePackage` from `@peers-app/peers-sdk/define` and rebuild with `peers-package`.
+:::
 
-See [Provider execution modes](./getting-started#provider-execution-modes) for a privileged
-package that imports a Node built-in. Bundle dependencies: the
-artifact carries source, not a package directory, assets, or `node_modules`.
+- **Isolation.** The default `pkg.executionMode` is `"sandbox"`: no ambient filesystem,
+  subprocess, or network access. Use declared contracts such as [System HTTP](../System/HTTP)
+  for those capabilities. `"privileged"` runs trusted package code in its own Node process
+  with the user's OS access. It keeps contract permission checks, but direct OS access
+  bypasses sandbox confinement. See [Provider execution modes](./getting-started#provider-execution-modes).
+  Routes and UI gain no Node access. PWA devices can receive package data but cannot run
+  package providers yet.
+- **Lazy startup.** Installation registers contracts, tables, and tool catalog entries
+  without starting a worker. The first tool call, table read or write, observable access,
+  or subscription starts it. Each package has a separate worker per data context.
+  Loading a screen alone doesn't start its provider; a contract call from that screen does.
+  A package with only screens and no runtime work runs no worker.
+- **Every member goes through the package.** Consumer table calls run the table's class,
+  observables use their declared sources, and subscriptions and notifications pass through
+  the provider. If its worker cannot start, those calls fail. The package's own storage
+  operations and device sync don't invoke consumer table overrides. See
+  [Every call goes through the package](./declaring-a-package#every-call-goes-through-the-package).
+- **Concurrent calls.** Calls and event callbacks can overlap. Serialize changes that read
+  shared state and then write it back, using a queue per record or per package. Time in the
+  queue counts against the tool's deadline. Don't hold a queue while calling a contract
+  that may call back into the same queue.
+- **Deadlines and restarts.** Startup has a 30-second deadline; tool calls default to
+  30 seconds and can declare `timeoutMs` up to 120 seconds. A timed-out call fails while its
+  handler, timers, and module state can keep running. Later calls to other contracts from
+  that expired call are denied, but writes to the package's own state can continue. A stuck
+  or crashed worker is stopped, and a later call starts a fresh one. For longer work, return
+  a job ID, record progress in a table, and provide a cancel tool.
+- **Owned state.** Use `defineTable` for tables and the `/define` variable helpers for
+  persistent values. Tables stay private unless listed on a provided contract. Package
+  variables are private; expose an observable to share a value. `localOnly: true` on a
+  table keeps its rows on each device ([Local-only tables](../System/Tables#local-only-tables)).
+  In-memory observable values reset when the worker restarts; stored values survive.
+- **Background work.** Use `pkg.onStart` for startup and `pkg.onStop` for cleanup. Startup
+  hooks finish before calls run, so handle optional failures and don't await long-running
+  work. Timers can use owned tables, variables, and events while the worker runs. Calls to
+  other contracts need an active invocation; use [System Scheduler](../System/Scheduler)
+  when a periodic job needs them. A stored-value change alone doesn't start a dormant
+  worker to run a variable watcher. See [Background work](./declaring-a-package#background-work).
+- **Subscriptions.** A running package subscribes with `ctx.subscribeConsumedEvent` or
+  `ctx.subscribeConsumedTableEvent` for table `dataChanged`, including during `pkg.onStart`.
+  Each callback gets
+  that delivery's own `ctx`; return its asynchronous work so consumed calls finish within
+  the delivery. Subscriptions don't replay earlier changes. Set them up again on startup
+  after a consumer worker stops. Provider-side subscriptions to other contracts'
+  observables aren't supported yet; UI clients can subscribe to them.
+- **Permissions.** Declare every consumed contract and any provider restrictions with
+  `pkg.consumes`. Set tool admission with `accessLevel`; declaring a dependency does not
+  grant authority above the caller's limits. Owned-state access stays within the package
+  and its data context. Secret variables aren't readable by package code; System HTTP can
+  inject a declared credential without returning its value. Use `pkg.network` to declare
+  allowed HTTPS hosts. See [Tools and access](../System/Tools).
+- **Boundary values.** Plain data, `Date`, and `Uint8Array` can cross the worker boundary.
+  Functions, unsupported objects, cycles, non-finite numbers, oversized values, and
+  excessive nesting are rejected. Observable values must be JSON-compatible.
+- **Replacement.** A successful update stops the old worker; a failed replacement keeps
+  the previous version running. Package removal and shutdown also stop it. Cleanup hooks
+  don't run after a crash or forced kill, so recover persistent jobs on startup if needed.
 
-The default new-package scaffold uses an **isolated package** artifact so contract providers run
-outside the Electron host process. The host never evaluates provider source. Legacy
-`definePackage()` artifacts remain supported for existing packages.
-
-- **Format.** The existing `package.bundle.js` slot starts with
-  `PEERS_ISOLATED_PACKAGE_V1` followed by a JSON envelope: package/version identity,
-  provided contracts, optional package-owned `manifest.tables`, declared
-  consumes, optional `appNavs`, and `providerSource`. Provided contracts can
-  expose selected tables with name-only references and expose typed observables,
-  stored in package pvars or held by the worker. A recognized but malformed envelope
-  **fails closed** and never falls back to `new Function`. Older table-less
-  and tool-only artifacts remain valid. Earlier schema-bearing
-  `provides[].tables` entries are rejected rather than migrated.
-  Optional `manifest.network` declares HTTPS hostnames and credential refs.
-  See [System HTTP](../System/HTTP.md).
-- **Guest API.** Set `manifest.guestApi: 2`. Provider source registers handlers with
-  `registerContractTool(contractId, version, toolName, async (args, ctx) => { ... })`. Each
-  call gets its own `ctx`, which carries the host functions bound to that call:
-  `callConsumedTool`, `callRemoteTool`, `callConsumedTable`, `getConsumedTableRecord`,
-  `saveConsumedTableRecord`, `getConsumedObservable`, `setConsumedObservable`,
-  `subscribeConsumedEvent`, `subscribeConsumedTableEvent`, `emitContractEvent`, the owned
-  table helpers (`callOwnedTable(tableName, operation, args)` for any table method, including
-  `list` with a filter and options, plus `getOwnedTableRecord`, `saveOwnedTableRecord`,
-  `listOwnedTableRecords`, and `deleteOwnedTableRecord`), `getOwnedPersistentVar`,
-  `setOwnedPersistentVar`, and `watchOwnedPersistentVar`, and the in-memory observable
-  helpers `publishOwnedObservable` and `onOwnedObservableSet`. Pass `ctx` to any helper that
-  needs it; there are no global helpers. A package declared with `definePackage` rarely calls
-  these itself: its table and contract handles take the `ctx` and make the calls, and its
-  variables (`deviceVar` and the rest), events, and observables need no `ctx`
-  ([Declaring a package](./declaring-a-package)).
-  `onWorkerStart(async (ctx) => { ... })` runs after the source is evaluated, with a `ctx`
-  bound to no call: use it for subscriptions and other startup or background work (its owned
-  state, emits, and subscriptions work; its consumed calls are denied). Worker startup waits
-  for the hook's promise within the evaluation deadline, and a hook that throws or rejects
-  fails the start, so the package's calls fail too. Start long-running work without awaiting
-  it, and catch failures the package can live with, such as subscribing to an optional
-  contract that isn't installed.
-
-  ```js
-  // Reads then writes the row, so changes to one item run one at a time (see below).
-  registerContractTool(CONTRACT_ID, 1, "rename", (args, ctx) =>
-    withItem(args.itemId, async () => {
-      const item = await ctx.getOwnedTableRecord("Items", args.itemId);
-      await ctx.saveOwnedTableRecord("Items", { ...item, name: args.name });
-      await ctx.emitContractEvent(CONTRACT_ID, 1, "itemChanged", { itemId: args.itemId });
-      return { ok: true };
-    }),
-  );
-  ```
-
-  **Calls run concurrently.** A slow call, such as one waiting on System HTTP, doesn't hold
-  up the package's other calls, and event callbacks run alongside them too. Startup hooks
-  run concurrently with each other; calls and event deliveries wait until all hooks finish.
-  Work a hook starts without awaiting can overlap later calls. The package orders whatever
-  state these operations share.
-  A handler that reads a row and then writes it back can lose another call's update, so keep
-  a small queue in module state and run such changes through it, one queue per record or
-  one for the whole package as the state requires:
-
-  ```js
-  const changes = new Map(); // record id -> the last queued change
-
-  function withItem(itemId, change) {
-    const run = (changes.get(itemId) ?? Promise.resolve()).then(change, change);
-    const settled = run.catch(() => undefined);
-    changes.set(itemId, settled);
-    settled.then(() => {
-      if (changes.get(itemId) === settled) changes.delete(itemId);
-    });
-    return run;
-  }
-  ```
-
-  Time spent waiting in such a queue counts against the call's deadline, so a tool that can
-  queue behind slow work needs a `timeoutMs` that covers it (or should use the job pattern
-  below). A handler that takes a queue and then makes a consumed call that comes back into
-  the same package and the same queue waits for itself until the timeout; don't hold a queue
-  across such a call.
-
-  **Timeouts reject the call, not the worker.** When a call passes its deadline (the
-  runtime's default, or the tool's `timeoutMs`, at most 120 s), the caller gets an error, and
-  the handler, module state, and timers keep running; its later consumed calls are denied,
-  while owned-state writes still go through. The worker is terminated only when it then fails
-  a liveness ping, meaning its event loop is stuck (for example a busy loop). For work longer
-  than a call should wait (a login flow, draining a node), have a start tool record a job row
-  and return its ID, write progress to that row as the work runs, and offer a cancel tool;
-  consumers watch the row with `dataChanged`:
-
-  ```js
-  const jobErrors = new Map(); // Persistence failures, available while this worker lives.
-
-  registerContractTool(CONTRACT_ID, 1, "start-drain", async (args, ctx) => {
-    const jobId = args.jobId; // the caller allocates it with newid()
-    await ctx.saveOwnedTableRecord("Jobs", { jobId, state: "running", log: "" });
-    // This outlives the call: owned state, emits, and local work only; consumed calls are denied.
-    // drain must await each progress callback so its write failures reach this chain.
-    drain(args.node, (line) => ctx.saveOwnedTableRecord("Jobs", { jobId, state: "running", log: line }))
-      .then(
-        () => ctx.saveOwnedTableRecord("Jobs", { jobId, state: "done", log: "" }),
-        (error) => ctx.saveOwnedTableRecord("Jobs", { jobId, state: "failed", log: String(error) }),
-      )
-      .catch((error) => {
-        // The worker may have been replaced or storage may be unavailable. Keep the
-        // failure available to a status tool without starting another unhandled write.
-        jobErrors.set(jobId, String(error));
-      });
-    return { jobId };
-  });
-
-  registerContractTool(CONTRACT_ID, 1, "drain-status", async (args, ctx) => ({
-    job: await ctx.getOwnedTableRecord("Jobs", args.jobId),
-    persistenceError: jobErrors.get(args.jobId) ?? null,
-  }));
-  ```
-
-  **Identity.** The host learns which package is calling from the worker the message arrives
-  on, never from the message. Each call's principal stays on the host; a `ctx` carries only
-  that call's opaque invocation ID. Package code that keeps another call's `ctx`, or otherwise
-  reuses a live invocation ID (a privileged package can forge its own IPC), acts with that
-  call's authority while it is still running, so a package can mix up the authority of its
-  own concurrent callers, but never another package's.
-
-  **Legacy packages.** A manifest without `guestApi` keeps the older global helpers
-  (`callConsumedTool`, `getOwnedTableRecord`, `emitContractEvent`, and so on, plus `callHost`),
-  and the host runs its calls one at a time. With `guestApi: 2` those globals are removed.
-  Hosts that predate `guestApi` reject a manifest that sets it, so a package that moves to it
-  needs the newer host on every device that runs it.
-
-  **Guest API 3: the package serves its own contract members.** `guestApi: 3` is guest API 2,
-  plus: the host sends every consumer call on the package's contract tables, observables, and
-  events (reads, writes, `subscribe`, and `unsubscribe`) to its worker, under the caller's
-  authority, through the guest handler `contractMemberHandlerName(contractId, version)`, and
-  passes every table change, event payload, and observable value bound for a subscriber
-  through `contractDeliveryHandlerName(contractId, version)` first, under that subscriber's
-  authority, in order, so the package may change or drop it. If the worker can't start, those
-  calls fail. An explicit unsubscribe waits for the running provider's handler and reports
-  its failure; automatic cleanup does not wait. The package's own owned-table and variable
-  calls, and sync, go straight to storage. Packages declared with `definePackage` use it:
-  `servePackage` registers both handlers, which answer through each table's class
-  (`PackageTable`; see [Overriding table methods](./declaring-a-package#overriding-table-methods))
-  and each observable's source. With guest API 2, the host serves contract tables and stored
-  observables from storage, without the worker. Hosts that predate guest API 3 reject it.
-- **Providers.** A guest addresses one provider with
-  `ctx.callConsumedTool(contractId, version, toolName, args, { providerPackageId })`.
-  The local UI router honors the same field. Remote routers ignore it.
-  `listContractProviders` on the System Contract Catalog returns every installed provider, and
-  `getContractDefinition` returns a registered version's definition with its tools' access levels
-  ([generating a declaration from it](./declaring-a-package#getting-a-declaration-you-dont-have)).
-- **Host.** Electron and peers-headless each register an `IIsolatedPackageRuntime`
-  factory before `initializePeerDevice` (registration sites are under
-  **Compatibility** below). `PackageLoader` installs the manifest into the per-data-context
-  `ContractRegistry` and stores source for a supervised SES worker or privileged
-  Node process. The provider starts lazily on the first tool call. Each data context
-  constructs its table container before the package loader so isolated
-  package-owned tables receive a host gateway. Local-dev isolated packages
-  prefer `dist/package.bundle.js` from the stored checkout path over a stale
-  Files bundle so a rebuild can introduce a new contract version. Beta and
-  stable versions always load their selected stored artifact; a local checkout
-  cannot override them. The artifact package ID and semantic version must match
-  the selected `PackageVersion` (with dev-only version correction for a rebuilt
-  local artifact).
-- **Tables.** Isolated packages declare every package-owned schema once at
-  `manifest.tables`.
-  Authors provide a package-local name, primary key, fields, optional schema
-  version, and optional `localOnly`—never `tableId`, visibility, contract identity, or
-  a physical name. The
-  logical name must be unique among that package's tables. The
-  host derives an internal 25-character table ID for `TableDefinitions` and stores
-  the table as `${logicalTableName}_${packageId}`. Guest code receives copied
-  records through `ctx.getOwnedTableRecord`, `ctx.saveOwnedTableRecord`,
-  `ctx.listOwnedTableRecords`, and `ctx.deleteOwnedTableRecord`, at any time while its
-  worker runs (see **Background work** below). The host binds package identity, route context, and authority;
-  guessed physical or system table names are not declarations. A provided
-  contract can expose a schema with `{ name }` in `provides[].tables`. With guest API 3,
-  the host forwards the six standard methods through the provider's worker and table class;
-  older packages use host storage directly. Both bind the trusted provider package and
-  logical table name. Unreferenced tables remain private. The owning worker can
-  also list and delete its rows. Custom table methods
-  are not exposed. Guests can subscribe to contract-exposed table `dataChanged`
-  as described below.
-  `localOnly: true` keeps a table's rows on the device that writes them: no change
-  rows are recorded and no row syncs, while the schema still reaches every device, each
-  with its own copy. Use it for per-device state such as caches or what a device
-  observed locally. It isn't part of a contract's table shape: a contract can expose a
-  local-only table, and a consumer reads the copy on its own device. A later schema version
-  can switch the flag either way. Hosts that predate the flag reject a manifest that sets
-  it. See
-  **[Local-only tables](../System/Tables#local-only-tables)**.
-  These guarantees apply to bridge operations. Privileged providers have direct OS
-  access, while legacy host-evaluated packages can still import tables directly.
-  The host validates the package's complete declaration batch before publishing
-  any new table binding.
-  All peers that sync a group must be upgraded before that group uses isolated
-  package tables: older hosts derive the physical name from `tableId`, while
-  current hosts intentionally use `${logicalTableName}_${packageId}`.
-  Renderer table calls (`tableMethodCall`) resolve against the host's registered
-  tables first; when no package on the device registered the name, the host
-  falls back to the synced `TableDefinitions` record for it. A UI bundle that
-  references a table its host's loaded package version does not declare (for
-  example, a device that has not yet activated the newer version) still reaches
-  the table's data with the synced schema instead of failing.
-- **Persistent variables.** Isolated provider code can call
-  `ctx.getOwnedPersistentVar(scope, name)` and
-  `ctx.setOwnedPersistentVar(scope, name, value)` at any time while its worker runs.
-  With `guestApi: 2` or later, `ctx.watchOwnedPersistentVar(scope, name, handler)` resolves to an unwatch
-  function and calls `handler()` whenever the stored value changes, including through device
-  sync; read the value again in the handler. The watch belongs to the running worker: it ends
-  when the worker stops, so a change never starts a worker, and a notification carries no
-  caller identity. A package declared with `definePackage` uses `deviceVar` and the other
-  variable helpers instead, which do this for it.
-  The host derives `${packageId}_${name}` from the worker's trusted
-  identity before scope handling and deterministic ID generation. It uses the
-  existing pvar rows and canonical factories—there is no new persisted package
-  column. `device`, `user`, `group`, `groupDevice`, and
-  `groupUser` are supported; group-dependent scopes append the trusted route
-  context. Guest-supplied package, context, or authority fields cannot redirect
-  access. Secret rows are explicitly denied to guest pvar helpers; System HTTP
-  may inject a package's declared credential without exposing its value.
-  Shared/global pvars are deliberately deferred.
-- **Contract observables.** A provided contract may bind an observable to a
-  package-owned pvar by declaring its scope, logical pvar name,
-  JSON-compatible default, value type, and `writable` flag. Normal renderer/host
-  contract consumers can get, set when writable, and subscribe. Canonical pvar
-  changes—including changes applied by device sync—notify subscribers, as do
-  writes through either the contract or the provider's owned-pvar helper. A stored
-  `null` reads as the default. The
-  pvar binding is host-only and never lets a consumer supply package or physical
-  storage identity. Isolated guest subscriptions remain deferred.
-- **In-memory observables.** With `guestApi: 2` or later, an observable declared without a
-  `persistentVar` is held by the worker. The worker publishes its value with
-  `ctx.publishOwnedObservable(contractId, version, observableName, value)` at any time
-  while it runs; the host checks the value against `valueType`, keeps the latest for
-  reads, and pushes it to subscribers. A read starts the worker, like a tool call, so the
-  worker should publish from `onWorkerStart`. Each new worker starts with no value, and a
-  read fails until it has published. With guest API 2, a write to a writable one calls the handler registered
-  with `ctx.onOwnedObservableSet(contractId, version, observableName, handler)` with no
-  invocation frame, so it carries no caller authority (observables have no access
-  level); the handler stores and publishes the value and returns it. Guest API 3 routes reads,
-  writes, subscriptions, and deliveries through the member and delivery handlers under the
-  caller's authority, as described above. Subscriptions are the
-  host's and stay attached across worker restarts; a replacement clears the value, and one
-  that drops the observable, or an uninstall, ends them. The value starts over with each
-  worker. `definePackage` packages get all of this from `defineObservable`
-  ([Observables](./declaring-a-package#observables)).
-- **Contract events.** A provided contract may declare `events` with a `name`,
-  `description`, and optional `payloadFields` (an events-only contract is
-  valid). The host owns an emitter per declared event from install time, so a
-  worker restart does not drop subscribers; uninstall, or a replacement that
-  removes the event, detaches them. Provider code emits at any time while its
-  worker runs with `ctx.emitContractEvent(contractId, version, eventName,
-  payload)`, or, in a `definePackage` package, with `emit` on the event from
-  [`defineEvent`](./declaring-a-package#events); the host rejects undeclared events and
-  payloads that do not match `payloadFields`. Renderer
-  and host consumers subscribe with `consumer.events[name].subscribe(handler)`.
-  Another isolated package on the same device may subscribe with
-  `ctx.subscribeConsumedEvent(contractId, version, eventName, handler)` once its
-  worker is running (lazy: `startProvider` or a first tool call); `onWorkerStart` is the
-  usual place. Each delivery calls `handler(payload, ctx)` with that delivery's own `ctx`. The host holds
-  the live subscription and delivers into the consumer worker; payloads emitted
-  before that attach are not replayed. Events stay local (no `pkg.remote()` /
-  mesh delivery) and carry no per-event access level yet. An isolated guest can
-  also subscribe to a **host or system** contract event with
-  `ctx.subscribeConsumedEvent`. The runtime holds a provider endpoint until
-  unsubscribe, package replacement, or uninstall, and each delivery wakes the
-  consumer worker (starting it when that generation is not running). There is
-  no replay. The delivery waits for all promises returned by the guest handlers, including
-  when one handler rejects, so
-  a handler can finish a `ctx.callConsumedTool` before the invocation ends. Guest
-  subscriptions to observables are still deferred.
-- **Background work.** A package's own tables, pvars, and events don't need an
-  active tool invocation. Provider code can use them from the `onWorkerStart` ctx, and
-  through a call's `ctx` after that call returns: from a promise that settles later, a timer,
-  or (in privileged mode) a child process's output. The writes are the same as during a
-  call, and consumers' `dataChanged` handlers see them. The host accepts these calls only from the
-  package's current worker; once a version is replaced, uninstalled, or its worker
-  is stopped (crash or stuck event loop), that worker's calls are denied. Calls into other
-  contracts (`ctx.callConsumedTool`, consumed tables and observables) still need an
-  active invocation, because they act with the caller's access level; they are
-  denied at eval time and from background work. A denied call rejects in the guest,
-  and the host logs each denial message once per installed package generation
-  (worker restarts retain that generation; replacement or reinstallation creates a new one).
-- **Table `dataChanged`.** Consumers may call
-  `consumer.tables[name].dataChanged.subscribe(handler)` on a contract-exposed
-  isolated table. The host attaches to the real `Table.dataChanged` event, so
-  writes through the contract proxy, the provider's `ctx.saveOwnedTableRecord`, and
-  device sync all notify with the usual `{ dataObject, op, source }` payload.
-  Private tables are rejected exactly like CRUD; `dataChanged` is the only
-  table event supported. An isolated guest uses
-  `ctx.subscribeConsumedTableEvent(contractId, version, tableName, eventName, handler)`:
-
-  ```js
-  onWorkerStart(async (ctx) => {
-    const unsubscribe = await ctx.subscribeConsumedTableEvent(
-      itemsContractId, 1, "Items", "dataChanged", async ({ dataObject, op, source }, delivery) => {
-        await delivery.callConsumedTool(auditContractId, 1, "recordChange", { dataObject, op, source });
-      },
-    );
-    // When the consumer no longer needs notifications:
-    // await unsubscribe();
-  });
-  ```
-
-  The helper supports isolated providers through the host table gateway and
-  host/legacy providers through a live provider endpoint. It forwards the complete
-  `{ dataObject, op, source }` payload unchanged, including `source: "local"` and
-  `source: "remote"`. Here `remote` means a change applied by device sync; this
-  does not add a remote subscription transport or mesh events.
-
-  The consumer must declare the contract in `consumes` (or provide it itself),
-  and provider selection respects its allowlist. Only tables exposed by that
-  contract are available; private or undeclared tables and events other than
-  `dataChanged` are rejected. Registration may run during worker evaluation or
-  between tool invocations, but the worker must already be running through
-  `startProvider` or a first tool call. Subscribing does not activate a dormant
-  package and does not replay earlier changes.
-
-  The returned promise resolves to an idempotent unsubscribe function. Local
-  handlers for the same table event share one host subscription, which detaches
-  after the last handler unsubscribes. Raw `contract.consume` registrations reserve
-  their subscription ID while attachment is pending; concurrent duplicates are
-  rejected. Unsubscribe or teardown cancels pending registrations too, and any
-  attachment that finishes afterward is detached. Delivery awaits promises returned
-  by the handlers, so consumed-tool calls, which need the delivery's trusted
-  invocation, can finish before it ends. Source writes do not wait for these callbacks.
-  Failed consumer worker startup (including evaluation timeouts), worker teardown,
-  replacement, or uninstall detaches subscriptions and disposes retained host endpoints;
-  isolated provider replacement or uninstall also detaches its guest table
-  subscribers. Detached subscriptions receive no further callbacks and are not
-  automatically reattached.
-- **Routing.** For package-registered contracts,
-  `createLocalUserContextContractProviderRouter` resolves an isolated or
-  resolver-backed endpoint only for the provider selected by that context's
-  `ContractRegistry`. Legacy unscoped resolvers remain available only when no
-  registry provider exists. Package-to-package tool, table, observable, and
-  event consumes go back through the trusted host. The caller must declare the exact
-  consume and its provider allowlist must accept the resolved package; guest
-  payloads cannot choose provider identity or authority. `alsoImplements` aliases
-  route older consumer versions to the validated compatible implementation
-  version.
-- **Boundary values.** Plain values, `Date`, and `Uint8Array` cross the worker
-  boundary with collision-safe tags and retain their Peers table/pvar types.
-  Functions, unsupported objects, non-finite numbers, cycles, oversized values,
-  and excessive nesting are rejected.
-- **Access.** When a tool supplies `suggestedAccessLevel`,
-  `IsolatedAccessPolicy.getEffectiveToolLevel` uses that value. Omit admission
-  on a `preserve` tool and the level is None; omit it on any other tool and the
-  level remains Self. Preserve is still capped by the trusted incoming
-  authority. There is no operator grant machinery. Direct user calls use the
-  trusted local `DataContext` access level.
-  Persistent approval storage/UI is a later tools-system milestone; the first
-  smoke path runs in the personal context.
-- **Compatibility.** Legacy `definePackage()` bundles and renderer route/UI bundles
-  are unchanged. Isolated packages do not yet expose custom table methods or
-  table events other than `dataChanged`, isolated-guest observable
-  subscriptions, owned-pvar subscriptions, mesh events, or global pvar grants.
-  Guests can subscribe to contract events and table `dataChanged` from isolated
-  and host/legacy providers; see the sections above.
-  Electron and peers-headless register the production isolated runtime.
-  Electron calls `registerElectronIsolatedPackageRuntime` from
-  `peers-electron/src/server/peers-init.ts` (factory in
-  `peers-electron/src/server/isolated-package-runtime.ts`). peers-headless calls
-  `registerHeadlessIsolatedPackageRuntime` from `peers-headless/src/start.ts`
-  (factory in `peers-headless/src/isolated-runtime.ts`). Browser worker
-  infrastructure exists, but the PWA does not register a production isolated
-  runtime. PWA safely skips valid isolated provider artifacts instead of
-  failing device startup; those providers and their contract tools remain
-  unavailable there. Malformed artifacts and package-ID mismatches still fail
-  closed on every host. When a package changes between legacy and isolated
-  execution on a supporting host, the replacement becomes active only after it
-  is ready; a failed replacement leaves the prior provider active. A device
-  without isolation support may temporarily run
-  the newest older eligible legacy version and records that choice only in its
-  existing device-local package preference; when isolation support becomes
-  available, it retries and restores the originally selected version.
-
-The package template declares its contract with `definePackage`, and `peers-package build`
-writes the envelope ([Declaring a package](./declaring-a-package)). A package can also write the
-manifest and provider source by hand
-([Writing the manifest by hand](./getting-started#writing-the-manifest-by-hand)).
-
-This is not a production security claim. An SES escape still reaches Worker ambient
-APIs; `Worker.terminate()` remains the availability path. See
-[`peers-isolate/README.md`](https://github.com/peers-app/peers-isolate) for the
-runtime surface.
+For declarations and build options, see [Declaring a package](./declaring-a-package).
 
 ### Observing lazy worker startup
 
 The `official-packages/isolation-smoke` and `isolation-consumer` packages are e2e
 and runtime-test fixtures. Both declare their members in `src/package.ts` with
 `@peers-app/peers-sdk/define`; `npm run build` runs `peers-package build` and builds
-their renderer bundles. Their manifests declare `guestApi: 3`.
+their renderer bundles.
 
 Isolation Smoke provides contract versions 2–5 under the same contract id.
 v4 provides `observeWorker`, backed by a package-private `IsolationSmokeState` table and
@@ -1067,10 +418,8 @@ table and `invocationCount` are reachable only through the tool. v3/v2 remain
 tool-only contracts; v5 adds `probeGrant`, `watchGrant`, and `lastFolderEvent`,
 consuming System Local Folders v1 through `contractRef`. v4/v5's `observeWorker`
 allows remote group Writers (access level 40); the other tools remain local-only.
-The private table's physical name is
-`IsolationSmokeState_00mt4wmj0h50697f5l3zz6mka`; the pvar's physical name is
-`00mt4wmj0h50697f5l3zz6mka_invocationCount`. Both fixture screens use `hostContract`
-in the selected context; Smoke's screen calls v5. To check them manually in a test context:
+Both fixture screens use `hostContract` in the selected context; Smoke's screen calls v5.
+To check them manually in a test context:
 
 1. Build and import the package, then select its context. Registration leaves
    its worker dormant until a contract call needs it.
@@ -1084,7 +433,7 @@ in the selected context; Smoke's screen calls v5. To check them manually in a te
    one while both persisted counts continue.
 6. Click **Increment public state** to update the public table and observable
    through the provider worker. This action also starts the worker if needed:
-   guest API 3 table and observable calls run through the package.
+   table and observable calls run through the package.
 7. Import `official-packages/isolation-consumer`; its worker consumes v4 and
    increments the same public values. Private names, guessed physical/system
    names, and undeclared members fail closed.
@@ -1100,5 +449,5 @@ without granting additional caller authority.
 - **[Getting started](./getting-started)** — package system overview.
 - **[Package lifecycle](./package-lifecycle)** — develop, release, and run package versions.
 - **[Package lifecycle design](../Roadmap/package-lifecycle)** — design rationale and shipped vs planned work.
-- **[System: Tools](../System/Tools)** — tool authoring, `schemaToFields`, and how tool schemas flow into contracts.
-- **[System: Tables](../System/Tables)** — field-level shapes today use `IField` / Zod-derived metadata.
+- **[System: Tools](../System/Tools)** — tool catalog, access levels, and authority propagation.
+- **[System: Tables](../System/Tables)** — storage, local-only tables, and sync.

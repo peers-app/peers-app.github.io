@@ -7,7 +7,8 @@ title: Tables
 
 Peers models most structured data with **tables**: typed rows backed by metadata, Zod schemas, and a pluggable **data source** (local SQLite in the desktop app, `ClientProxyDataSource` in the renderer, IndexedDB-backed paths in the PWA, and so on).
 
-Application code usually obtains a table through **`UserContext`** helpers (for example `Messages()`, `Tasks()`, `PersistentVars()`) rather than constructing `Table` instances by hand.
+Package authors declare tables with `defineTable` from `@peers-app/peers-sdk/define` and
+use the returned handle with a handler's `ctx`. See [Tables in a package](../Packages/declaring-a-package#tables).
 
 :::tip Work in progress
 
@@ -47,7 +48,7 @@ A table whose metadata sets `localOnly` keeps its rows on the device that writes
 
 For package tables, the schema still syncs through `TableDefinitions`. So every device in the group has its own, separate copy, and a device keeps the table out of sync even before it loads the package that declared it.
 
-An isolated package declares one by setting `localOnly: true` on a `manifest.tables` entry (see **[Package contracts](../Packages/contracts#isolated-contract-packages-electron)**). Whether a table syncs is the provider's choice and isn't part of any contract: a contract can expose a local-only table like any other, and a consumer reads the copy on its own device.
+A package declares one by setting `localOnly: true` in `defineTable` (see **[Tables in a package](../Packages/declaring-a-package#tables)**). Whether a table syncs is the provider's choice and isn't part of any contract: a contract can expose a local-only table like any other, and a consumer reads the copy on its own device.
 
 A later schema version can switch a table either way. Changing the flag is a schema change, so it needs a higher `versionNumber`.
 

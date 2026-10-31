@@ -23,8 +23,8 @@ dev ──▶ beta ──▶ stable
 | **beta** | Promote in the package Versions UI or with `peers packages promote` | Yes | Only on devices following `stable,beta` or `*` |
 | **stable** | Promote in the package Versions UI or with `peers packages promote` | Yes | On devices using the default follow policy (`stable`) |
 
-The platform assigns `versionTag` (dev / beta / stable). Do not set it in an isolated manifest,
-`definePackage()`, or contract definitions.
+The platform assigns `versionTag` (dev / beta / stable). Do not set it in
+`definePackage()` or contract definitions.
 
 **Metadata vs bundle bytes:** `PackageVersions` (and related `Files` records) sync as group data. As soon as a version record arrives, this device also downloads that version’s package, routes, and UI bundles into the local chunk cache so later activation or UI load does not wait on a peer. A downloaded version is **not** automatically activated. The device waits until the current sync has applied every page and saved its watermark, then evaluates the final package state once using its pin, follow, and device-override rules. An incompatible bundle can fail to load without blocking metadata sync or preventing a newer version from arriving. If a peer cannot provide a bundle yet, metadata sync still succeeds and the missing chunks retry when another peer becomes available.
 
@@ -68,7 +68,7 @@ The broken build is still saved as the dev version, but this device keeps runnin
 :::
 
 App icons in the apps list come from `appNavs` on the **active PackageVersion** (copied from
-the isolated manifest or legacy package definition when bundles are installed). Startup sync
+the manifest generated from `pkg.appNavs` when bundles are installed). Startup sync
 always persists `appNavs` onto new versions, including when the group is currently on a stable
 build.
 
@@ -146,7 +146,7 @@ To test with other devices before a stable release:
 
 ## Contracts and stable releases
 
-Contract maturity follows the package channel. New contract shapes can evolve freely in **dev** and **beta** builds. Stable releases of isolated packages freeze their provided contract versions when loaded. Host-backed packages do not yet freeze contracts at runtime; use the source-controlled guard below before releasing them.
+Contract maturity follows the package channel. New contract shapes can evolve freely in **dev** and **beta** builds. Stable releases freeze their provided contract versions when loaded. Use the source-controlled guard below to catch incompatible changes before releasing them.
 
 If you need to extend a **frozen** contract after stable, increment the contract version and keep
 serving the old version's consumers: list it in **`alsoImplements`** when the new shape satisfies
@@ -177,19 +177,15 @@ on:
 
 Malformed contract definitions and duplicate contract identities fail the check and cannot be frozen.
 The check also compares shapes carried by `alsoImplements` against previously frozen versions.
-Malformed `alsoImplements` declarations in a host-backed bundle fail the check too.
 
 To change a frozen contract, declare a new version, with `alsoImplements` naming the frozen one
 when the change is backwards compatible. A package may stop serving a frozen version, neither
 providing it nor listing it in `alsoImplements`; the check notes it, since that version's
-consumers lose this provider. A package built some other way can point the
-command at its built bundle: `--bundle dist/package.bundle.js`. Build the exact version you intend
-to release first. For a host-backed package, add
-`npx peers-package contract freeze --check --bundle dist/package.bundle.js` after each build in
-your build script or CI; other build tools do not check this file automatically. Host-backed
-bundles execute in Node when read, so use your own trusted build. Isolated artifacts are read
-without running their provider code. Bundle paths are relative to your current directory, even
-with `--root`.
+consumers lose this provider. To check the exact artifact you intend to release, build it with
+`peers-package build`, then run
+`npx peers-package contract freeze --check --bundle dist/package.bundle.js`. The check reads
+the generated manifest without running the provider code. Bundle paths are relative to your
+current directory, even with `--root`.
 
 ## Related
 
