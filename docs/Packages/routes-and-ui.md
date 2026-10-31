@@ -130,6 +130,8 @@ export const AppScreenUI: IPeersUI = {
 
 Build the UI bundle with a dedicated webpack config (entry: `src/uis.ts`, output: `dist/uis.bundle.js`). The template includes a working `webpack.uis.config.js`. React, `@peers-app/peers-sdk`, `@peers-app/peers-ui`, and `zod` must be listed as **externals** since the runtime provides them as globals.
 
+For spreadsheet-style package screens, see [Editable grids and lookups](./editable-grids) for observable-backed cell editing, sorting, and relationship typeahead.
+
 ## Global overlays
 
 Screens render inside the active tab and unmount when you switch tabs. When a package needs UI that stays visible **across all tabs and apps** — a floating widget, a persistent indicator, a heads-up panel — it can register a **global overlay** instead.
