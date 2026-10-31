@@ -559,7 +559,7 @@ peers packages create "My Package" --location ~/code/my-package
 peers packages reload <packageId>               # exits 1 if the new version fails to load
 peers packages reload --all
 peers packages activate <packageId> [<packageVersionId>] [--group]
-peers packages promote <packageVersionId> beta  # or stable; prints signed and activated
+peers packages promote <packageVersionId> beta [--group] # or stable; reports what the group runs
 peers packages list --device <deviceId>         # run on another of your devices (Self trust)
 peers packages install <packageId> --from personal -c <groupId>
 peers packages uninstall <packageId>
@@ -568,9 +568,24 @@ peers packages capabilities --json
 
 With `--json`, `list` prints one JSON object per line and every other command prints one
 object. A failed operation exits `1` and prints `Error: <message>` to stderr. After a
-failed `reload`, the previous version keeps running; `peers packages get` shows
-`runtime.lastError`. See [Packages](./Packages.md#requested-and-observed-state) for the
-runtime fields.
+failed `reload`, the previous code keeps running; `get` shows load errors in
+`runtime.lastError`. Changed builds at a released number are refused: bump `version` in
+`package.json`, rebuild, and reload. An identical release creates no dev version or device
+selection. Single reload restarts the selected version; `reload --all` leaves unchanged
+packages running and exits `1` if any package fails. Page refresh also checks folders and
+logs failures to the developer console. See [Packages](./Packages.md#requested-and-observed-state).
+
+`promote` says what the group runs, including when it already selected that version.
+If the selection stays unchanged, it explains why and gives the activation command.
+Add `--group` to select the release for the group and follow it here (Admin), preserving
+pin and update policies. If activation fails, promotion is kept; retry activation.
+A Peers host too old for `--group` still promotes, but `promote` exits `1` and gives the
+`activate ... --group` command to run. JSON results include optional `groupActivePackageVersionId`, `groupRunsPromotedVersion`,
+and `activationNote` fields.
+
+When the group's version **isn't on this device**, `get` warns that it may not have synced
+yet (`requested.groupVersionMissing` in JSON). Wait for sync, or select an available release
+with `peers packages activate <packageId> <packageVersionId> --group` (Admin; same `-c <groupId>`).
 
 `--device` targets must trust you as Self. In personal context, another account's device
 with that trust is reached only over a direct connection (for example on the same network),

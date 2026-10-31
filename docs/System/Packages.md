@@ -33,6 +33,7 @@ peers packages activate <packageId> <packageVersionId>  # run a version on this 
 peers packages activate <packageId>         # drop the device override; follow the group
 peers packages activate <packageId> <packageVersionId> --group  # set the group's version
 peers packages promote <packageVersionId> beta           # dev -> beta (or stable)
+peers packages promote <packageVersionId> beta --group   # also select it for the group (Admin)
 peers packages install <packageId> --from personal       # copy a package into a group
 peers packages uninstall <packageId>        # remove it from the context
 peers packages defaults                     # install the default packages
@@ -43,7 +44,7 @@ Add `-c <groupId>` to work in a group. The default is your personal context. Add
 for machine-readable output: `list` prints one JSON object per line, and every other
 command prints one object. `get` returns the same shape as the `getPackage` tool below, and
 `promote` prints the whole `promotePackageVersion` result, including `signed` and
-`activated`. Version ids come from `get`. With `--json`, app-startup progress goes to stderr
+`activated`, `groupRunsPromotedVersion`, and `activationNote`. Version ids come from `get`. With `--json`, app-startup progress goes to stderr
 so stdout stays parseable even when the desktop app needs to be started first.
 
 Exit code `0` means the operation succeeded. `1` means it failed. That includes an enabled
@@ -73,6 +74,7 @@ Each package summary has two parts.
 **`requested`**: what this device *should* run.
 
 - `groupActivePackageVersionId`: the group's version.
+- `groupVersionMissing` (optional): the group's version isn't on this device, possibly pending sync. `get` and Versions warn even with a device override. Wait for sync, or select an available release with `peers packages activate <packageId> <packageVersionId> --group` (Admin; same `-c <groupId>`).
 - `deviceActivePackageVersionId`: this device's override, when one is set.
 - `effectivePackageVersionId`, `version`, and `versionTag`: what results from the two.
 - `pinned`, `followRange`, and `followTags`: the version-follow policy.
@@ -129,10 +131,10 @@ calls until a replacement loads successfully.
 | Clone | Clones a git repository, builds it, and imports it. Repositories outside `github.com/peers-app` start disabled; enable one with `peers packages install <packageId>`. |
 | Install | Re-enables a disabled package, or copies one into this context from another of your contexts, then loads it. On the Packages screen, enter the package id in the search box. Fails with the load error if the package does not run; it stays installed. Installing is an explicit choice on this device: when the selected version is dev, it becomes this device's own selection, and other devices still have to activate it themselves. |
 | Activate | Selects a version for this device, or for the whole group with `scope: group`, then loads that exact version immediately. Explicit activation preserves the device's pin policy and clears any automatic compatibility fallback; later automatic resolution still uses the follow policy. Device scope with no version clears the override, so the device follows the group again. Fails with the load error if the selected version does not run; the selection is kept. A dev version can only be activated for this device; group scope refuses it, because dev builds never run on other devices until promoted. |
-| Reload | Rebuilds the dev version from the package folder when the bundles changed, then reloads the package on this device even when nothing changed. Fails, with the load error, if the result does not run. The broken build is still saved as the dev version while the previous code keeps running here, so status shows `failed` with the old `running` version until a reload succeeds ([details](../Packages/package-lifecycle.md)). When the rebuilt dev version reuses a version number that is already beta or stable, the result carries a `warning` (printed to stderr by the CLI): bump `version` in `package.json` so dev is always the next version. |
-| Reload all | Re-reads every enabled package folder on this device and reloads the packages whose bundles changed. The UI runs this on page load while **Reload packages on page refresh** is on. |
+| Reload | Reads the local build, then reloads the selected version even when unchanged. An identical release creates no dev version or device selection. Changed builds at a released number are refused: bump `version` in `package.json`, rebuild, and reload. Failures leave the previous code running ([details](../Packages/package-lifecycle.md)). |
+| Reload all | Checks every enabled package folder and reloads changed builds. Unchanged packages keep running. Released-number conflicts fail; the CLI exits `1` if any package fails. Page refresh does this by default and logs failures to the developer console. |
 | Uninstall | Deletes the `Packages` row for the whole context, so every member device unloads the package. Unloads it on this device immediately. Version rows, bundle files, device preferences, and the signing key are kept, so a later import keeps the same identity. |
-| Promote | Moves a stored version from `dev` to `beta` or `stable`, or from `beta` to `stable`; it never demotes. Re-tags the version, re-signs it with the package author key when this device has one (otherwise it is saved unsigned, with a warning, and a signature for the old tag is never kept), and appends `promoted:<tag>` to its history. Only the stored version's own fields are signed. When this device was running that version, the group is not pinned, and the group follows the new tag (default `stable`), the version is also activated: for the group, or only on this device when it overrides group settings. If that activation fails to load, the promotion is kept and the error says so. The Versions screen's **Promote** uses the same tool. Promotion refuses a build whose version number another build already holds as beta or stable; bump the version, rebuild, reload, and promote the new build. |
+| Promote | Moves `dev` to `beta` or `stable`, or `beta` to `stable` (Admin). Signs when the device has the key; otherwise warns. Reports what the group runs and, if unchanged, why and how to select the release. `--group` selects it for the group and follows it here, preserving pin and update policies; Versions offers **… and use for group**. If activation fails, promotion is kept; retry activation. A build duplicating a released number cannot be promoted: bump, rebuild, and reload. See [release selection rules](../Packages/package-lifecycle.md#releasing-to-the-group). |
 | Install defaults | Installs the default packages into the context. The UI and the `create-group` tool call it for every new group. |
 
 ## Who can release a version
@@ -227,7 +229,7 @@ role in that context. In your personal context you are Self, so every tool is al
 | `reloadAllPackages` | Writer (40) | Returns `{ skipped?, results: [{ packageId, name, ok, changed?, error? }] }`. |
 | `linkRemoteRepo` | Admin (60) | Desktop only. Creates a private GitHub repository with `gh`. |
 | `uninstallPackage` | Admin (60) | `{ packageId }` returns `{ packageId, removed }`. |
-| `promotePackageVersion` | Admin (60) | `{ packageVersionId, versionTag }` returns `{ packageId, packageVersionId, version, versionTag, signed, activated, warning?, package }`. See Promote above. |
+| `promotePackageVersion` | Admin (60) | `{ packageVersionId, versionTag, activateForGroup? }` returns `{ packageId, packageVersionId, version, versionTag, signed, activated, groupActivePackageVersionId?, groupRunsPromotedVersion?, activationNote?, warning?, package }`. `activateForGroup: true` is the CLI's `--group` option. See Promote above. |
 | `installDefaultPackages` | Admin (60) | `{ installed }` |
 
 The tools that add or change a package return
