@@ -6,7 +6,9 @@ sidebar_position: 12
 
 System Scheduler (`system.scheduler`) wakes an isolated package's own tool at a time, on this device. The guest has no `setTimeout` that survives the worker. It calls `schedule`, and the host stores the wake-up and invokes the tool.
 
-The desktop app and `peers-headless` provide it by importing `@peers-app/peers-device/scheduler`.
+It is available on desktop, headless and the PWA. On the PWA, scheduled work runs only while
+the app is open and the browser allows it to run. Overdue schedules catch up when the page
+resumes or the app is reopened. Keep the owning Peers tab open for timely alarms.
 
 ## Calls
 
@@ -26,7 +28,7 @@ The host re-arms a `setTimeout` that would exceed the platform maximum. A time t
 
 ## Host lifecycle
 
-Electron and headless call `startScheduler(userContext)` after package loading and system-data
+Electron, headless and the PWA call `startScheduler(userContext)` after package loading and system-data
 initialization. This restores persisted schedules without requiring a screen, widget, or another
 scheduler call. Future calls are armed for their due time; overdue calls run on the next timer turn.
 Repeated starts and concurrent first contract calls share one restoration.

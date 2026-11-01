@@ -15,9 +15,9 @@ the desktop and PWA applications.
 
 - **Desktop (Electron):** push-to-talk, optional wake listening while the Voice Hub screen is
   open, and the Live interface.
-- **PWA and other browsers:** not supported yet. The PWA does not run isolated packages, so Voice
-  Hub's provider (transcription, voice actions, OpenAI speech, and Live) is unavailable there.
-  Browsers also cannot reliably keep wake listening running in the background.
+- **PWA:** the package and its sandbox provider load while Peers is open. System HTTP is not
+  available on the PWA yet, so OpenAI transcription, voice-turn responses, OpenAI speech, and
+  Live remain unavailable. Browsers cannot reliably keep wake listening running in the background.
 
 Voice Hub does not run as a hidden background service. Closing its screen releases the microphone.
 

@@ -69,6 +69,20 @@ Your own devices trust each other as Self, so you can control one from another (
 inspect or screenshot its UI with `peers ui … --device <deviceId>`, and restart it with
 `peers app restart --device <deviceId>` (see [System Host Shell](./Host-Shell.md)).
 
+## Using Peers in a browser
+
+The PWA runs one tab per account in a browser profile. Other tabs show **Peers is open in
+another tab**. Choose **Use it here** to move the device to that tab. Peers finishes pending
+work and saves its data before the new tab starts. The old tab then shows the same choice.
+If the owner is frozen in the background, return to it so it can finish the handover.
+Peers requires a browser with Web Locks to keep your data safe across tabs. If your browser
+cannot start Peers, update it or use a supported browser.
+
+Sandbox packages run while the PWA is open, and pause when the browser freezes it. Scheduled
+work catches up when the page resumes or the app is reopened. Privileged packages require
+desktop or headless. System HTTP is not yet available on the PWA, so Weather refreshes and
+Voice Hub's OpenAI features still require a desktop or headless host.
+
 ## Pending device invites
 
 Device admission uses the same `Invites` table as [contacts](./Contacts.md) and

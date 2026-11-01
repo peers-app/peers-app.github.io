@@ -306,14 +306,13 @@ only to an identity that should have the same control as the local user. Lowerin
 level resets every provider route for that connection, disposes live subscriptions, and
 causes subsequent calls to re-evaluate and fail.
 
-Granular per-package UI permissions and remote subscriptions remain deferred. Desktop and
-headless limit values crossing a package's worker boundary to 16 MB. PWA provider execution
-is not supported yet.
+Granular per-package UI permissions and remote subscriptions remain deferred. Desktop,
+headless and the PWA limit values crossing a package's worker boundary to 16 MB.
 
-## Isolated contract packages (Electron and headless) {#isolated-contract-packages-electron}
+## Isolated contract packages (desktop, headless and PWA) {#isolated-contract-packages-electron}
 
 Packages declared with `definePackage` and built with `peers-package build` run in supervised
-workers on Electron and headless. Peers reads the generated manifest without executing the
+workers on Electron, headless and the PWA. Peers reads the generated manifest without executing the
 package, then starts its code when a contract is first used. The build selects guest API 3;
 authors don't set a guest API version.
 
@@ -329,13 +328,18 @@ If a package needs a newer version of Peers, update Peers to use it.
   for those capabilities. `"privileged"` runs trusted package code in its own Node process
   with the user's OS access. It keeps contract permission checks, but direct OS access
   bypasses sandbox confinement. See [Provider execution modes](./getting-started#provider-execution-modes).
-  Routes and UI gain no Node access. PWA devices can receive package data but cannot run
-  package providers yet.
+  Routes and UI gain no Node access. The PWA runs sandbox providers; privileged providers
+  show “This package runs only on desktop or headless”. System HTTP is not available on
+  the PWA yet.
 - **Lazy startup.** Installation registers contracts, tables, and tool catalog entries
   without starting a worker. The first tool call, table read or write, observable access,
   or subscription starts it. Each package has a separate worker per data context.
   Loading a screen alone doesn't start its provider; a contract call from that screen does.
-  A package with only screens and no runtime work runs no worker.
+  A package with only screens and no runtime work runs no worker and loads even on a host
+  with no isolated runtime.
+- **PWA lifetime.** Packages run while the app is open. A frozen page pauses work; it resumes
+  with the page. System Scheduler runs overdue schedules at startup or when the page resumes.
+  Only one tab per account owns the device. See [Using Peers in a browser](../System/Devices#using-peers-in-a-browser).
 - **Every member goes through the package.** Consumer table calls run the table's class,
   observables use their declared sources, and subscriptions and notifications pass through
   the provider. If its worker cannot start, those calls fail. The package's own storage

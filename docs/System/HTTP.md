@@ -7,7 +7,9 @@ sidebar_position: 11
 System HTTP (`system.http`) performs outbound HTTPS for a sandboxed package, which has no
 `fetch`. Declare `pkg.consumes(SystemHttp)` with `SystemHttp` from
 `@peers-app/peers-sdk/define`, then call `SystemHttp(ctx).tools.request(...)` from a handler.
-It is available on desktop and headless hosts.
+It is available on desktop and headless hosts. It is not yet available on the PWA, even
+though sandbox package providers run there. Weather refreshes and Voice Hub's OpenAI
+features therefore still require desktop or headless.
 
 System HTTP, System Scheduler, System Contract Catalog, System Tool Catalog,
 System Host Tools, and System Desktop Tools are local-only contracts.

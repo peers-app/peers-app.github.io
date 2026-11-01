@@ -62,7 +62,7 @@ Create `RELEASES_FROZEN.md` at the monorepo root and in `peers-electron`,
 marker exists. Lift the freeze with one reviewed commit that removes all four
 markers, and re-enable a workflow only after its credentials are confirmed
 current. The 2026-10-02 freeze is recorded in
-`working/release-credential-exposure-incident.md`.
+`working/done/release-credential-exposure-incident.md`.
 
 Install [Gitleaks](https://github.com/gitleaks/gitleaks) 8.25.0 or newer on the
 release machine (`brew install gitleaks` on macOS). `npm run scan:secrets`

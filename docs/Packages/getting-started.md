@@ -180,7 +180,13 @@ The package's own code is not a webpack entry: `peers-package build` bundles it,
 `pkg.executionMode` accepts exactly `"sandbox"` or `"privileged"`. Omission keeps the
 SES sandbox: no ambient `process`, `require`, filesystem, or subprocess access. The field
 applies only to the package's code; routes and UI do not gain Node access. Privileged providers
-are supported in Electron and headless. Browser/PWA provider execution remains unsupported.
+are supported in Electron and headless. The PWA runs sandbox providers in browser workers
+while the app is open. A privileged provider shows “This package runs only on desktop or
+headless” on the PWA. Packages with only screens and no provider load on every host.
+
+PWA workers pause when the browser freezes the page and stop when it closes. System Scheduler
+restores overdue schedules at startup and catches up when the page resumes. System HTTP is
+not available on the PWA yet, so packages must not rely on it for browser functionality.
 
 A privileged provider is **trusted device code**. It runs in its own Node process as the same
 OS account as Peers, without root/admin elevation, in the user's home directory. It inherits
