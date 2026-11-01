@@ -573,7 +573,10 @@ failed `reload`, the previous code keeps running; `get` shows load errors in
 `package.json`, rebuild, and reload. An identical release creates no dev version or device
 selection. Single reload restarts the selected version; `reload --all` leaves unchanged
 packages running and exits `1` if any package fails. Page refresh also checks folders and
-logs failures to the developer console. See [Packages](./Packages.md#requested-and-observed-state).
+logs failures to the developer console. Import and reload also warn when the folder's SDK is
+newer than Peers, without failing the operation (exit `0`). Reload-all identifies each affected
+package. Pin `@peers-app/peers-sdk` to the Peers version your devices run, or update Peers.
+See [Packages](./Packages.md#requested-and-observed-state).
 
 `promote` says what the group runs, including when it already selected that version.
 If the selection stays unchanged, it explains why and gives the activation command.
@@ -592,6 +595,25 @@ with that trust is reached only over a direct connection (for example on the sam
 and the call runs in that device's own personal context. An explicit `-c <groupId>` keeps
 the call in that shared group and can use the mesh. See
 [Administering your other devices](./Packages.md#administering-your-other-devices).
+
+### `peers contracts add`: Contract declarations
+
+From your package folder, generate a declaration from a contract registered on the running host:
+
+```bash
+peers contracts add <contractId>@<version> -c <groupId>
+peers contracts add <contractId>@<version> --check --json
+```
+
+The default context is personal. The command writes `src/contracts/<name>.v<version>.ts`.
+`--dir <folder>` selects the local package folder; `--out-dir <folder>` is relative to it;
+`--name <Name>` changes the export name. `--device <deviceId>` reads another device that
+trusts you as Self, while writing locally. `--json` prints `{ path, exportName, changed }`.
+`--check` writes nothing and exits `1` if the declaration is missing or out of date.
+
+If the contract isn't registered, use the offline route:
+`peers-package contract add <module#export|bundle|json>`. Both routes produce the same declaration;
+see [contract declarations](../Packages/declaring-a-package#getting-a-declaration-you-dont-have).
 
 ## Data contexts
 

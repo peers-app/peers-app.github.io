@@ -873,40 +873,37 @@ when there's no signed-in user or when it names another device:
 
 ### Getting a declaration you don't have
 
-`peers-package contract add <source>` writes `src/contracts/<name>.v<version>.ts`, a declaration
-generated from a contract's IR. Check it in, and regenerate it rather than edit it. The source
-can be:
+From your package folder, fetch a registered contract from the running Peers:
 
-- **A declaration module and its export**, when you have the owner's source:
-  `npx peers-package contract add ../voice-hub/src/contracts/voice-skill.ts#VoiceSkill`.
-- **A provider's manifest or artifact**: `dist/manifest.json` or `dist/package.bundle.js`. Pass
-  `--contract <contractId>@<version>` when it provides more than one contract.
-- **A contract registered on a running Peers**, through the System Contract Catalog's
-  `getContractDefinition`. It returns the definition with each tool's access level on the active
-  provider. The definition is the one a provider registered, so it's as detailed as that
-  provider's IR: one built before nested fields and enum values were carried gives a copy that
-  checks only types. A registered definition doesn't keep a table's `versionNumber` or
-  `localOnly`, so a copy from it leaves them out (a local-only table's rows would sync); for a
-  contract with tables, generate from a provider's manifest or artifact.
+```bash
+peers contracts add 00muxgugn6xvs8f2r80ru205t@2
+```
 
-  ```bash
-  peers tools run getContractDefinition '{"contractId":"00muxgugn6xvs8f2r80ru205t","version":2}' --json > voice-skill.json
-  npx peers-package contract add voice-skill.json
-  ```
+Add `-c <groupId>` for a group, or `--device <deviceId>` to read another device's contracts.
+The file is written locally to `src/contracts/<name>.v<version>.ts`. Use `--dir <folder>` to
+choose the package folder, `--out-dir <folder>` to change the output directory, and
+`--name <Name>` to choose the export name.
 
-The generated file exports the declaration (`VoiceSkill`), each event (`voiceSkillAlert`), and
-types by member name: `VoiceSkillObservables["widget"]`, `VoiceSkillEvents`, and, for a contract
-with tables, `VoiceSkillRows`. Names, types, optional fields, arrays, nested objects, enum and
-literal values, descriptions, and each tool's access level and authority propagation come
-through, along with defaults stored in the IR. Refinements such as a regex or a minimum, and
-defaults made by code, aren't part of the IR, so the copy checks only
-what the IR describes; objects keep keys their fields don't list. Where a zod schema alone would
-give different IR (an `any` field, a blob, a stored default, an object with no listed fields),
-the copy wraps it in `generatedField(...)`, which keeps the source's IR in your manifest.
-`--name <Name>` picks the export name, and `--check` writes nothing and fails when the file is
-missing or out of date, for a test or CI. The file's header names the source relative to the
-package, so `--check` gives the same answer however the source's path is spelled (from the
-package's directory, or from elsewhere with `--root <dir>`).
+If the contract isn't registered, or you're working offline, use
+`npx peers-package contract add <source>` with one of:
+
+- A declaration module and its export, such as `../voice-hub/src/contracts/voice-skill.ts#VoiceSkill`.
+  This needs `esbuild` in your package: `npm install --save-dev esbuild`.
+- A provider's `dist/package.bundle.js` or `dist/manifest.json`. Add
+  `--contract <contractId>@<version>` if it provides several contracts.
+- A JSON file previously saved from `getContractDefinition` (the complete result, including
+  tool access levels).
+
+The offline command uses `--root <folder>` for the package folder. Both routes generate the
+same file for the same contract. Check it in and regenerate it rather than edit it.
+Both accept `--check`: it writes nothing and exits `1` if the file is missing or out of date,
+including a file whose older generated format needs updating.
+
+The file exports the declaration, its events, and types for observable values, event payloads,
+and table rows. It preserves declared types, descriptions, stored defaults, and tool access
+policy. Code-only validation such as regexes and computed defaults cannot be copied.
+For contracts with tables, use an up-to-date Peers host or generate from the provider's
+declaration module or built bundle.
 
 ## Background work
 
@@ -1167,7 +1164,7 @@ bundling them with esbuild so React and the SDK stay single copies.
   froze (`frozen-contracts.json`).
 - `peers-package build` also bundles the same `src/package.ts` for the sandbox, with a generated
   entry that registers every tool's handler, and writes `dist/package.bundle.js`, the artifact
-  the Runtime installs.
+  the Runtime installs. Its summary prints the SDK version used for the build.
 - `peers-package contract add <source>` generates a declaration of a contract the package
   implements or calls ([above](#getting-a-declaration-you-dont-have)).
 - `peers-package contract freeze` records the contract versions a release provides as frozen,
@@ -1176,6 +1173,10 @@ bundling them with esbuild so React and the SDK stay single copies.
 - A failed provider build preserves the last successful manifest and artifact. Watch mode
   rebuilds both outputs, reloads the declaration's CommonJS dependencies, and updates its
   bundler settings when `executionMode` changes.
+
+Pin `@peers-app/peers-sdk` in `package.json` to the Peers version your devices run (an exact
+version, without `^` or `~`). Import and reload warn when the folder's installed SDK is newer
+than Peers; the warning does not fail the operation. Update Peers or pin the SDK and rebuild.
 
 Use `--root`, `--entry`, and `--out-dir` to select the package root, declaration file, and
 output directory. Entry and output paths are relative to the package root; the output directory

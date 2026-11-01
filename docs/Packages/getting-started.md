@@ -269,7 +269,9 @@ Declare the package in `src/package.ts` with `definePackage` from
 npx peers-package build
 ```
 
-The build writes `dist/manifest.json` and `dist/package.bundle.js` from that declaration.
+The build writes `dist/manifest.json` and `dist/package.bundle.js` from that declaration and
+prints the SDK version it used. Pin `@peers-app/peers-sdk` to the Peers version your devices run;
+import and reload warn, without failing, when the folder's SDK is newer.
 The manifest describes the package's tables, provided and consumed contracts, navigation,
 and permissions. Peers reads it without running your code; the bundle also contains the
 code that serves those declarations in the package's worker. Edit the declaration and

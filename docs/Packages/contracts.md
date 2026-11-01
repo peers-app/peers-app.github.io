@@ -51,9 +51,17 @@ export default definePackage((pkg) => {
 const rows = await TasksRef(ctx).tables.Tasks.list({}, { pageSize: 20 });
 ```
 
-A declaration from `declareContract` is already a reference. If you don't have one, use
-[`peers-package contract add`](./declaring-a-package#getting-a-declaration-you-dont-have)
-to generate it from the provider.
+A declaration from `declareContract` is already a reference. To get one from a running Peers,
+run this in your package folder (add `-c <groupId>` for a group):
+
+```bash
+peers contracts add <contractId>@<version>
+```
+
+It writes `src/contracts/<name>.v<version>.ts`. Check the file in; use `--check` to verify it
+without writing. Offline, use `peers-package contract add <module#export|bundle|json>`.
+The same contract produces the same file whichever route you use.
+See [declaration options](./declaring-a-package#getting-a-declaration-you-dont-have).
 
 - `{ optional: true }` marks a dependency your package can work without.
 - Peers reports missing dependencies but currently doesn't block installation, even for a
