@@ -329,8 +329,8 @@ If a package needs a newer version of Peers, update Peers to use it.
   with the user's OS access. It keeps contract permission checks, but direct OS access
   bypasses sandbox confinement. See [Provider execution modes](./getting-started#provider-execution-modes).
   Routes and UI gain no Node access. The PWA runs sandbox providers; privileged providers
-  show “This package runs only on desktop or headless”. System HTTP is not available on
-  the PWA yet.
+  show “This package runs only on desktop or headless”. On the PWA, System HTTP reaches only
+  sites that accept requests from a browser ([details](../System/HTTP#in-a-browser)).
 - **Lazy startup.** Installation registers contracts, tables, and tool catalog entries
   without starting a worker. The first tool call, table read or write, observable access,
   or subscription starts it. Each package has a separate worker per data context.

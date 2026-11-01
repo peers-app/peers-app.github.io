@@ -80,8 +80,9 @@ cannot start Peers, update it or use a supported browser.
 
 Sandbox packages run while the PWA is open, and pause when the browser freezes it. Scheduled
 work catches up when the page resumes or the app is reopened. Privileged packages require
-desktop or headless. System HTTP is not yet available on the PWA, so Weather refreshes and
-Voice Hub's OpenAI features still require a desktop or headless host.
+desktop or headless. Packages that use the internet fetch from the browser, so they reach only
+sites that allow it. Weather can refresh and Voice Hub can call OpenAI with your configured key.
+News's default feeds fail with a browser read error; see [System HTTP in a browser](./HTTP#in-a-browser).
 
 ## Pending device invites
 

@@ -185,8 +185,9 @@ while the app is open. A privileged provider shows “This package runs only on 
 headless” on the PWA. Packages with only screens and no provider load on every host.
 
 PWA workers pause when the browser freezes the page and stop when it closes. System Scheduler
-restores overdue schedules at startup and catches up when the page resumes. System HTTP is
-not available on the PWA yet, so packages must not rely on it for browser functionality.
+restores overdue schedules at startup and catches up when the page resumes. System HTTP
+reaches only sites that accept requests from a browser there; see
+[System HTTP in a browser](../System/HTTP#in-a-browser).
 
 A privileged provider is **trusted device code**. It runs in its own Node process as the same
 OS account as Peers, without root/admin elevation, in the user's home directory. It inherits

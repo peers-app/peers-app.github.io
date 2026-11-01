@@ -15,9 +15,9 @@ the desktop and PWA applications.
 
 - **Desktop (Electron):** push-to-talk, optional wake listening while the Voice Hub screen is
   open, and the Live interface.
-- **PWA:** the package and its sandbox provider load while Peers is open. System HTTP is not
-  available on the PWA yet, so OpenAI transcription, voice-turn responses, OpenAI speech, and
-  Live remain unavailable. Browsers cannot reliably keep wake listening running in the background.
+- **PWA:** push-to-talk and the Live interface while Peers is open. The OpenAI key you set on
+  any of your devices works here too. Browsers cannot reliably keep wake listening running in the
+  background.
 
 Voice Hub does not run as a hidden background service. Closing its screen releases the microphone.
 
@@ -106,8 +106,8 @@ in order. Quiet successes still play Voice Hub's confirmation tone instead of a 
 Cancel stops in-flight requests but cannot undo actions that already ran. Timer and other alerts
 are spoken inside the open conversation. Both sides of the conversation appear in history.
 
-Live needs the desktop app and an OpenAI account with GPT-Live access; Free-tier accounts are
-refused. If a conversation cannot start, Voice Hub shows the reason and offers **Use the standard
+Live needs the desktop app or an open PWA, plus an OpenAI account with GPT-Live access.
+Free-tier accounts are refused. If a conversation cannot start, Voice Hub shows the reason and offers **Use the standard
 voice interface**. It never switches interface or repeats a request by itself.
 
 ## Use voice input
@@ -219,8 +219,10 @@ bundled with the package; they do not require an API key or a model download.
 
 Recorded utterances are sent to OpenAI when you request transcription. Transcribed text, recent
 Voice Hub context, and the catalogs of installed voice skills are sent to OpenAI for the voice
-turn. OpenAI speech output also sends response text to OpenAI. The API key is a package secret.
-System HTTP injects it on the host, so neither the renderer nor the isolated worker receives it.
+turn. OpenAI speech output also sends response text to OpenAI. The API key is a package secret,
+and Voice Hub's isolated worker never receives it: System HTTP adds it to each OpenAI request.
+On desktop that happens outside the app window. On the PWA, the Peers page in your browser makes
+the request with the key.
 
 With **Live**, microphone audio streams to OpenAI for as long as a conversation is open. Wake
 detection still runs on the device and starts the conversation. Voice Hub's isolated worker creates
@@ -272,14 +274,17 @@ output to clear the room first.
 
 Confirm that the OpenAI key is set, valid, and has available API usage. Voice Hub reports provider
 errors in its control panel without including key material. If OpenAI rejects the key, replace it in
-Voice Hub settings and save before using **Test speech**. Select the legacy `whisper-1`
-transcription model only when the default `gpt-4o-mini-transcribe` path is unsuitable.
+Voice Hub settings and save before using **Test speech**. On the PWA, a key OpenAI rejects can
+show “The browser could not read the reply from api.openai.com” instead; replace it the same way.
+Select the legacy `whisper-1` transcription model only when the default `gpt-4o-mini-transcribe`
+path is unsuitable.
 
 ### Live voice is unavailable
 
 Confirm that the OpenAI key is saved and that the account has GPT-Live access (Free tier accounts
-cannot use it), then try again, or select **Use the standard voice interface**. Live needs the
-desktop app.
+cannot use it), then try again, or select **Use the standard voice interface**. Live works in the
+desktop app and in the PWA while it is open. On the PWA, a rejected key can show a browser read
+error, as described above.
 
 To compare the interfaces, run `peers logs -f | grep voice-timing`. Each turn logs how long
 connecting, the first response, and the action took, and each Live conversation logs its end

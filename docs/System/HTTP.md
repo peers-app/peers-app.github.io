@@ -7,9 +7,8 @@ sidebar_position: 11
 System HTTP (`system.http`) performs outbound HTTPS for a sandboxed package, which has no
 `fetch`. Declare `pkg.consumes(SystemHttp)` with `SystemHttp` from
 `@peers-app/peers-sdk/define`, then call `SystemHttp(ctx).tools.request(...)` from a handler.
-It is available on desktop and headless hosts. It is not yet available on the PWA, even
-though sandbox package providers run there. Weather refreshes and Voice Hub's OpenAI
-features therefore still require desktop or headless.
+It is available on desktop, headless and the PWA. On the PWA the browser's own rules apply
+too; see [In a browser](#in-a-browser).
 
 System HTTP, System Scheduler, System Contract Catalog, System Tool Catalog,
 System Host Tools, and System Desktop Tools are local-only contracts.
@@ -39,10 +38,11 @@ pkg.network = {
 
 ## Credentials
 
-Pass a declared `credentialRef` with the request. Peers reads the package's secret persistent
-variable (`${packageId}_${secretVar}`) and injects its value into the declared header, replacing
-any request header of the same name. The credential's `scope` is `user` (the default) or
-`device`. The secret value is not returned to package code or the renderer.
+Pass a declared `credentialRef` with the request. `secretVar` names the package's secret
+persistent variable, and the credential's `scope` is `user` (the default) or `device`.
+Peers injects its value into the declared header, replacing any request header of the same
+name. Injection happens outside the isolated package worker. On the PWA, the trusted Peers
+page can access the credential to make the request.
 
 ## Requests
 
@@ -56,6 +56,26 @@ simultaneous requests in flight.
 A non-2xx response is returned with `ok: false`. It is not thrown. `cancel` aborts an in-flight request owned by the same package.
 
 `describePolicy` returns the allowlist and credential refs. An isolated caller can read only its own policy. The Packages screen, which has no package caller, can read any package in the data context.
+
+## In a browser
+
+On the PWA, requests run in the browser while Peers is open. Everything above still applies,
+and the browser adds its own rules:
+
+- **The site must accept requests from a browser (CORS).** It must allow the Peers origin,
+  the request method and its headers, including `Authorization` when used. Open-Meteo and
+  the OpenAI endpoints used by Voice Hub allow these requests; many RSS feeds don't.
+- **A browser failure may have several causes.** If the browser cannot return the reply,
+  the error says "The browser could not read the reply from *host*" and lists possible causes:
+  CORS, a rejected request, a redirect that System HTTP refuses, or an unreachable site.
+  If your browser reports that the device is offline, the error says so.
+  Check your connection, the site's CORS support, and that you are using its final URL.
+- **Some sites leave CORS off their error replies.** Some OpenAI replies to invalid API keys
+  do this, so a bad key can appear as a browser read failure instead of a 401 with `ok: false`.
+  Check the key in Voice Hub's settings if OpenAI requests fail this way.
+- **The browser controls some headers.** Package request headers cannot set `Origin`, `Host`
+  or `Cookie`.
+- **Requests send no cookies** and skip the browser's cache, including requests to Peers' own site.
 
 ## Tool time
 
