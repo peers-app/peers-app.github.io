@@ -85,9 +85,14 @@ re-encrypt the database. Secret values (group keys, service tokens) are
 re-encrypted under the new key; the old key stays in the credential store
 until that finishes, so a crash mid-way is picked up at the next start rather
 than leaving a value nothing can open. The memberships, group settings and package releases
-you signed with the old key are re-signed with the new one in every group, since other devices
-check those signatures against your current key (see
-[Groups](./Groups.md#who-can-change-what)). Your profile also carries the old key's signed
+you signed with the old key are re-signed with the new one in every group, and so are your rows
+in packages' [signed tables](../Packages/declaring-a-package.md#signed-tables), including packages
+that aren't running on this device, since other devices check those signatures against your
+current key (see [Groups](./Groups.md#who-can-change-what)). Let your other devices sync with
+this device before you rotate: a change they haven't sent yet is signed with the old key and
+won't be accepted. If rotation warns that some package rows couldn't be re-signed, Peers tries
+them again when it restarts; a row it still can't re-sign is signed with the new key the next
+time you change it. Your profile also carries the old key's signed
 handover to the new one, so the memberships others granted to your old key still count for the
 new key, even on devices that never saw the rotation. A recovered key has no handover: after a
 recovery, ask each group's founder or an Admin to re-sign your membership. When a device is paired again onto an account whose

@@ -276,7 +276,9 @@ Peers then enforces ownership on every device:
   stored the row yet may accept an old copy served as current, though, until the owner saves
   again. If your package depends on order (a branch tip that only moves forward), keep a
   counter in the row and don't act on a lower count than this device already has. Signatures
-  apply only to the table and context where the owner saved the row.
+  apply only to the table and context where the owner saved the row. When an owner rotates
+  their signing key ([Identity](../System/Identity.md)), Peers updates their rows' signatures
+  for the new key. Only `signature` and `signedAt` change, but your watchers see those rows change.
 - **Rows aren't deleted.** A delete can't be signed, so `delete` is refused on a signed table,
   locally and from sync. To remove something, have the owner save the row with a field that
   says so, such as `deleted: true` or an empty `oid`, and have readers skip those rows.
@@ -298,7 +300,10 @@ string, id, number, or boolean (an enum or a literal is fine). Its `save` refuse
 yet as its defaults instead of seeding one. A table is signed from its first version or never,
 with the same `signedKey` and primary key: a later version that adds, removes, or changes
 `signedBy`, `signedKey`, or `primaryKeyName` fails to load wherever an earlier version was
-installed. To sign rows an existing table holds,
+installed. Add new columns as optional fields without defaults so existing rows keep verifying.
+A device still on an earlier version holds back rows saved with the new columns, and takes
+them as soon as it updates your package.
+To sign rows an existing table holds,
 declare a new signed table and have owners save their rows into it. In a group, a signed table
 can't be deleted (the Data Explorer's Delete refuses it), and its rows stay when the package is
 uninstalled.
