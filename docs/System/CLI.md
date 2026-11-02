@@ -56,6 +56,27 @@ an auth JSON. When that flag is set, the CLI will not auto-start Electron.
 Commands that need the desktop app start it when it is not running. With `--json`,
 that startup progress goes to stderr, so stdout holds only the command's JSON.
 
+## Git remotes
+
+On macOS and Linux, the desktop app installs `git-remote-peers` beside `peers` in
+`~/.local/bin`. Git finds it on `PATH` when a remote starts with `peers://`:
+
+```bash
+git clone peers://<groupId>/<repoId>
+```
+
+Install the Git package in that context and keep the host running. The helper never starts
+Electron and writes only Git protocol to stdout; diagnostics go to stderr. It uses the same
+CLI authentication file as `peers`. To target a headless host:
+
+```bash
+PEERS_CLI_AUTH_FILE=/path/to/headless-auth.json git fetch peers
+```
+
+For monorepo development, build `peers-cli` and add `peers-cli/bin` to `PATH`. The helper
+supports macOS and Linux; a Windows helper is not available yet. See [Git](./Git.md) for
+sharing a repository, personal branch names, permissions, and offline fetches.
+
 ## Commands
 
 ### Messaging

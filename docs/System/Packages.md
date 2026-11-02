@@ -19,6 +19,9 @@ local client of the **System Packages** contract. All three use the same contrac
 behave the same way and are checked against the same access levels. To build a package,
 start with [Getting started](../Packages/getting-started.md).
 
+The official **[Git package](./Git.md)** shares repositories and personal branches through
+`peers://` remotes. It requires Git on a desktop or headless host and is installed separately.
+
 ## Quick reference
 
 ```bash

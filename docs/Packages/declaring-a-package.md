@@ -551,7 +551,32 @@ const page = await SystemHttp(ctx).tools.request({
 
 `SystemHttp` and `SystemScheduler` are typed references to [System HTTP](../System/HTTP.md) and
 [System Scheduler](../System/Scheduler.md); `SystemContractCatalog`
-[lists every provider of a contract](#calling-every-provider-of-a-contract). Type your own references with the contract from
+[lists every provider of a contract](#calling-every-provider-of-a-contract).
+`SystemIdentity` exposes only `getSession()` to packages; the other System Identity tools
+refuse package callers. `SystemGroupMembers.getMembers()` returns current membership of the
+calling package's own context, with no group-id argument. All five references are exported
+from `@peers-app/peers-sdk/define` and declared with `pkg.consumes(...)`.
+
+```ts
+import { SystemIdentity, SystemGroupMembers } from "@peers-app/peers-sdk/define";
+
+// In the package declaration:
+pkg.consumes(SystemIdentity);
+pkg.consumes(SystemGroupMembers);
+
+// Inside a tool handler, using that call's ctx:
+const { userId } = await SystemIdentity(ctx).tools.getSession();
+const { dataContextId, personal, members } = await SystemGroupMembers(ctx).tools.getMembers();
+// members: [{ userId, name?, role, accessLevel }]
+```
+
+`getSession()` may have no `userId` while signed out. Membership includes the founder and
+Readers; removed members and roles below Reader are omitted. Names are optional, from signed
+user profiles. In the personal context, the list contains only that user. Use `accessLevel`
+for permission comparisons and `role` for its display label. These are local-only contracts;
+packages call them within a tool invocation, like System Scheduler.
+
+Type your own references with the contract from
 [`defineContract`](#the-declaration), imported with `import type` so none of the provider's code
 comes along. A handler in News can reference its own contract this way:
 
