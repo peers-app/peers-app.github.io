@@ -162,7 +162,8 @@ describes nested objects and enum values ([Schemas in the manifest](#schemas-in-
 
 List a table on a contract (`tables` in [`defineContract`](#the-declaration)) to expose it to
 other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device,
-declare [indexes](#indexes) for the fields you query by, and raise `versionNumber` when its fields
+declare [indexes](#indexes) for the fields you query by, make each row its owner's with
+[`signedBy`](#signed-tables), and raise `versionNumber` when its fields
 or indexes change.
 
 Every call on a table goes through the package, its own handlers' and its consumers' alike: a
@@ -190,8 +191,9 @@ Adding, changing or removing an index is a schema change, so raise `versionNumbe
 values before adding it: if existing rows already repeat a value, the table's calls fail until a
 later version removes the index. On a synced
 table, two devices could each save a row the other's unique index refuses. To keep one row per
-key on a synced table, derive the row's id from the key with `idFromKey`. Two devices saving the
-same key then write the same row, and sync merges it:
+key on a synced table, derive the row's id from the key with `idFromKey` (on a
+[signed table](#signed-tables), declare `signedKey` instead). Two devices saving the same key
+then write the same row, and sync merges it:
 
 ```ts
 import { idFromKey } from "@peers-app/peers-sdk/define";
@@ -213,6 +215,93 @@ await Stores(ctx).save(
 
 Use both flags: `insertOnly` preserves a row already stored on this device, while `weakInsert`
 lets an edit from another device win when it arrives, even if it was made before this seed.
+A [signed table](#signed-tables) refuses `weakInsert`, so don't seed its rows: read a missing
+row as its defaults.
+
+### Signed tables
+
+In a group, any Writer's device can change any row of an ordinary table, including rows other
+members wrote. When each row should belong to one member, declare the table `signedBy` a
+field that holds the owner's user id (a required `zodPeerId`). Add `signedKey` when each owner
+has one row per key, such as one row per branch:
+
+```ts
+export const Refs = defineTable({
+  name: "Refs",
+  description: "Each member's published branch tips.",
+  primaryKeyName: "refId",
+  schema: z.object({
+    refId: zodPeerId,
+    ownerUserId: zodPeerId.describe("The member whose ref this is."),
+    repoId: zodPeerId,
+    ref: z.string(),
+    oid: z.string().optional().describe("Empty once the owner removes the ref."),
+  }),
+  signedBy: "ownerUserId",
+  signedKey: ["repoId", "ref"],
+});
+```
+
+Peers then enforces ownership on every device:
+
+- **Only the owner writes a row.** `save` succeeds only when `ownerUserId` is the signed-in
+  user; a row naming anyone else is refused with `Write not authorized`. Peers signs the row
+  with the user's key as it's saved, whoever saves it: your handlers, a UI, or another package
+  through your contract. Your code never handles keys. The signer is always the user of the
+  device the save runs on: a tool that other members call on this device
+  ([remote tool calls](./contracts#remote-tool-calls-across-devices)) saves rows as this
+  device's user, not as its caller.
+- **Peers sets each row's id from its owner.** So another member can't claim an owner's row
+  id, even on a device that hasn't got that row yet. (Ids are 25 characters: a member who
+  chooses part of your key, such as a repository they created, and spends heavily on computing
+  could find a row of theirs with the same id. That would hide your row on some devices until
+  you change its key, but never change it.)
+  - With `signedKey`, the id comes from the owner and the key fields. Saving the same key
+    again updates that row, and each member has their own row for a key. Pass a fresh id from
+    `newid()` or the id from `Refs.rowId({ ownerUserId, repoId, ref })` when saving. `rowId`
+    applies your owner and key field schemas as `save` does, including transforms, and gives
+    the id to use for `get`. A row's key can't change: save a row under the new key, and mark
+    the old one.
+  - Without `signedKey`, give a new row an id from `newid()` as usual. Peers stores the row
+    under an id made from that id and the owner, and `save` resolves to the row with its id.
+    Use the returned row's id for later saves once that row is available on the device.
+  - Either way, use the id of the row `save` returns, not one you chose, to link other rows to
+    it.
+- **Other members' devices verify it.** A row reaching a device through sync is stored only
+  when its owner is a Writer (or above) in the group and the signature checks out against the
+  owner's key. A row that was changed after signing, signed by someone else, signed by a
+  member who has since left or is only a Reader, or stored under an id that isn't its owner's
+  is refused, and the row on record stays as it was. A device that has a version of a row
+  refuses an older version, so a copy served again can't roll it back. A device that hasn't
+  stored the row yet may accept an old copy served as current, though, until the owner saves
+  again. If your package depends on order (a branch tip that only moves forward), keep a
+  counter in the row and don't act on a lower count than this device already has. Signatures
+  apply only to the table and context where the owner saved the row.
+- **Rows aren't deleted.** A delete can't be signed, so `delete` is refused on a signed table,
+  locally and from sync. To remove something, have the owner save the row with a field that
+  says so, such as `deleted: true` or an empty `oid`, and have readers skip those rows.
+
+Reads work as before. Peers adds `signature`, `signedAt`, `signedContextId`, `signedTableId`,
+and `signedIdSeed`; leave these out of your table schema and let Peers manage them. Consumers
+don't need to declare these fields in their contract schemas. All text in a row, including
+strings and keys inside object and array fields, must be well-formed Unicode. `save` refuses a
+row with an unpaired surrogate, such as text cut in the middle of an emoji.
+
+In the personal context, local saves still require the signed-in owner and are signed, and
+`delete` is still refused. Synced writes between your own devices are unchecked, as for other
+personal data.
+
+A signed table can't be `localOnly`, and its primary key is a `zodPeerId` other than the owner
+field (for one row per owner, use `signedKey: []`). Each `signedKey` field is a required
+string, id, number, or boolean (an enum or a literal is fine). Its `save` refuses
+`weakInsert`: a row counts from when its owner signs it, so read a row the owner hasn't saved
+yet as its defaults instead of seeding one. A table is signed from its first version or never,
+with the same `signedKey` and primary key: a later version that adds, removes, or changes
+`signedBy`, `signedKey`, or `primaryKeyName` fails to load wherever an earlier version was
+installed. To sign rows an existing table holds,
+declare a new signed table and have owners save their rows into it. In a group, a signed table
+can't be deleted (the Data Explorer's Delete refuses it), and its rows stay when the package is
+uninstalled.
 
 ### Watching your own tables
 
