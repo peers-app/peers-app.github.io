@@ -209,8 +209,13 @@ peers tools run replicateTick '{}' -c <groupId> --json
 branches below their approval threshold, and name conflicts (`collision`). Shared branches
 take precedence over maintainer tips, which take precedence over personal branches. It
 also reports the last transfer's bytes, milliseconds, chunk size, source device (`holder`),
-whether a chunk failed, and whether the transfer completed. For a completed transfer,
-MiB/s is `bytes / 1048576 / (milliseconds / 1000)`.
+whether a chunk failed, and whether the transfer completed. `milliseconds` runs from asking
+the source for the commits to having them here, so it includes Git's work at both ends;
+`downloadMilliseconds` is the download alone. For a completed transfer, MiB/s is
+`bytes / 1048576 / (milliseconds / 1000)`, or use `downloadMilliseconds` for the link's speed.
+
+Before copying, a device asks for a direct connection to the source. When it can't get one,
+the copy goes through other devices and is slower.
 
 An interrupted copy leaves the published local branch view intact. A later attempt can copy
 the missing history again. If a push reports **publication failed**, the commits remain in

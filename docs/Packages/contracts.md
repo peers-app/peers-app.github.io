@@ -213,12 +213,37 @@ await ctx.callRemoteTool(
 );
 ```
 
-The target device selects its active provider. It can be reached through the Peers mesh
-without a direct connection. Only tools cross devices through this API; tables, observables,
-and event subscriptions remain local. Remote calls have a 30-second round-trip deadline,
-even if the target tool declares a longer `timeoutMs`. A timeout or dropped connection
-doesn't prove the tool made no changes; calls that may already have run aren't automatically
-retried.
+The target device selects its active provider. Only tools cross devices through this API;
+tables, observables, and event subscriptions remain local.
+
+**How a call travels.** A call goes over the direct connection to the target device when one
+exists, and through the Peers mesh otherwise, relayed by other devices. A relayed call is
+refused with `Payload Too Large` when its encoded request exceeds 64 KB, so keep the arguments
+of a call that may be relayed small and put bulk data in results. Each call picks its route
+when it starts.
+
+**Asking for a direct connection.** Calls never open connections themselves. Before a run of
+calls that moves a lot of data, ask for one:
+
+```ts
+const direct = await ctx.connectToDevice(holderDeviceId);
+// true: calls to holderDeviceId now go over a direct connection.
+// false: they go through the mesh; size them for it.
+```
+
+It resolves `true` once a direct connection exists, waiting up to about 15 seconds, and `false`
+when no direct connection is available. It never throws for an unreachable device. Only
+devices in your package's data context answer. A direct connection can still drop later; calls
+then go through the mesh again.
+
+**Deadlines and failures.** Remote calls have a 30-second round-trip deadline, even if the
+target tool declares a longer `timeoutMs`. If the connection carrying a call drops, the call
+fails at once with `connection has been closed`; your next call takes whatever route is left.
+A timeout or dropped connection doesn't prove the tool made no changes; calls that may already
+have run aren't automatically retried.
+
+**Binary data.** Pass binary arguments and results as a `Uint8Array`. The receiving package gets
+its own copy.
 
 **Opting a tool in.** Set `remoteAccessLevel` in `defineTool` to allow callers from other
 accounts in a shared group. Both it and the tool's ordinary `accessLevel` must admit the
