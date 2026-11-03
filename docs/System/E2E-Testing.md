@@ -129,6 +129,7 @@ so loudly. The e2e packages are deliberately not wired into CI. See
 | `PEERS_E2E_MONGO_URI` | Use this Mongo for `peers-services` instead of starting `mongodb-memory-server`. The server always uses the `peers-services` database, so rows from earlier runs remain; assertions are keyed by per-run user ids and are not affected. |
 | `PEERS_E2E_REQUIRE_SERVICES=1` | Fail (rather than skip) the scenarios that need a real `peers-services`. Set by `full-release.js`. |
 | `PEERS_E2E_BLOCK_BYTES` | Size of the noise file in `block-exchange.e2e.test.ts`. Default `268435456` (256 MB). A larger value raises that test's timeout to one hour so a multi-gigabyte run can be started by hand. |
+| `PEERS_E2E_BENCH=1` | Run `git-throughput.e2e.test.ts`, a benchmark rather than a check: a second device copies a repository of `TP_MIB` MiB (default 40) from the first through the Git package and logs MiB/s. Skipped otherwise, so it isn't part of any tier. |
 | `PEERS_SERVICES_DIR` | Location of the `peers-services` checkout (default: the monorepo sibling). |
 
 ## Writing a scenario
