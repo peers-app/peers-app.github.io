@@ -21,6 +21,9 @@ start with [Getting started](../Packages/getting-started.md).
 
 The official **[Git package](./Git.md)** shares repositories and personal branches through
 `peers://` remotes. It requires Git on a desktop or headless host and is installed separately.
+A package's source can be a `peers://` URL shared that way (`peers git share` in the
+package's folder records it); package details then offer to copy it, since it opens with
+`git clone`, not a browser.
 
 ## Quick reference
 
@@ -230,7 +233,7 @@ role in that context. In your personal context you are Self, so every tool is al
 | `activatePackageVersion` | Reader (20) | `{ packageId, packageVersionId?, scope? }`. Group scope also needs Admin, enforced when the `Packages` row is signed. |
 | `reloadPackage` | Writer (40) | `{ packageId }`. Writers may update dev versions. |
 | `reloadAllPackages` | Writer (40) | Returns `{ skipped?, results: [{ packageId, name, ok, changed?, error? }] }`. |
-| `linkRemoteRepo` | Admin (60) | Desktop only. Creates a private GitHub repository with `gh`. |
+| `linkRemoteRepo` | Admin (60) | With `remoteRepo` (an `https://`, `git@host:` or `peers://` URL), records it as the package's source on any host. Without it, desktop only: creates a private GitHub repository with `gh`. A package that already has a source keeps it. |
 | `uninstallPackage` | Admin (60) | `{ packageId }` returns `{ packageId, removed }`. |
 | `promotePackageVersion` | Admin (60) | `{ packageVersionId, versionTag, activateForGroup? }` returns `{ packageId, packageVersionId, version, versionTag, signed, activated, groupActivePackageVersionId?, groupRunsPromotedVersion?, activationNote?, warning?, package }`. `activateForGroup: true` is the CLI's `--group` option. See Promote above. |
 | `installDefaultPackages` | Admin (60) | `{ installed }` |

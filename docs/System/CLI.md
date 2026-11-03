@@ -58,12 +58,15 @@ that startup progress goes to stderr, so stdout holds only the command's JSON.
 
 ## Git remotes
 
-On macOS and Linux, the desktop app installs `git-remote-peers` beside `peers` in
-`~/.local/bin`. Git finds it on `PATH` when a remote starts with `peers://`:
+The desktop app installs `git-remote-peers` beside `peers` in `~/.local/bin`, on macOS,
+Linux and Windows. Git finds it on `PATH` when a remote starts with `peers://`:
 
 ```bash
 git clone peers://<groupId>/<repoId>
 ```
+
+On Windows it needs Git for Windows, which runs the helper with its own `sh`; open a new
+terminal after installing so `~/.local/bin` is on `PATH`. `peers git doctor` checks the setup.
 
 Install the Git package in that context and keep the host running. The helper never starts
 Electron and writes only Git protocol to stdout; diagnostics go to stderr. It uses the same
@@ -73,9 +76,16 @@ CLI authentication file as `peers`. To target a headless host:
 PEERS_CLI_AUTH_FILE=/path/to/headless-auth.json git fetch peers
 ```
 
-For monorepo development, build `peers-cli` and add `peers-cli/bin` to `PATH`. The helper
-supports macOS and Linux; a Windows helper is not available yet. See [Git](./Git.md) for
-sharing a repository, personal branch names, permissions, and offline fetches.
+For `peers git`, select that host with `--auth-file`; its push and clone operations use the
+same host:
+
+```bash
+peers --auth-file /path/to/headless-auth.json git clone "My project" -c <groupId>
+```
+
+For monorepo development, build `peers-cli` and add `peers-cli/bin` to `PATH`. See
+[Git](./Git.md) for sharing a repository, personal branch names, permissions, and offline
+fetches.
 
 ## Commands
 
@@ -617,6 +627,33 @@ and the call runs in that device's own personal context. An explicit `-c <groupI
 the call in that shared group and can use the mesh. See
 [Administering your other devices](./Packages.md#administering-your-other-devices).
 
+### `peers git`: Git repositories {#git}
+
+Share, list, clone and inspect repositories shared through the [Git package](./Git.md).
+A repository is a name, a repository id, or a `peers://` URL. In a working copy with a
+`peers://` remote, `status`, `policy` and `adopt` default to that repository and its group.
+An explicit `-c` must agree with a URL's context, including `-c personal`.
+
+```bash
+peers git share [name] -c <groupId>      # in a working copy: share it, add a "peers" remote, push
+peers git list -c <groupId>              # repositories and their peers:// URLs
+peers git clone <repo> [dir] -c <groupId>
+peers git status [repo]                  # branches, their states, copies to this device
+peers git policy [repo]                  # shared branches and maintainers
+peers git policy [repo] --branch main --maintainers alice,bob [--threshold 2]
+peers git policy [repo] --remove-branch release
+peers git adopt [repo]                   # Admins: adopt a repository whose owner left
+peers git doctor -c <groupId>            # check Git, the helper, Peers and the package
+```
+
+`share` uses the folder's name unless you give one, and makes the current branch the shared
+default branch (`--default-branch` picks another). `--no-push` adds the remote without
+pushing; `--remote <name>` names it. In a package's folder it also records the URL as the
+package's source when the package has none. Maintainers are named by their branch prefix or
+user id. Every command takes `--json`; Git's progress then goes to stderr. `doctor` exits
+`1` when a check fails. With detached HEAD, check out a branch before sharing, or use
+`--no-push` to create an empty remote.
+
 ### `peers contracts add`: Contract declarations
 
 From your package folder, generate a declaration from a contract registered on the running host:
@@ -659,6 +696,7 @@ The CLI makes Peers fully accessible to AI coding assistants and automation scri
 - Discover direct targets with `peers devices` and add `--device <deviceId>` to remote operations
 - Run tools with `peers tools run` to create tasks, set timers, or trigger workflows
 - Import, reload, and diagnose packages with `peers packages` (JSON output and exit codes)
+- Share, clone, and inspect Git repositories with `peers git` (`--json` throughout)
 - Chat with the built-in assistant via `peers "..."`
 - Inspect and interact with the UI via `peers ui`, and see it by opening the file `peers ui screenshot` prints
 - Tail logs for debugging with `peers logs -f`
@@ -684,5 +722,6 @@ Configuration is stored at `~/peers/cli-config.json`.
 - **[System: Assistants](./Assistants)** — the assistants that respond to CLI messages.
 - **[System: Tables](./Tables)** — the data model behind `peers db`.
 - **[System: Packages](./Packages)**: the contract behind `peers packages`.
+- **[System: Git](./Git)**: the package behind `peers git` and `peers://` remotes.
 - **[System: Host Shell](./Host-Shell)**: the contract behind `peers ui` and `peers app restart|quit`.
 - **[System: Invites](./Invites)** — the invite model behind `peers contacts`, `peers groups`, and `peers invites`.

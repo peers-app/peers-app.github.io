@@ -72,6 +72,22 @@ See [Packages](../System/Packages.md).
 
 Importing the same local package by name into Personal or another group reuses its publisher identity. Deleting the package leaves your personal signing secret and its cached public key intact, so re-importing after uninstall also preserves that identity. Import fails without changing keys if the available public keys disagree, or if an existing secret has no recoverable public key.
 
+### Share your package's source through Peers
+
+With the [Git package](../System/Git.md) installed in a group, share your package's source
+with its members instead of (or as well as) GitHub. In the package's folder, once it's a Git
+working copy with a commit:
+
+```bash
+peers git share -c <groupId>
+```
+
+That creates a repository in the group, adds a `peers` remote, pushes the current branch, and
+records the `peers://` URL as the package's source (if it has none, and you're an Admin of
+the group), so the package's details show it. Members clone it with `git clone <url>` (or
+`peers git clone <name> -c <groupId>`), push their own branches, and build and import it like
+any package folder. See [Git](../System/Git.md) for shared branches and maintainers.
+
 ### Project structure
 
 The template starts as a small shared list, with one table, one tool, and one screen:
