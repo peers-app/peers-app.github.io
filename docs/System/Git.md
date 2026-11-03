@@ -37,9 +37,9 @@ git push -u peers main
 ```
 
 The default branch is `main`. To use another, pass `"defaultBranch":"trunk"` when sharing,
-then push `trunk`. Only the repository's owner can push its default branch. Sharing creates
-an empty repository; your first push supplies its commits. Your GitHub remote can stay in
-place alongside the Peers remote.
+then push `trunk`. It starts as a shared branch with the repository's owner as its only
+maintainer. Sharing creates an empty repository; your first push supplies its commits.
+Your GitHub remote can stay in place alongside the Peers remote.
 
 Another group member can clone it:
 
@@ -49,6 +49,78 @@ git clone peers://<groupId>/<repoId>
 
 For a local development build, build and import `official-packages/git` using the normal
 [package development workflow](../Packages/getting-started.md#importing-an-existing-package-directory).
+
+## Shared branches
+
+The repository's owner chooses which branches are shared and who maintains them. For example,
+to let Alice and Bob both push `main`:
+
+```bash
+peers tools run setPolicy '{"repoId":"<repoId>","sharedRefs":[{"ref":"refs/heads/main","maintainers":["<aliceUserId>","<bobUserId>"],"threshold":1}]}' -c <groupId> --json
+```
+
+Use user ids, not display names. `getBranchState` lists the members' ids and branch prefixes.
+`setPolicy` replaces the complete list of shared branches. Include the default branch every
+time; it cannot be renamed this way. You can share up to 32 branches, each with up to 10
+distinct maintainers who are current Writers or above. Shared names cannot overlap each
+other or sit under a member's prefix.
+
+With threshold 1, any maintainer can advance the branch. When their tips lie on one line of
+history, everyone sees the newest tip. Push normally:
+
+```bash
+git push peers main
+```
+
+Shared branches cannot be deleted or forced behind their current tip. A threshold-1 push
+must also include the other maintainers' tips already available on this device. If a push
+asks you to fetch and merge first, fetch, merge the named branch, and push again.
+
+With several maintainers, everyone also sees each maintainer's latest tip as `alice/main`,
+`bob/main`, and so on, including their own. These names let you review work that has not
+landed on `main`, and recover it on another device. Push to `main` to update your tip;
+the prefixed names are for fetching and merging.
+
+### Offline forks
+
+Two maintainers can push different commits while their devices are disconnected. With
+threshold 1, once those updates meet, `main` moves back to their common ancestor and
+`getBranchState` reports `forked`. Your checkout and each maintainer's prefixed tip keep the
+commits. If the histories have no common ancestor, the shared branch is unset until they
+are joined.
+
+For Bob to reconcile Alice's work with his own:
+
+```bash
+git fetch --prune peers
+git merge peers/alice/main
+git push peers main
+```
+
+Resolve any conflicts and commit the merge as usual. Once the merge reaches the other
+devices, `main` advances again. Peers never creates a merge commit for you.
+
+### Approval thresholds
+
+Set `"threshold":2` in the policy above to require two maintainers' tips to contain a commit
+before it lands. A push can succeed while `main` stays at its previous tip. `aheadOwners`
+in `getBranchState` names maintainers whose tips contain work not yet on the shared branch.
+To approve Alice's proposal, Bob can run:
+
+```bash
+git fetch peers
+git merge --ff-only peers/alice/main
+git push peers HEAD:main
+```
+
+If Bob has his own changes, use a normal merge instead. Two maintainers pushing the same
+commit count as two approvals. The threshold must be between 1 and the number of maintainers.
+If fewer than that many maintainers who are current Writers have published tips, the shared
+branch is unset and reports `below-threshold`. Removing or demoting a maintainer can therefore move a shared
+branch back or leave it unset; update the policy when changing the team.
+
+Removing a non-default branch from `sharedRefs` makes its published tips personal branches
+again. The default branch must stay shared.
 
 ## Personal branches
 
@@ -60,7 +132,7 @@ git push -u peers feature
 ```
 
 You see `feature` on all your devices. Other members see it under your name, for example
-`bob/feature`. The repository owner's default branch remains `main` for everyone. To review
+`bob/feature`. Shared branches keep their unprefixed names for everyone. To review
 Bob's work, fetch and merge it normally:
 
 ```bash
@@ -78,19 +150,45 @@ Case variants such as `BOB/...` are reserved too. Names that differ only in lett
 both appear in a fetched view; a push that would create such a conflict is refused.
 Unicode spellings that normalize to the same name refer to one
 personal branch across your devices.
-The default branch's namespace is also reserved: for a default of `release/main`, personal
+Every shared branch's namespace is also reserved: for a shared branch `release/main`, personal
 branches cannot be named `release` or `release/main/...`.
-If a later member's name conflicts with an existing personal branch, that branch is omitted
-from the fetched view and reported by `getBranchState`. Rename and push your branch from your
+Your own maintainer-tip names, such as `alice/main`, are reserved too when a shared branch
+has several maintainers. If a later member's name or a policy change conflicts with an
+existing personal branch, that branch is omitted from the fetched view and reported by
+`getBranchState`. Rename and push your branch from your
 checkout. Readers can fetch but cannot publish. Branches from removed members or members who
 become Readers disappear on a later `fetch --prune`.
-If the repository's owner leaves the group or becomes a Reader, all of its branches leave
-the fetched view and pushes are refused. Each device keeps the history it already copied;
-letting an Admin adopt such a repository is still to come.
 
 Personal branches support normal force pushes and deletion. Fetch before pushing from a
 second device when possible. Commits in your checkout remain available even if another device
 later publishes a different tip for your branch.
+
+## When the owner leaves
+
+If the repository's owner leaves the group or becomes a Reader, the last policy freezes.
+Other Writers' personal branches stay available, and shared branches keep working with
+their remaining current maintainers and thresholds. A branch whose only maintainer was the
+owner becomes unset. Each device keeps the history it already copied.
+
+A current group Admin or above can adopt the repository once its owner is no longer a
+Writer:
+
+```bash
+peers tools run adoptRepository '{"repoId":"<repoId>"}' -c <groupId> --json
+```
+
+This keeps the current Writers in each maintainer list, adds the adopter to any empty list,
+and lowers thresholds where necessary. To choose a different policy, pass `sharedRefs` in
+the same form as `setPolicy`. The governing adopter can then use `setPolicy` to change it.
+An Admin cannot adopt while the owner is still a Writer. If the owner has lost every device,
+demote or remove that identity from the group first.
+
+`listRepositories` and `getBranchState` report `governedBy` (`owner`, `adoption`, or `frozen`),
+`signerUserId`, and the governing `sharedRefs`. Only that signer can change the policy.
+If Admins adopt independently while offline, check the governing signer after their devices
+reconnect. An adopter who loses Admin access no longer governs; another current Admin's
+adoption takes over if available, otherwise the owner's policy freezes again. If the owner
+returns as a Writer, their policy governs again.
 
 ## Availability and status
 
@@ -107,14 +205,18 @@ peers tools run getBranchState '{"repoId":"<repoId>"}' -c <groupId> --json
 peers tools run replicateTick '{}' -c <groupId> --json
 ```
 
-`getBranchState` shows current branches, branches awaiting commits, and name conflicts. It
+`getBranchState` shows current branches, branches awaiting commits (`pending-objects`), forks,
+branches below their approval threshold, and name conflicts (`collision`). Shared branches
+take precedence over maintainer tips, which take precedence over personal branches. It
 also reports the last transfer's bytes, milliseconds, chunk size, source device (`holder`),
 whether a chunk failed, and whether the transfer completed. For a completed transfer,
 MiB/s is `bytes / 1048576 / (milliseconds / 1000)`.
 
 An interrupted copy leaves the published local branch view intact. A later attempt can copy
 the missing history again. If a push reports **publication failed**, the commits remain in
-your checkout. Wait two minutes, then fetch and push again.
+your checkout. Fetch, merge any required tips, and push again. A refused shared-branch update
+can be retried immediately. If a different failure leaves a push still publishing, wait up
+to two minutes before retrying.
 Do not treat that push as shared successfully.
 
 ## Current limits
@@ -123,7 +225,6 @@ This version supports SHA-1 repositories and branches under `refs/heads/`. Tags 
 repositories are not supported. A push accepts up to 128 branch updates and a pack of at most
 1 GiB; branch ref names are limited to 1,024 UTF-8 bytes.
 
-Several maintainers on a shared branch, fork reconciliation, approval thresholds, orphaned
-repository adoption, default installation, a Git screen, and the Windows helper are still to
-come. Windows desktop/headless hosts can run the package and replicate repositories. The PWA
+Default installation, a Git screen, and the Windows helper are still to come.
+Windows desktop/headless hosts can run the package and replicate repositories. The PWA
 cannot run this privileged package.
