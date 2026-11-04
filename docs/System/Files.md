@@ -32,7 +32,9 @@ const file = await readWholeFile((input) => SystemFiles(ctx).tools.read(input), 
 // file.bytes, file.name, file.mimeType, file.fileSize
 ```
 
-Keep the `fileId` in one of your own tables, next to the row the file belongs to.
+Keep the `fileId` in one of your own tables, next to the row the file belongs to, in a field
+declared with `zodFileId` ([File fields](../Packages/declaring-a-package#file-fields)), so Peers
+knows the row uses the file.
 
 ## From a screen
 

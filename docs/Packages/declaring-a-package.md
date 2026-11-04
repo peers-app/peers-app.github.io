@@ -155,14 +155,16 @@ Rows read from storage and passed to a table override follow the same empty-valu
 including nested fields written by an older package build.
 
 The manifest types each field from its schema: an enum or a string literal is `string`, a
-number or boolean literal is `number` or `boolean`, and `zodPeerId` is `id`.
+number or boolean literal is `number` or `boolean`, `zodPeerId` is `id`, and `zodFileId` is `id`
+with `subType: "file"` ([File fields](#file-fields)).
 Enum and literal fields declared with `.nullish()`, with empty or nested array elements, or with
 a transform keep `any`, so the host can accept every value the schema allows. The manifest also
 describes nested objects and enum values ([Schemas in the manifest](#schemas-in-the-manifest)).
 
 List a table on a contract (`tables` in [`defineContract`](#the-declaration)) to expose it to
 other packages and the UI, or on `pkg.tables` to keep it private. Pass `localOnly: true` to keep its rows on each device,
-declare [indexes](#indexes) for the fields you query by, make each row its owner's with
+declare [indexes](#indexes) for the fields you query by, declare the fields that hold
+[file ids](#file-fields), make each row its owner's with
 [`signedBy`](#signed-tables), and raise `versionNumber` when its fields
 or indexes change.
 
@@ -217,6 +219,41 @@ Use both flags: `insertOnly` preserves a row already stored on this device, whil
 lets an edit from another device win when it arrives, even if it was made before this seed.
 A [signed table](#signed-tables) refuses `weakInsert`, so don't seed its rows: read a missing
 row as its defaults.
+
+### File fields
+
+Declare a field that holds a [System Files](../System/Files) id with `zodFileId`, or an array of
+them, so Peers knows which files your rows use:
+
+```ts
+import { defineTable, z, zodFileId, zodPeerId } from "@peers-app/peers-sdk/define";
+
+export const Members = defineTable({
+  name: "Members",
+  description: "Family members.",
+  primaryKeyName: "memberId",
+  versionNumber: 2,
+  schema: z.object({
+    memberId: zodPeerId,
+    name: z.string(),
+    avatarFileId: zodFileId.optional().describe("The member's photo."),
+    attachmentFileIds: z.array(zodFileId).optional(),
+  }),
+});
+```
+
+A `zodFileId` is a peer id like any other: it validates, filters and reads the same way.
+
+- **Top-level fields only.** A file id inside an object field, in a plain string field, or in a
+  package variable doesn't count as a use. To attach several files to a row with details about
+  each, give them a table of their own, one row per file.
+- **Synced tables only.** A `localOnly` table doesn't keep files. Put the reference in a synced
+  table so the other devices know the file is used too.
+- **Raise `versionNumber`** when you change a field to `zodFileId`: it changes the table's
+  definition. If a stable contract exposes the table, publish the changed table in a new
+  contract version too.
+- **The build warns** when a top-level field is named like a file id (`avatarFileId`, `fileIds`)
+  but isn't a `zodFileId`, and when a `zodFileId` is nested in an object field.
 
 ### Signed tables
 
