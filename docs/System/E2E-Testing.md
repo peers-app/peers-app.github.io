@@ -242,6 +242,11 @@ it("a row written on one device reaches the others", async () => {
   and checks that `reload` exits `1` while `get` shows the error and the old version
   still serves, reloads a fixed version, writes a provider that throws on its first
   call and reads `runtime.worker.lastWorkerError`, and finally uninstalls.
+- `system-files.e2e.test.ts` puts an owner and a Reader in one group with
+  `isolation-smoke`. The owner's package saves a 2.5 MiB file through System Files,
+  and the Reader's package reads it once the file's row syncs, downloading the contents
+  from the owner. The Reader's save is refused (Writer needed), and the CLI saves and
+  reads bytes directly, as a screen does.
 - `scheduler.e2e.test.ts` installs `timers`, creates a timer, and restarts its
   persistent headless host; the timer expires without a widget or scheduler call.
   It covers both a personal context and a group Writer (40), with group membership asserted.

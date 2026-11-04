@@ -421,13 +421,14 @@ and runtime-test fixtures. Both declare their members in `src/package.ts` with
 `@peers-app/peers-sdk/define`; `npm run build` runs `peers-package build` and builds
 their renderer bundles.
 
-Isolation Smoke provides contract versions 2–5 under the same contract id.
+Isolation Smoke provides contract versions 2–6 under the same contract id.
 v4 provides `observeWorker`, backed by a package-private `IsolationSmokeState` table and
 `invocationCount` device pvar, plus a public `IsolationSmokeSharedState` table
 and writable `sharedInvocationCount` device-variable observable. The private
 table and `invocationCount` are reachable only through the tool. v3/v2 remain
 tool-only contracts; v5 adds `probeGrant`, `watchGrant`, and `lastFolderEvent`,
-consuming System Local Folders v1 through `contractRef`. v4/v5's `observeWorker`
+consuming System Local Folders v1 through `contractRef`. v6 adds `saveFile` and `readFile`,
+which save text as a file and read it back through System Files. v4–v6's `observeWorker`
 allows remote group Writers (access level 40); the other tools remain local-only.
 Both fixture screens use `hostContract` in the selected context; Smoke's screen calls v5.
 To check them manually in a test context:

@@ -330,6 +330,7 @@ Explicitly deleting `packageSigningKey_<packageId>` removes your local author si
 - **[Voice skills](./voice-skills)** — how a package becomes voice-addressable and contributes a widget.
 - **[System HTTP](../System/HTTP)** — host-mediated HTTPS, allowlists, and credential refs.
 - **[System Scheduler](../System/Scheduler)** — device-local wake-ups of a package's own tool.
+- **[System Files](../System/Files)** — save and read files, such as images, in the package's context.
 - **[Package lifecycle design](../Roadmap/package-lifecycle)** — design doc and shipped vs planned work.
 - **[System: Tables](../System/Tables)** — how Peers models data with tables and reactivity.
 - **[System: Workflows](../System/Workflows)** — how tools run in workflow runs (often used together with package tools).

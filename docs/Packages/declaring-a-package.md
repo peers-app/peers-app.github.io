@@ -554,8 +554,9 @@ const page = await SystemHttp(ctx).tools.request({
 [lists every provider of a contract](#calling-every-provider-of-a-contract).
 `SystemIdentity` exposes only `getSession()` to packages; the other System Identity tools
 refuse package callers. `SystemGroupMembers.getMembers()` returns current membership of the
-calling package's own context, with no group-id argument. All five references are exported
-from `@peers-app/peers-sdk/define` and declared with `pkg.consumes(...)`.
+calling package's own context, with no group-id argument. `SystemFiles` saves and reads files
+in that context ([System Files](../System/Files.md)). All six references are exported from
+`@peers-app/peers-sdk/define` and declared with `pkg.consumes(...)`.
 
 ```ts
 import { SystemIdentity, SystemGroupMembers } from "@peers-app/peers-sdk/define";
@@ -1202,6 +1203,9 @@ function Feeds() {
   dependency and a webpack external.
 - **Access.** A UI's calls act as the signed-in user today, as every UI call does
   ([Local UI-to-host contracts](./contracts#local-ui-to-host-contracts)).
+- **Files.** `hostContract(SystemFiles)` saves a file from a screen, and `useFileUrl(fileId)`
+  from `@peers-app/peers-ui` gives a URL to show it, such as an `<img src>`
+  ([System Files](../System/Files.md#from-a-screen)).
 
 ### Opening a link
 

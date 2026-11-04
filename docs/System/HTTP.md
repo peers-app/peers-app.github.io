@@ -10,8 +10,8 @@ System HTTP (`system.http`) performs outbound HTTPS for a sandboxed package, whi
 It is available on desktop, headless and the PWA. On the PWA the browser's own rules apply
 too; see [In a browser](#in-a-browser).
 
-System HTTP, System Scheduler, System Contract Catalog, System Tool Catalog,
-System Host Tools, and System Desktop Tools are local-only contracts.
+System HTTP, System Scheduler, System Files, System Group Members, System Contract Catalog,
+System Tool Catalog, System Host Tools, and System Desktop Tools are local-only contracts.
 Calls arriving from another device are denied, including calls from a Self-trusted device.
 Device Operations `runTool` also excludes Host/Desktop aliases; local callers use
 their contracts or the local CLI catalog instead.
