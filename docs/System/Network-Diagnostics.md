@@ -337,6 +337,12 @@ WebRTC; look for `[Sidecar]` or `[WebRTC]` lines in the logs.
 - A target that advertises only `ws` even though it runs the desktop app means its sidecar
   is down; the connection still works over WebSocket if either side has a reachable
   listener.
+- A connection that stays on `wrtc://` on the same network can indicate an unreachable
+  listener. Allow inbound TCP port 3333 on desktop hosts and check that the devices can reach
+  each other's LAN addresses. Desktop and headless hosts retry a
+  WebSocket periodically; a network change can take time to be picked up. Look for
+  `[NetworkManager] <deviceId> stays on WebRTC: <reason>` or
+  `Moved <deviceId> from WebRTC to a WebSocket` in the logs.
 - A target that is visible but never selected indicates candidate, status, or cooldown
   logic.
 - Protocol discovery errors indicate that routed device messaging did not reach the

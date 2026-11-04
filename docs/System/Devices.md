@@ -49,6 +49,14 @@ for local connections, remote connections, or pairing.
 | `wrtc://` (WebRTC data channel) | Electron and PWA peers through NAT | Device traffic is encrypted |
 | Device pairing socket | Credential transfer to a new device | Encrypted, including the credential transfer; the rendezvous that sets it up runs through the Peers service (see [What the service can see](./Device-Pairing.md#what-the-service-can-see)) |
 
+**Which transport two devices use.** Desktop and headless hosts prefer a WebSocket when either
+can reach the other's listener (the desktop app listens on port 3333). WebRTC can connect them
+when their listeners are unreachable. On a local network a WebSocket is usually several times
+faster, so desktop and headless hosts periodically try to replace WebRTC with a WebSocket.
+Allow inbound TCP port 3333 on desktop hosts to enable this on your LAN. `peers devices`
+shows each connection's address; WebRTC ones start with `wrtc://`. An upgrade can interrupt
+calls in flight; see [Remote call failures](../Packages/contracts.md#remote-tool-calls-across-devices).
+
 **Older devices.** A device on a build from before 0.25.7 can't encrypt frames,
 so connections to and from it are refused with "Device … does not support frame
 encryption; update Peers on that device to connect". Your other devices can't

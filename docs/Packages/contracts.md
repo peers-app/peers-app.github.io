@@ -239,6 +239,7 @@ then go through the mesh again.
 **Deadlines and failures.** Remote calls have a 30-second round-trip deadline, even if the
 target tool declares a longer `timeoutMs`. If the connection carrying a call drops, the call
 fails at once with `connection has been closed`; your next call takes whatever route is left.
+The same happens when Peers replaces a direct WebRTC connection with a faster WebSocket.
 A timeout or dropped connection doesn't prove the tool made no changes; calls that may already
 have run aren't automatically retried.
 

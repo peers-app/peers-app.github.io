@@ -234,14 +234,9 @@ with the lexicographically smaller `deviceId` keeps its offer and the other
 answers it (`[Sidecar] WebRTC glare ...` in the logs). Without that rule each
 side dropped its own offer and the `wrtc://` edge never formed.
 
-The connection manager applies the same ordering after both sockets have
-finished the handshake, on every transport. The smaller `deviceId` keeps its
-outbound connection and the other device keeps that connection's inbound side
-(`Keeping the deterministic connection to … after dial glare`). Without that
-shared choice each endpoint keeps its own outbound socket and closes the
-other, so both links go down and redial backs off. A winner that arrives
-second replaces the loser at once and answers the peer's calls straight away;
-the losing socket closes in the background.
+When both transports work, headless prefers a WebSocket and can automatically
+move an existing WebRTC connection to it; see
+[Devices](./Devices.md#what-is-encrypted-on-which-transport).
 
 ## What it does
 
@@ -269,7 +264,10 @@ the losing socket closes in the background.
   join. Addresses come from `Devices.serverUrl` and from asking the target
   (`get-ws-addresses` over the mesh); the target answers with what it
   advertises: `http://127.0.0.1:<peer-port>` plus its LAN address, or the
-  `--advertise-url` origins when given (hosts behind a reverse proxy or NAT)
+  `--advertise-url` origins when given (hosts behind a reverse proxy or NAT).
+  The desktop app does the same, advertising its LAN address on port 3333. Both
+  dial a WebSocket before WebRTC and move a WebRTC connection up to a WebSocket
+  once one connects (see [Devices](./Devices.md#what-is-encrypted-on-which-transport))
 - Device pairing on both sides: `--pair` as the signed-out new device (direct
   WebSocket transport), `peers pair <code>` as the signed-in approver
 - Logs unhandled promise rejections instead of exiting, like Electron's main
