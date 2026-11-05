@@ -103,6 +103,8 @@ again resolves that conflict.
 If a save reports that the record changed while signing, review the latest state and save again.
 
 Readers can view group data and update their own profile and device information.
+Group settings also have a [Files tab](./Files.md#seeing-your-files), which lists the group's
+files as this device holds them and shows the group's retention.
 
 Each device publishes its own entry in the group's device list, signed with its owner's key.
 Once a device's owner has signed for it, nobody else can claim that device or remove its entry.

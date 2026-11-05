@@ -243,6 +243,9 @@ use the old folder, which listing files does not copy from. `--limit` accepts 1â
 Collection previews likewise show each context's eligible contents, which can overlap across
 groups; the overall freed total counts shared contents once.
 
+The [Files tab](./Files.md#seeing-your-files) shows the same list in a group's settings, and in
+**Settings â†’ Files** for your personal space.
+
 `gc` and `reindex` require Admin; `list` requires Reader in the selected context. These commands
 are for the signed-in user's UI or CLI on this device. `--json` works with each command. A CLI
 connected to an older host reports that the host does not provide the new tool; update the host

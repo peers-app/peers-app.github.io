@@ -99,11 +99,39 @@ refuses one over 64 MiB, as `readWholeFile` does; read a large file, such as a v
   Reader's save fails with "Permission denied: Tool requires Writer (40)".
 - **Reading by id.** Anyone in the context who has a file's id can read it, from any package or
   screen. The signed-in user can inspect the context's files with
-  [`peers files list`](./CLI.md#files); packages cannot list them through System Files.
+  [`peers files list`](./CLI.md#files) or the [Files tab](#seeing-your-files); packages cannot list
+  them through System Files.
 - **Your context only.** A package in one group can't read another group's files, even with the
   id: the read fails with "File not found".
 - **This device only.** Another device can't call System Files on this one. Files reach other
   devices through sync instead.
+
+## Seeing your files
+
+Open a group's settings and choose **Files**, or **Settings → Files** for your personal space.
+Readers can use the list too. It shows names, sizes, which tables reference each file, and
+whether all, some or none of its contents are stored on this device. Presence and deadlines
+describe **this device**, not every device in the group.
+
+- **In use:** a declared file field references the file.
+- **Waiting to free:** the date is the earliest its contents can be freed here. Shared or
+  recently saved contents can stay longer.
+- **Ready to free:** its contents can be freed at the next collection.
+- **Kept** or **Never freed:** the file is kept, or the group's retention is set to never.
+- **References not ready:** Peers cannot yet check all references, so it keeps the contents.
+
+A disabled group's files are kept on this device, and its list shows once the group is enabled.
+
+Yellow **Legacy** and **Kept** badges mark files that stay even when unused. You can't remove
+these flagged files yet; explicit deletion comes in a later release. **Older package bundle**
+is a separate badge: Peers frees unused bundles automatically once they are eligible.
+
+The summary shows total file size, counting shared contents for each file, and the retention
+period. Retention can't be changed yet. **Settings → Files** also shows this device's stored
+chunks and bytes across your personal space and groups, plus the last and next collection.
+
+The list loads when you open the tab. Use **Refresh** to see changes, and **Previous** and
+**Next** to browse the list.
 
 ## Limits
 
