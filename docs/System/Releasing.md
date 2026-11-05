@@ -275,7 +275,10 @@ can install them; that build does not commit or publish those packages.
 The two isolation fixtures build their guest API 3 declarations with
 `peers-package build` through `npm run build`, as do the isolate test-artifact
 builder and Electron's release workflow. Keep their SDK build dependency and
-`esbuild` installed when preparing a fresh checkout.
+`esbuild` installed when preparing a fresh checkout. The fixtures may use SDK
+API from the release being built, ahead of their `@peers-app/peers-sdk` pin:
+locally they build against the working-tree `peers-sdk` through the symlink,
+and the release workflow links them to the `peers-sdk` it clones and builds.
 
 ## After the script
 
