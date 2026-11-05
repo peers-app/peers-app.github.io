@@ -52,6 +52,15 @@ in `peers-electron/electron-builder.js`). npm publishing uses the login from
 built by the `Build and Release` workflow in `peers-electron` from Actions
 secrets when Step 3 pushes the tag.
 
+That workflow builds `peers-sdk`, `peers-device`, `peers-isolate`, `peers-core`
+and `peers-cli` at the same tag, so a re-run rebuilds the same release. A
+re-run also uses the workflow file as it was at that tag. To rebuild a release
+with a newer workflow, run it from `main` with the release's version:
+
+```bash
+gh workflow run build-and-release.yml -R peers-app/peers-electron -f version=0.30.1
+```
+
 ## Freezing releases
 
 Create `RELEASES_FROZEN.md` at the monorepo root and in `peers-electron`,
@@ -268,17 +277,21 @@ running e2e.
 Official packages (`official-packages/`) are not part of this release. Each
 one is versioned, built, and promoted on its own through the package
 [lifecycle](../Packages/package-lifecycle.md) (dev, then Promote to beta or
-stable). A host release does not bump their `@peers-app/*` pins or push the
-`official-packages` repo. Step 2b still builds `isolation-smoke`,
+stable). A host release does not version them or bump their `@peers-app/*`
+pins, with one exception. Electron's release workflow builds `isolation-smoke`
+and `isolation-consumer` from `official-packages` main with `npm ci`. So Step 3
+pins those two to the SDK and peers-ui it just published, then pushes
+`official-packages`, just before it pushes `peers-electron`'s tag. The release
+checks first that `official-packages` is on main and that those two fixtures'
+`package.json` and `package-lock.json` have no local changes.
+
+Step 2b still builds `isolation-smoke`,
 `isolation-consumer`, and `timers` so the Tier 1 package and scheduler scenarios
 can install them; that build does not commit or publish those packages.
 The two isolation fixtures build their guest API 3 declarations with
 `peers-package build` through `npm run build`, as do the isolate test-artifact
 builder and Electron's release workflow. Keep their SDK build dependency and
-`esbuild` installed when preparing a fresh checkout. The fixtures may use SDK
-API from the release being built, ahead of their `@peers-app/peers-sdk` pin:
-locally they build against the working-tree `peers-sdk` through the symlink,
-and the release workflow links them to the `peers-sdk` it clones and builds.
+`esbuild` installed when preparing a fresh checkout.
 
 ## After the script
 
