@@ -278,6 +278,7 @@ move an existing WebRTC connection to it; see
 
 | Flag | Purpose |
 |---|---|
+| `--files-dir <dir>` | Folder for the encrypted file-contents database, `chunks.sqlite` (default `<db>/files`). With `--db :memory:`, contents stay in memory unless you provide `--files-dir`. Contents older builds kept in `<dir>/file_chunks` are copied in at startup ([`peers files`](./CLI.md#files)) |
 | `--services-url none` | No mailbox, no `peers.app` discovery |
 | `--register-services` | Register with `--services-url` at startup and store the mailbox token (`PEERS_REGISTER_SERVICES=1`). Incompatible with `--services-url none` |
 | `--no-peer` | Do not listen for other devices |

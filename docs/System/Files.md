@@ -124,6 +124,10 @@ them. Until the description arrives, a read on that device fails with "File not 
 connected device has the contents, the read fails with "this device doesn't have all of it,
 and no connected device sent the rest". Try again once a device that has it is online.
 
+On desktop and headless, a device keeps file contents in an encrypted database for each account,
+and contents that several of the account's groups share are stored once. The PWA keeps them in
+the browser's storage. [`peers files`](./CLI.md#files) shows how much is stored.
+
 ## Related topics
 
 - **[Declaring a package](../Packages/declaring-a-package#calling-contracts)**: consuming system

@@ -185,6 +185,34 @@ peers devices status <deviceId>
 Only direct connections are listed. A device that is merely known through synchronized records
 or an indirect network path is not available to `--device`.
 
+### `peers files` — File storage {#files}
+
+Each account keeps its file contents in its own encrypted database on the device. Older builds
+kept them as plain files in one folder per device (`~/peers/data/files/file_chunks` on
+desktop, `<files-dir>/file_chunks` on headless), shared by every account. Each start copies the
+signed-in account's contents out of that folder, about half a minute after startup, until the
+copy is verified. Reads use the folder in the meantime, so nothing waits for it.
+
+```bash
+# How much is stored, and where the copy from the old folder stands
+peers files
+
+# Copy now instead of waiting for the next start
+peers files migrate
+
+# Delete the old folder, once every account on this device has copied its contents
+peers files remove-legacy-chunks
+```
+
+`peers files` reports the copy as `pending`, `running`, `verified` or `blocked`. A blocked copy
+lists why, for example a file an older build kept in a format this one can't read. The old
+folder stays until you remove it. `remove-legacy-chunks` first copies the signed-in account's
+contents again, picking up files that arrived since the last copy. It refuses while any account
+on the device hasn't copied its contents, and names those accounts: start Peers as each of them,
+then try again. Package bundles that no
+package version uses any more aren't copied, so they're freed when the folder goes. Desktop and
+headless only; the PWA removes its old store by itself.
+
 ### `peers pair` — Add a new device {#pair}
 
 Approve a new device that is showing a pairing code, from a signed-in host. The host the CLI
