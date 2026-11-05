@@ -66,6 +66,11 @@ Activation scope depends on the version and override state:
 3. **Dev versions sync** to the group as `PackageVersions` records, and other devices **download those version files immediately**, but they **do not auto-switch** to dev. That holds even for a new package whose only version is dev: other devices show it installed but not running ("Only a dev version is selected; activate it on this device to run it") until someone activates it on that device. A device that activates a dev version keeps loading each rebuild of it, until it activates a beta or stable release, follows the group again, or the dev version is promoted.
 4. Open **Packages → your package → Versions** to see versions, hashes, and tags. Use **Activate** on a dev version to run it on **this device** without changing the group active version.
 
+Each changed reload replaces the package's previous dev build in that group. Peers removes the
+replaced build's bundles 7 days after no version uses them; bundles a beta or stable version
+uses stay. Rebuilding an earlier commit brings its bundles back. See
+[System Files](../System/Files.md#what-to-expect).
+
 :::warning A failed dev reload leaves old code running
 A failed reload exits `1` and leaves the previous code running. Refused builds are not installed. An accepted dev build that fails to load stays selected, shows **Update failed**, and is tried again on restart. Check `peers packages get <packageId>` after a failure. Page refresh also checks package folders (on by default), but reports failures only in the developer console.
 :::

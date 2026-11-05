@@ -92,9 +92,12 @@ refuses one over 64 MiB, as `readWholeFile` does; read a large file, such as a v
   the group's retention period (30 days by default), plus 7 days. Each device counts from when
   it first sees the file unreferenced. Your personal space uses the same default. Retention
   cannot be changed in this release.
-- **Older files are kept.** Files saved by older Peers builds, and files saved through the
-  deprecated `saveFile` RPC, stay even without declared references. Unused older package bundles
-  are the exception: Peers can free them too.
+- **Unused package bundles are removed after 7 days.** Once no package version uses a bundle,
+  Peers removes it and frees its contents 7 days after a device first sees it unused, whatever
+  the group's retention, even "never". Rebuilding the same bundle brings it back.
+- **Older user files are kept.** Apart from package bundles, files saved by older Peers builds
+  stay even without declared references. Files saved through the deprecated `saveFile` RPC are
+  also kept.
 - **Who can save and read.** Saving needs Writer in the context, and reading needs Reader. A
   Reader's save fails with "Permission denied: Tool requires Writer (40)".
 - **Reading by id.** Anyone in the context who has a file's id can read it, from any package or
@@ -123,8 +126,9 @@ describe **this device**, not every device in the group.
 A disabled group's files are kept on this device, and its list shows once the group is enabled.
 
 Yellow **Legacy** and **Kept** badges mark files that stay even when unused. You can't remove
-these flagged files yet; explicit deletion comes in a later release. **Older package bundle**
-is a separate badge: Peers frees unused bundles automatically once they are eligible.
+these flagged files yet; explicit deletion comes in a later release. A grey **Package bundle**
+badge marks the bundles Peers removes once unused. Other files stay listed after their contents
+are freed.
 
 The summary shows total file size, counting shared contents for each file, and the retention
 period. Retention can't be changed yet. **Settings → Files** also shows this device's stored
@@ -161,14 +165,14 @@ and no connected device sent the rest". Try again once a device that has it is o
 
 If a file is referenced again after this device freed its contents, reading it fetches the
 contents from another connected device that still has them. A device returning after months
-offline starts its own full retention period when it first sees a file unreferenced. A new
+offline starts its own full waiting period when it first sees a file unreferenced. A new
 reference clears that deadline; removing it later starts a fresh period.
 
 **When the last copy can be lost.** Suppose a device that never downloaded a file adds a
 reference to it. If that reference reaches no device holding the contents before all those
 devices' deadlines pass, the last copy can be freed. Each deadline gives at least the retention
-period plus 7 days from when that device first saw the file unreferenced. The file id and its
-reference remain, but reading it fails as unavailable if no device still has the contents.
+period plus 7 days (7 days for a package bundle) from when that device first saw the file
+unreferenced. The reference remains, but reading the file fails if no device still has it.
 
 Shared contents stay while any file using them is still retained, including files in disabled
 groups. Recently saved contents can also stay longer. Use
