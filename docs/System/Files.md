@@ -12,6 +12,10 @@ headless and the PWA.
 Its main calls are `save` and `read`, plus a write session for files over 8 MiB, which
 `saveWholeFile` runs for you. Use them from a tool handler or from a screen.
 
+System Files is for files a package owns, up to 1 GiB each. The user's own folders are
+different: they stay where they are on disk, and [System Local Folders](./Local-Folders.md)
+gives a package access to one. Peers has no place yet for a package's own file over 1 GiB.
+
 ## From a tool handler
 
 Declare it in the package, then call it with the handler's `ctx`:
@@ -48,7 +52,10 @@ const { fileId } = await saveWholeFile(SystemFiles(ctx).tools, {
 
 Keep the `fileId` in one of your own tables, next to the row the file belongs to, in a field
 declared with `zodFileId` ([File fields](../Packages/declaring-a-package#file-fields)), so Peers
-knows the row uses the file.
+knows the row uses the file. Only a top-level `zodFileId` field, or an array of them, in a
+synced table keeps a file. An id kept anywhere else, such as in a plain string field, inside an
+object field, in a `localOnly` table or in a package variable, doesn't, and the file's contents
+are [freed](#what-to-expect) once no declared field references it.
 
 ## From a screen
 
@@ -80,7 +87,33 @@ function Avatar({ fileId }: { fileId?: string }) {
 `useFileUrl` reads the file in the screen's context (the active group, or your personal space),
 and returns `url`, `loading` and `error`. The URL stops working when the component unmounts or
 the file id changes, so use it only for rendering. It reads the whole file into memory, so it
-refuses one over 64 MiB, as `readWholeFile` does; read a large file, such as a video, in ranges.
+refuses one over 64 MiB, as `readWholeFile` does.
+
+## Reading a large file
+
+A `read` returns at most 8 MiB, starting at `offset` (0 by default). Give `length` to read
+fewer bytes; without it, a read goes to the end of the file, up to 8 MiB. Every read returns
+`fileSize`, the size of the whole file, so you can work through a file of any size without
+holding it in memory:
+
+```ts
+const files = SystemFiles(ctx).tools;
+let offset = 0;
+let fileSize = 0;
+do {
+  const part = await files.read({ fileId, offset }); // up to 8 MiB from offset
+  fileSize = part.fileSize;
+  await handle(part.bytes); // your code
+  offset += part.bytes.length;
+} while (offset < fileSize);
+```
+
+On a device that doesn't have the file yet, a read downloads only the parts its range covers.
+So reading the first few bytes of a large file doesn't fetch the rest.
+
+A screen can't yet stream a file over 64 MiB, such as a long video, to a `<video>` or
+`<audio>` element: that needs a URL that serves ranges, which Peers doesn't provide. Up to
+64 MiB, `useFileUrl` works.
 
 ## What to expect
 
@@ -90,8 +123,9 @@ refuses one over 64 MiB, as `readWholeFile` does; read a large file, such as a v
 - **Unused contents are freed automatically.** Once nothing references a file through a
   [declared file field](../Packages/declaring-a-package#file-fields), each device retains it for
   the group's retention period (30 days by default), plus 7 days. Each device counts from when
-  it first sees the file unreferenced. Your personal space uses the same default. Retention
-  cannot be changed in this release.
+  it first sees the file unreferenced, and frees what's due a few minutes after it starts and
+  every four hours after that. Your personal space uses the same default. Retention cannot be
+  changed in this release.
 - **Unused package bundles are removed after 7 days.** Once no package version uses a bundle,
   Peers removes it and frees its contents 7 days after a device first sees it unused, whatever
   the group's retention, even "never". Rebuilding the same bundle brings it back.
@@ -147,9 +181,7 @@ The list loads when you open the tab. Use **Refresh** to see changes, and **Prev
   belong to their starting caller in that context: a package cannot use another package's
   sessions or ones started by the signed-in UI or CLI. The UI and CLI act as the signed-in user
   and share that user's sessions on this device.
-- A `read` returns at most 8 MiB. Give `offset` and `length` (in bytes) to read part of a file;
-  without `length`, it reads from `offset` to the end, up to 8 MiB. Every read returns
-  `fileSize`, the size of the whole file.
+- A `read` returns at most 8 MiB ([Reading a large file](#reading-a-large-file)).
 - `readWholeFile` reads in ranges for you, and refuses a file over 64 MiB, so a large file isn't
   read into memory by mistake. Pass `{ maxBytes }` to read a larger one whole, or read it in
   ranges.
@@ -187,6 +219,10 @@ the browser's storage. [`peers files`](./CLI.md#files) shows how much is stored.
 
 - **[Declaring a package](../Packages/declaring-a-package#calling-contracts)**: consuming system
   contracts from a handler.
+- **[File fields](../Packages/declaring-a-package#file-fields)**: declaring the fields that keep
+  a file.
 - **[Using the contract from a UI](../Packages/declaring-a-package#using-the-contract-from-a-ui)**:
   `hostContract`, `useRows` and `useTool`.
 - **[System HTTP](./HTTP)**: fetching from the web, to save what you fetch.
+- **[System Local Folders](./Local-Folders)**: access to a folder of the user's own.
+- **[`peers files`](./CLI.md#files)**: storage, collection and file lists from the CLI.
