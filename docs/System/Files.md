@@ -87,12 +87,19 @@ refuses one over 64 MiB, as `readWholeFile` does; read a large file, such as a v
 - **The same content is the same file.** Saving the same bytes with the same name and MIME type
   returns the same `fileId`; a different name or MIME type gives a new one. A file never changes.
   To replace an avatar, save the new image and store its id instead of the old one.
-- **Files can't be deleted yet.** An old file stays until a later version of Peers adds deletion.
+- **Unused contents are freed automatically.** Once nothing references a file through a
+  [declared file field](../Packages/declaring-a-package#file-fields), each device retains it for
+  the group's retention period (30 days by default), plus 7 days. Each device counts from when
+  it first sees the file unreferenced. Your personal space uses the same default. Retention
+  cannot be changed in this release.
+- **Older files are kept.** Files saved by older Peers builds, and files saved through the
+  deprecated `saveFile` RPC, stay even without declared references. Unused older package bundles
+  are the exception: Peers can free them too.
 - **Who can save and read.** Saving needs Writer in the context, and reading needs Reader. A
   Reader's save fails with "Permission denied: Tool requires Writer (40)".
 - **Reading by id.** Anyone in the context who has a file's id can read it, from any package or
-  screen. There's no way to list files, and ids can't be guessed, so a file is read only by those
-  you give its id to.
+  screen. The signed-in user can inspect the context's files with
+  [`peers files list`](./CLI.md#files); packages cannot list them through System Files.
 - **Your context only.** A package in one group can't read another group's files, even with the
   id: the read fails with "File not found".
 - **This device only.** Another device can't call System Files on this one. Files reach other
@@ -123,6 +130,22 @@ contents download the first time a device reads it, from a connected device that
 them. Until the description arrives, a read on that device fails with "File not found". If no
 connected device has the contents, the read fails with "this device doesn't have all of it,
 and no connected device sent the rest". Try again once a device that has it is online.
+
+If a file is referenced again after this device freed its contents, reading it fetches the
+contents from another connected device that still has them. A device returning after months
+offline starts its own full retention period when it first sees a file unreferenced. A new
+reference clears that deadline; removing it later starts a fresh period.
+
+**When the last copy can be lost.** Suppose a device that never downloaded a file adds a
+reference to it. If that reference reaches no device holding the contents before all those
+devices' deadlines pass, the last copy can be freed. Each deadline gives at least the retention
+period plus 7 days from when that device first saw the file unreferenced. The file id and its
+reference remain, but reading it fails as unavailable if no device still has the contents.
+
+Shared contents stay while any file using them is still retained, including files in disabled
+groups. Recently saved contents can also stay longer. Use
+[`peers files gc --dry-run`](./CLI.md#files) to preview what this device would free now and its
+next deadlines.
 
 On desktop and headless, a device keeps file contents in an encrypted database for each account,
 and contents that several of the account's groups share are stored once. The PWA keeps them in

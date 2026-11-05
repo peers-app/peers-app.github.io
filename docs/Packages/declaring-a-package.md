@@ -244,6 +244,11 @@ export const Members = defineTable({
 
 A `zodFileId` is a peer id like any other: it validates, filters and reads the same way.
 
+Keep a file's id in one of these fields for as long as the row needs its contents. After the
+last declared reference goes, each device starts its own retention period before freeing unused
+contents. A reference added later can fetch them again from another device that still has them.
+See [file retention and availability](../System/Files#what-to-expect).
+
 - **Top-level fields only.** A file id inside an object field, in a plain string field, or in a
   package variable doesn't count as a use. To attach several files to a row with details about
   each, give them a table of their own, one row per file.

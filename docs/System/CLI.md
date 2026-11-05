@@ -197,6 +197,22 @@ copy is verified. Reads use the folder in the meantime, so nothing waits for it.
 # How much is stored, and where the copy from the old folder stands
 peers files
 
+# Free expired files' unused contents on this device now
+peers files gc
+
+# Preview what would be freed in each context and the next deadlines
+peers files gc --dry-run
+
+# Inspect personal files, or files in a group
+peers files list
+peers files list -c <groupId> --json
+
+# Continue a list using its next cursor (50 files per page by default)
+peers files list -c <groupId> --after <nextCursor> --limit 100
+
+# Rebuild file references after editing declared file fields through raw SQL
+peers files reindex
+
 # Copy now instead of waiting for the next start
 peers files migrate
 
@@ -212,6 +228,25 @@ on the device hasn't copied its contents, and names those accounts: start Peers 
 then try again. Package bundles that no
 package version uses any more aren't copied, so they're freed when the folder goes. Desktop and
 headless only; the PWA removes its old store by itself.
+
+Collection runs automatically, and `gc` requests a run now. It waits for the legacy copy to be
+verified and for sync to be idle; a skipped or interrupted run says why. `--dry-run` deletes
+nothing, though it can start the normal retention clock for a newly unreferenced file. See
+[System Files](./Files.md#what-to-expect) for what is kept, when unused contents are freed, and
+how a file can be fetched again.
+
+`list` shows names, sizes, references, whether contents are in this account's current store, and local expiry
+deadlines. A deadline is the earliest a file becomes eligible: shared or recently saved contents
+can stay longer. List summaries count logical file sizes, so shared contents can count more than
+once; `peers files` reports the device's actual stored total. During migration, reads can also
+use the old folder, which listing files does not copy from. `--limit` accepts 1–200 files.
+Collection previews likewise show each context's eligible contents, which can overlap across
+groups; the overall freed total counts shared contents once.
+
+`gc` and `reindex` require Admin; `list` requires Reader in the selected context. These commands
+are for the signed-in user's UI or CLI on this device. `--json` works with each command. A CLI
+connected to an older host reports that the host does not provide the new tool; update the host
+to use it.
 
 ### `peers pair` — Add a new device {#pair}
 
