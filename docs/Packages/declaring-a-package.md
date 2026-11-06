@@ -390,15 +390,27 @@ keep the data, the new version copies it once, on each device:
   definition (`getTableContainer().getTable(oldMetaData, oldSchema)`). Save each row through
   the new table, keeping its id.
 - **Copy only rows the new table doesn't have yet.** On a synced table every device runs the
-  copy, and the copies merge because the ids match. A device that copies before it has caught up
-  with the group can copy a stale row over a newer one another device already copied, so let the
-  device sync first, and pause the package's writes during the copy.
+  copy, and the copies merge because the ids match. Save each copied row with
+  `{ weakInsert: true, insertOnly: true }`: `insertOnly` leaves a row this device already has
+  alone, and `weakInsert` makes the copy yield to any real write, so a device that copies late
+  can't undo an edit made after another device's copy. Still let the device sync first, so it
+  copies current rows. A row this device deleted since stays deleted: its save is refused as
+  deleted, so count it as skipped. Pause the package's writes during the copy.
+- **Copy into read-only tables through a tool.** A table whose class refuses consumers' saves
+  ([read-only to its consumers](#overriding-table-methods)) takes the copy through a tool of
+  your own: the UI reads the old rows in pages and passes them to it in batches, and the tool
+  saves them with the table's package-only write method.
 - **Record that the copy is done**, for example in a `groupDeviceVar`, and have background work
   wait for it.
 - **Release the new version to the group**, so devices switch together. Until a device switches,
   it keeps writing the old table. Its new rows carry over when it switches, but an edit it makes
   to a row another device already copied doesn't. Deletions from the old table don't remove
   copied rows either, so keep the switch short.
+- **Rehearse it in a throwaway group.** Install the old version there, add rows with its
+  screens, then reload the new build in that group and check the copied rows before the real
+  group switches. Turn off **Reload packages on page refresh** on that device first, or a page
+  load selects your folder's new build in whichever group is active
+  ([Avoid production folder reloads](./development-and-production#current-setup-caveats)).
 - **Remove the copy code** in a later version, once every device has run it. The old tables
   stay in storage; nothing reads them any more.
 
