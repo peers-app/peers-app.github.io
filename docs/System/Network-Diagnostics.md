@@ -115,7 +115,8 @@ Recovery is requested after each normal sync with a remote device. What happens 
 depends on the latest error:
 
 - **Schema validation** (`Validation on insert failed`, `Validation on update failed`,
-  `ZodError`, or Zod's issue JSON such as `"code": "invalid_type"`) is parked. Peer
+  `ZodError`, or Zod's issue JSON such as `"code": "invalid_type"`, or `"code": "custom"`
+  for a failed field check such as `Invalid id`) is parked. Peer
   retry stops, the entry stays in the queue, and local history is tried again once
   per process start, when a new change for that record arrives, and when you press
   **Retry**. Dropping the entry would be unsafe: an older
@@ -156,6 +157,11 @@ from **Sync recovery**, a pane of Network Viewer (like Troubleshoot). The networ
 | Delete everywhere | Write a tracked delete for the queued record. |
 | Ignore on this device | Remove the local queue entry only. Other devices keep theirs. |
 
+Retry needs Admin of the group. **Keep this device's version** and **Delete everywhere** need
+Owner, because other devices receive the change they write. **Ignore on this device** needs only
+membership, so anyone can clear an entry on their own device. If that record fails to sync
+again later, the entry comes back.
+
 The tabs-strip indicator turns yellow when any entry is parked, or has been retrying
 for at least 5 attempts over 10 minutes. Offline keeps the cloud-slash icon and turns
 yellow as well. Sync activity (green pulse, blue spinner) still shows; red sync errors
@@ -165,8 +171,9 @@ observable. The recovery screen reloads when that observable changes.
 The same queue is available from System Network Diagnostics `getSyncRecoveryEntries`
 and System Network Control `retrySyncRecovery` / `resolveSyncRecovery`.
 Each call is authorized in the context it names, as the signed-in user. Reading the
-queue requires Reader. Retry and `resetDeviceSyncInfo` require Admin. Resolve and
-`resetChangeTracking` require Owner. A named context below that level is rejected
+queue requires Reader, and so does a resolve with `ignoreLocal`. Retry and
+`resetDeviceSyncInfo` require Admin. A resolve with `keepLocal` or `deleteEverywhere`, and
+`resetChangeTracking`, require Owner. A named context below that level is rejected
 and is not changed. Omitting the context lists or updates only the contexts the user
 can access at that level, and a reset that skips any context reports those names.
 Calling `getSyncRecoveryEntries` with no context lists every readable personal and
