@@ -130,8 +130,7 @@ A screen can't yet stream a file over 64 MiB, such as a long video, to a `<video
   Peers removes it and frees its contents 7 days after a device first sees it unused, whatever
   the group's retention, even "never". Rebuilding the same bundle brings it back.
 - **Older user files are kept.** Apart from package bundles, files saved by older Peers builds
-  stay even without declared references. Files saved through the deprecated `saveFile` RPC are
-  also kept.
+  or by older-style packages stay even without declared references.
 - **Who can save and read.** Saving needs Writer in the context, and reading needs Reader. A
   Reader's save fails with "Permission denied: Tool requires Writer (40)".
 - **Reading by id.** Anyone in the context who has a file's id can read it, from any package or
