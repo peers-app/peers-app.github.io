@@ -361,3 +361,110 @@ WebRTC; look for `[Sidecar]` or `[WebRTC]` lines in the logs.
 
 Use timestamps, device IDs, group IDs, and the WebRTC connection ID to correlate the PWA
 trace with the desktop Network Viewer.
+
+## Measuring connection speed
+
+Read the current device's measurements, or a directly connected phone's:
+
+```bash
+peers tools run getMeshStats '{}' --json
+peers tools run getMeshStats '{}' --device <phone-device-id> --json
+```
+
+Use a device ID from **Devices**. Remote access requires Self trust on the target;
+sharing a group alone does not grant access. Older devices that do not provide
+`getMeshStats` report it as unavailable. Update the target before collecting a baseline.
+
+The `stats` result contains current episodes, recent finished episodes, recent
+attempts and discovery broadcasts, counters since startup, and percentiles.
+By default the tool returns the **latest 50** attempts and broadcasts. Set `limit`
+from 0 to 500 to change both lists; counters, episodes, and percentiles stay complete.
+Use 0 for a summary or 500 for a full buffered baseline:
+
+```bash
+peers tools run getMeshStats '{"limit":500}' --device <phone-device-id> --json
+```
+
+History retains up to 20 episodes and 500 attempts and broadcasts until the
+runtime restarts. `unfinishedAttempts` counts attempts whose observation ended
+before an outcome was available. Durations are numbers in milliseconds.
+Wall-clock fields identify when events happened.
+
+An episode starts at startup, resume/foreground, a network change, or loss of the
+last connection to a device. Episodes can overlap, but a resume while a resume
+episode is still active joins it, so one wake counts once. Each ends when coverage is
+restored, or after five minutes with `outcome: "unfinished"`. A new device that
+doesn't know any other device yet keeps its episode open until it learns of one,
+so its first connection is still measured.
+
+| Metric | How to read it |
+| --- | --- |
+| `T_first` | Time to the first admitted device other than Peers Services. |
+| `T_own` | Time to the first admitted device belonging to this account. |
+| `T_cover` | Time until every context with a possible source has a ready, usable connection. |
+| `T_resume` | `T_cover` for a resume episode. |
+| `repairStart` | Time from a connection loss to the next outgoing dial in that episode. |
+| `readyToDialMs` | Startup gate before connection setup: from page navigation on the PWA, or runtime initialization on a host. |
+
+A usable source is a ready own device, or another member's device with Writer or
+higher access in the context. Peers Services never supplies coverage. A context
+with no known eligible source device is marked `excluded`;
+for example, a group whose other devices all belong to Readers. An empty list of
+possible sources does not prove that no other device exists. Already-connected
+devices can give a resume episode zero-time measurements. A missing duration
+means the event was not observed before the episode ended, not zero.
+
+Percentiles use only observed durations in finished episodes, with `count` for
+each sample. Compare that count and unfinished episodes alongside p50/p95/p99:
+slow or incomplete episodes must not disappear from the interpretation. There
+are no pass/fail timing targets yet.
+
+Attempts show why and where a dial was made, authenticated versus expected
+identity, admission or failure, and readiness and first successful sync for each
+context. Stage times are offsets from `queuedAt`. An identity mismatch is recorded;
+this measurement does not change admission policy. `doubleDial` marks an outgoing
+dial overlapping an incoming attempt or connection. `offline` means TTL0, no route,
+or a signaling timeout without an answer; it is an observed failure, not a
+presence guarantee. A WebRTC offer alone is never counted as a connection.
+
+Counters include outgoing dials per admitted outgoing connection, by path,
+failure reasons, incoming admissions, offline dials, and discovery broadcasts
+with their answers or TTL0 results. A ratio with no admitted outgoing connections
+is `null`. LAN discovery probes are separate: `lanScan.scans` counts full or
+cached scan passes, `probes` counts sockets tried, and `connected` counts probes
+whose socket opened. Unanswered probes make no attempt record or log line. A
+successful probe becomes an attempt at socket open, so its stage times exclude
+the preceding probe wait. Per-hour rates are averages since startup, not a rolling window.
+
+Each attempt outcome and episode summary produces one `[Mesh]` line with a JSON
+payload; intermediate stages are available through the tool. Each admitted
+connection removal also emits a compact `[Mesh] lost` line immediately, with
+`deviceId`, `path`, `livedMs` since admission, and `replaced`. A replacement is
+logged but does not start a connection-loss episode. Filter and tail:
+
+```bash
+peers logs --search '[Mesh]' --since 30 --full
+peers logs --device <phone-device-id> --search '[Mesh]' --since 30 --json
+peers logs --search '[Mesh]' --follow --full
+```
+
+Peers Services collects attempts and relay/churn counters but disables episodes
+and coverage measurement. Its episode lists are empty and percentile sample
+counts are zero. It emits no `[Mesh] attempt`, `[Mesh] episode`, or `[Mesh] lost`
+lines; its existing connection and disconnect logs remain available.
+
+Services emits one `[Mesh] services` JSON line each minute, skipped
+when every value is zero. `directRelays`, `floodsForwarded`, `floodsPruned`,
+`connects` and `disconnects` are counts during that interval. A forwarded flood
+counts once regardless of how many recipients it has; a pruned flood has no
+recipients and ends in TTL0. `pendingEmits` and `concurrentConnections` are current
+gauges of device-message sends and admitted connections. Hosts expose the same
+cumulative counters through `getMeshStats`, without the periodic log.
+
+Read the deployed Services stdout stream with:
+
+```bash
+az webapp log tail --name peers-services --resource-group peers-services | rg '\[Mesh\] services'
+```
+
+These lines appear after Services has been deployed with measurement support.
