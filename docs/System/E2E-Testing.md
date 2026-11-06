@@ -62,7 +62,8 @@ before its E2E gate.
 ```bash
 cd peers-e2e
 npm test                 # Tier 0: unit tests, no processes
-npm run e2e              # Tier 1: every scenario except fleet-large (<= 8 processes each)
+npm run e2e              # Tier 1: release scenarios; excludes fleet-large and connectivity
+npm run e2e:connectivity # Home connectivity bench; outside the release gate
 npm run e2e:fleet        # Tier 2: PEERS_FLEET_SIZE=32
 npm run e2e:fleet:large  # Tier 3: PEERS_FLEET_SIZE=100
 ```
@@ -81,6 +82,130 @@ waves; it is meant for a workstation or a nightly job, not a default CI runner.
 The pre-flight budget check warns when free memory or `ulimit -n` look too small
 (macOS under-reports free memory, so the warning there is usually noise; pass
 `failOnBudget: true` to make it fatal).
+
+### Home connectivity bench (opt-in)
+
+Run this when comparing connection fixes. It uses three Mark desktops, Mark's phone,
+Blair's laptop and Blair's phone, their personal contexts, and a shared **Home** group.
+Blair's laptop has a LAN bootstrap link to Mark's first desktop so Home can converge.
+The phones are persistent headless hosts with no listener, a WebRTC sidecar and
+`--no-websocket-dial`, leaving only WebRTC in their device protocol list, like the PWA.
+A real Peers Services runs behind a latency proxy. S5 temporarily adds three devices
+for a third user who is not in Home. Each S6 variant adds a fresh Robin laptop and
+phone, with no LAN bootstrap to Mark, and a separate **Club** group to measure
+the first cross-user connection through Services.
+
+```bash
+cd peers-e2e
+npm run e2e:connectivity
+npm run e2e:connectivity -- -t S6    # any S1–S6 can run independently
+npm run e2e:connectivity -- -t 'S3 short'
+npm run e2e:connectivity -- -t 'S6 qr'
+PEERS_CONNECTIVITY_REPEATS=3 npm run e2e:connectivity -- -t S2
+PEERS_CONNECTIVITY_BASELINE=/absolute/path/to/earlier/connectivity-report.json npm run e2e:connectivity
+```
+
+Build the usual siblings listed above (including the updated **peers-headless**, which
+must include the SIGCONT resume hook and `--no-websocket-dial`), **peers-services** (`npm run build` there),
+and **peers-webrtc** (`make local` there, requires Go). Install peers-e2e's dependencies
+with `npm_config_cache="$TMPDIR/npm-cache" npm install` if necessary. Mongo is supplied
+by `mongodb-memory-server` (network needed for its first binary download), or set
+`PEERS_E2E_MONGO_URI` to a test Mongo server. macOS/Linux and `ps` are required
+for process suspension. Missing prerequisites fail this bench
+rather than quietly skipping it. No `isolation-*`, `timers`, or other package fixtures
+are needed: this bench measures connectivity, without a synthetic package-loading cost.
+
+Budget roughly **10–12 minutes** for all six scenarios and their variants on a Mac,
+excluding first-time Mongo download and builds. This estimate needs confirmation on
+your machine. A repeat adds another measurement cycle on the same persistent Home
+fixture; the report shows medians with observed/total counts. Selecting a scenario
+still prepares the complete Home fixture. S3 freezes for 70 seconds (short) and
+130 seconds (long); S4 can spend 120 seconds observing recovery after its initial
+failed dial. Each S6 variant allows 90 seconds after Club exists on Robin's laptop;
+it finishes early if a Club connection becomes usable. Robin gets a fresh identity
+and group for each variant and repeat so an earlier connection
+cannot seed the next attempt. Robin is stopped before S6 restores Blair, and before
+either S5 measurement, so Robin never contributes to S5's Services counts.
+
+| Scenario | What to expect with today's connection policy |
+|---|---|
+| S1: phone cold start | Services first, then the 3 s stabilization delay, own-device discovery and WebRTC. Incoming connections can shorten the result. |
+| S2: desktop restart | Two Services delays expose local `--peer` dials waiting behind Services. Reports socket-open/admission times, the admission-to-local-dial gap, T_first, and own-device order against the saved `lastSeen` values. An incoming dial can mask T_first; too few own-device dials makes the ordering comparison inconclusive. |
+| S3 short / long: phone resume | Starts from a covered phone, freezes the host and sidecar, confirms peers dropped it, then continues the same processes. SIGCONT runs the PWA visibility action. Short (70 s) is below the two-minute probe threshold, so ordinary ping failures or close events must discover dead links. Long (130 s) should trigger probing. Reports the first resume's T_resume, every resume trigger, observed coverage recovery, and log evidence distinguishing probe starts, probe removals, ping failures and close events. A zero T_resume can reflect stale coverage; use the observed recovery cross-check. This models a device frozen with its connections left open, as after a laptop sleeps. A phone that closes its connections when it goes to the background behaves more like S1 after its resume trigger. |
+| S4: first dial fails | Stops all other possible sources, freezes desktop D's sidecar, and requires a failed outgoing phone WebRTC dial. Restores D's sidecar and observes recovery for up to 120 s. It can stay disconnected, or D can dial back; D's timeline and sidecar-watchdog activity explain a rescue. |
+| S5: discovery cliff | Stops Blair's laptop and restarts her phone with at most 6, then at least 8, verified Services links. Home discovery can answer at the lower count and return TTL0 at the higher count. Known-device signaling bypasses flood pruning. Without a Home broadcast the headline is **inconclusive**, including when an incoming dial connects quickly. The report records desktop dial reasons and nearby connection events; those events are candidate triggers because the runtime does not attribute each queued pass. |
+| S6 direct: Services-only group join | Robin and Mark become contacts, then Mark invites Robin to Club. Blair and the load devices are stopped to avoid S5's discovery cliff. Today the group-join and broadcast-answer attempts can be refused with “Sending device is not known in dataContext: Club direct”, with no later retry within 90 s. Only Club membership on Robin's laptop and both Robin devices reaching Services are preconditions; group sync is a measurement. |
+| S6 qr: Services-only QR join | A fresh Robin accepts the URL encoded by the group-invite QR, without a prior contact invite. Matches the UI defaults: **approve**, **Reader**, one-day expiry; Mark approves the request. Measures the same rejection and retry problem, but approval also saves the requester's observed device identity on Mark's approving host. A connection is a valid outcome; the report records identity-row presence to explain this difference. |
+
+Each run retains `connectivity-report.json` and `connectivity-report.md` in its printed
+artifact directory. Markdown opens with one headline row per scenario and variant,
+then per-scenario detail and timelines, then the full medians. They include
+T_first, T_own, T_cover, T_resume, repair start,
+startup ready-to-dial time, episode outcomes and coverage, every retained attempt's
+target **by fleet label**, queue offsets, transport, reason, stages, outcome, failure
+detail (up to 200 characters), broadcasts,
+TTL0s, and offline dials. Stage times are relative to the attempt; queue times are
+relative to the measured episode. Incoming attempts stay visible. Runtime percentiles
+include all retained episodes; the comparison medians use the selected scenario's
+measurements. S6's combined timeline includes source labels and attempts from both
+users on one clock starting before invite setup (including contacts for direct); its metrics and ordinary
+counters come from Robin's laptop, with all devices' counters also recorded. Startup
+and resume durations may be blank because S6 begins after startup. Only a
+connection ready for Club counts as a Club connection. Reports are rewritten after
+each sample, so partial runs remain useful.
+
+The baseline path adds before/after headlines, medians and counters in both files.
+Comparisons match scenario and variant exactly: older `S3/default` and `S6/default`
+are not silently mapped to the new variants.
+Keep latency and observation bounds equal when comparing fixes; differing configuration
+is called out. `null` / `—` means **not observed**, never zero, and the denominator shows
+how many repeats supplied a measurement. An empty Services-log list means no minute
+bucket was emitted in that window. Those buckets can overlap setup and are not exact
+scenario-only deltas. No performance target fails this bench yet: assertions check
+fixture readiness, the fault's preconditions, transport, and metric availability.
+It is excluded from **Tier 1 and the release gate**; `e2e:all` includes it.
+
+All settings below are environment variables; delays and bounds are milliseconds.
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| `PEERS_CONNECTIVITY_SERVICES_LATENCY_MS` | 90 | One-way delay per TCP chunk in both directions, used by Services URLs and its advertised address. Intended to put socket opening in the hundreds of ms and admission around a second; inspect the measured stages for calibration. |
+| `PEERS_CONNECTIVITY_SLOW_SERVICES_LATENCY_MS` | 250 | S2's second Services delay. |
+| `PEERS_CONNECTIVITY_LINK_LATENCY_MS` | 10 | One-way listener delay for desktop/laptop links, keeping them much faster than Services. |
+| `PEERS_CONNECTIVITY_SHORT_SUSPEND_MS` | 70000 | S3 short freeze: above peers' roughly 55 s drop time, below the 120 s ping-gap probe threshold. Leave room for the ping timer's phase. |
+| `PEERS_CONNECTIVITY_SUSPEND_MS` | 130000 | S3 long freeze: above the probe threshold. Both variants emit a SIGCONT resume episode; only the long gap should run a probe. Too short a freeze can fail the dropped-peer precondition. |
+| `PEERS_CONNECTIVITY_OBSERVE_MS` | 45000 | Recovery/discovery observation bound for S1, S2, S3 and each S5 variant. |
+| `PEERS_CONNECTIVITY_FAILURE_MS` | 75000 | S4 budget to observe the deliberately failed first WebRTC dial. |
+| `PEERS_CONNECTIVITY_RETRY_MS` | 120000 | S4 recovery window after continuing D's sidecar. |
+| `PEERS_CONNECTIVITY_GROUP_CONNECT_MS` | 90000 | Each S6 variant's window after Club membership reaches Robin's laptop. Captures join attempts made during setup too. |
+| `PEERS_CONNECTIVITY_SETUP_MS` | 90000 | Per-device READY and fixture/precondition budget. |
+| `PEERS_CONNECTIVITY_REPEATS` | 1 | Repeats of each selected scenario; integer ≥ 1. |
+| `PEERS_CONNECTIVITY_BASELINE` | unset | Earlier report JSON for comparison. |
+| `PEERS_E2E_ARTIFACTS` | package default | Parent directory for reports, logs and persistent test data. |
+
+#### Fidelity to real devices
+
+**Real:** the runtime's dialing, admission, sync, relay and metrics; Peers Services
+with its database; and WebRTC through the desktop's Go sidecar, with signaling
+relayed through Services. Phones register only the WebRTC device protocol, like the
+PWA, and keep their Services socket. Any outgoing device WebSocket attempt fails
+the transport check.
+
+**Induced:** proxy link latency, freezing with SIGSTOP/SIGCONT (the SIGCONT hook
+stands in for page visibility), and S4's frozen WebRTC process. WebRTC data channels
+remain loopback. The sidecar watchdog and incoming rescue dials are left active.
+
+**Not covered:** phone startup cost (ready to dial about **0.8 s** here versus
+**7.65 s** on Mark's phone; Services about **1.0 s** versus **4.5 s**), slow main-thread
+package loading and sync batches, browser WebRTC behavior such as glare and ICE
+`disconnected`, the PWA's database export costs, TLS, loss, real ICE/TURN/NAT, and
+Chrome local-network access.
+
+Removing a fixed wait or serial ordering should save about the same **absolute
+time** on a phone. Startup and main-thread improvements cannot be measured here.
+Confirm each change on a real device with `getMeshStats` after a release. Reports
+from before `--no-websocket-dial` include artificial WebSocket fallback delays;
+their removal is a bench correction, not a product latency improvement.
 
 ### When to run which tier
 
@@ -293,6 +418,8 @@ Everything is applied from outside the product.
 
 - Crashes: `device.kill()`, then `device.restart()`. Spokes re-dial their
   bootstrap URL on the peer client's 15 s rescan.
+- Suspension: `device.suspend()` / `resume()` freeze and continue the headless host and its WebRTC child. `suspendWebRTC()` / `resumeWebRTC()` affect only the sidecar. Teardown resumes suspended processes before diagnostics and shutdown.
+- Services delay: `startFleet({ services: true, servicesLatencyMs: 90 })` puts a stable proxy in front of the service. `fleet.services.setLatencyMs(ms)` changes it during a run; `stop()` / `start()` keep the public URL and proxy.
 - Links: start devices `proxied: true` (fleet-wide or per device) and every
   connection *to* that device passes through a `LoopbackProxy`. The device
   advertises the proxy via `--advertise-url`, so discovered dials use it too.
@@ -321,6 +448,7 @@ Each run writes `artifacts/<name>-<timestamp>/`:
 | `mesh-<name>.json` / `.mmd` | Mesh snapshots taken with `snapshotMesh` (Mermaid renders in most viewers) |
 | `sync-latency-*.json` | Convergence percentiles written by the scale scenarios |
 | `resources.json` | RSS per child at stop |
+| `connectivity-report.json` / `.md` | Opt-in Home bench metrics, timelines, medians and optional baseline comparison |
 | `failure/` | On a failed test: final mesh, last 200 `ConsoleLogs` rows per device, summary |
 
 On success the directory is deleted unless `PEERS_HARNESS_KEEP=1` or the fleet
@@ -354,7 +482,7 @@ available from the CLI: the proxies live in the process that created them.
 ## Pairing, invites, and the key registry against the real service
 
 `pairing.e2e.test.ts`, `invites-services.e2e.test.ts`, and `key-registry.e2e.test.ts`
-are the only scenarios that run `peers-services`. The service is the production
+and the opt-in connectivity bench run `peers-services`. The service is the production
 `dist/server.js` started with `PORT=0`, a fresh identity, a per-run Mongo, and
 the test-fleet env vars documented in the `peers-services` README (no dial to
 `peers.app`, advertises only `127.0.0.1`). `invites-services` runs with
@@ -417,7 +545,7 @@ real mail.
   smaller `deviceId` so the edge forms instead of both sides abandoning their
   own offer. That covers signaling over the mesh and the datachannel state
   machine; it says nothing about STUN/TURN, NAT traversal, or the TURN
-  credentials `peers.app` hands out. Every other scenario runs `--no-webrtc`.
+  credentials `peers.app` hands out. The connectivity bench also enables WebRTC; most other scenarios run `--no-webrtc`.
 - Multi-host latency and NAT. The loopback proxy adds delay, not packet loss or
   NAT behaviour.
 
