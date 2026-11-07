@@ -192,7 +192,8 @@ registered is left alone.
 Device-to-device WebRTC runs in a separate Go process, `peers-webrtc`, the same
 sidecar the desktop app ships. It is an optional dependency: `peers-headless`
 does not bundle the binary, and a host without one (or with one that keeps
-crashing) boots and forms WebSocket edges exactly as before. WebRTC adds the
+crashing) boots and forms WebSocket edges with reachable hosts. A PWA cannot use that
+fallback: it needs the host’s WebRTC sidecar. WebRTC adds the
 paths a plain listener cannot cover: two devices that both sit behind NAT with
 no reachable `--peer-port`, and a pairing destination that a source cannot
 dial directly.
@@ -209,8 +210,8 @@ Discovery order at startup:
 3. `--no-webrtc`: never look for or start a sidecar (`webrtc: "off"`).
 
 Build the binary once with `cd peers-webrtc && make local` (needs Go); the
-monorepo checkout then auto-detects it. Nothing is started when `--no-peer` is
-given, since there is no mesh to take part in.
+monorepo checkout then auto-detects it. `--no-peer` disables the listener; an enabled sidecar can still form outbound mesh
+connections through a configured bootstrap peer or Services.
 
 Status shows up in three places. The startup log prints `[WebRTC] Starting
 sidecar <path>` then `[WebRTC] sidecar ready`, or a single `[WebRTC] ... 
@@ -218,7 +219,8 @@ continuing with WebSocket only` line naming the flags when nothing was found.
 The `READY` payload carries `webrtc`: `off`, `starting`, `ready`, `down`, or
 `unavailable`. And `NetworkManager` only advertises `wrtc` to peers while the
 sidecar is authenticated (`isAvailable()`), so a host whose sidecar is starting
-or gone never invites a 30 s WebRTC timeout from the other side.
+or gone stops inviting WebRTC attempts until it recovers. PWAs wait for WebRTC;
+other hosts may use a reachable WebSocket listener.
 
 Failure handling is bounded. A sidecar that exits before authenticating or
 within a few seconds of spawning counts as a failed start; restarts back off

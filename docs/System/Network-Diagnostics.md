@@ -352,14 +352,14 @@ Runtime (`peers-device`) supervises. The **Troubleshoot** row *WebRTC sidecar (G
 distinguishes three states: not registered (no binary was found at startup), registered but
 not ready (the sidecar is starting, restarting after a crash, or gave up after repeated
 failures), and available. While the sidecar is not ready the host stops advertising `wrtc`
-to peers, so a device in that state is dialed over WebSocket rather than timing out on
-WebRTC; look for `[Sidecar]` or `[WebRTC]` lines in the logs.
+to peers. Another host can use WebSocket if its listener is reachable; a PWA needs
+WebRTC and must wait for the sidecar to recover. Look for `[Sidecar]` or `[WebRTC]` lines in the logs.
 
 - No target device in Phase 2 remote network information indicates a group-discovery or
   membership problem.
 - A target that advertises only `ws` even though it runs the desktop app means its sidecar
-  is down; the connection still works over WebSocket if either side has a reachable
-  listener.
+  is down. Desktop and headless hosts can use a reachable WebSocket listener; a PWA
+  needs the target's WebRTC sidecar to recover.
 - A connection that stays on `wrtc://` on the same network can indicate an unreachable
   listener. Allow inbound TCP port 3333 on desktop hosts and check that the devices can reach
   each other's LAN addresses. Desktop and headless hosts retry a
@@ -426,8 +426,8 @@ A usable source is a ready own device, or another member's device with Writer or
 higher access in the context. Peers Services never supplies coverage. A context
 with no known eligible source device is marked `excluded`;
 for example, a group whose other devices all belong to Readers. An empty list of
-possible sources does not prove that no other device exists. Already-connected
-devices can give a resume episode zero-time measurements. A missing duration
+possible sources does not prove that no other device exists. After a resume, an existing
+connection counts only after it answers; a newly admitted connection also counts. A missing duration
 means the event was not observed before the episode ended, not zero.
 
 Percentiles use only observed durations in finished episodes, with `count` for
@@ -437,11 +437,39 @@ are no pass/fail timing targets yet.
 
 Attempts show why and where a dial was made, authenticated versus expected
 identity, admission or failure, and readiness and first successful sync for each
-context. Stage times are offsets from `queuedAt`. An identity mismatch is recorded;
-this measurement does not change admission policy. `doubleDial` marks an outgoing
+context. Stage times are offsets from `queuedAt`. A device dial succeeds only when the
+expected device authenticates and is admitted, including when it connects back to you.
+A different device answering at a stored address is refused before admission and recorded
+as `identity-mismatch`. A failed dial records why it ended; starting an offer is not success.
+Cancelled work is distinct from failure. `doubleDial` marks an outgoing
 dial overlapping an incoming attempt or connection. `offline` means TTL0, no route,
 or a signaling timeout without an answer; it is an observed failure, not a
 presence guarantee. A WebRTC offer alone is never counted as a connection.
+
+Peers reconnects automatically after an unsuccessful automatic device connection. You can
+leave Peers open while a sleeping device wakes or connectivity returns. Reconnection may
+take longer after repeated drops. If a configured server was the device's last connection,
+Peers reconnects to it promptly so it can reach other devices again. Waking the app, changing
+networks, or learning updated device information can help Peers reconnect sooner. In the PWA, keep the app visible while
+waiting for a connection. Automatic reconnection can wait when all connection slots are
+occupied. Explicit direct-connection
+requests return their result to the caller, which decides whether to try again.
+
+Attempt records and `[Mesh]` lines include a `retry` number on automatic retries. `ttl0`
+means the route could not reach the device; it does not prove the device is offline.
+A device that just disconnected after a stable connection is retried sooner while it may
+be restarting or changing networks. If it stays unreachable, retries become less frequent.
+`no-route` waits for a relay connection. `sender-not-known` waits for identity information
+or another connection from that user; update older devices if it persists. `trust-refused`
+retries slowly, and sooner after a trust or membership change: check the contact's trust and
+group membership. Socket and signaling timeout
+reasons mean setup did not complete; check that the other device is awake and online.
+`capacity` waits for a connection slot. `cancelled` and `superseded` do not penalize the device.
+
+An episode hidden with the PWA ends with `page-hidden`; a connection loss already covered
+by other peers ends with `still-covered`. Both have outcome `not-measured`, are counted in
+`unmeasuredEpisodes`, and are excluded from latency percentiles. Look at these counts
+alongside unfinished episodes so hiding the page or keeping redundant links is visible.
 
 Counters include outgoing dials per admitted outgoing connection, by path,
 failure reasons, incoming admissions, offline dials, and discovery broadcasts

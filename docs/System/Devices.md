@@ -45,8 +45,8 @@ for local connections, remote connections, or pairing.
 | Transport | Used for | What to expect |
 |---|---|---|
 | `ws://` (LAN, headless, Electron) | Same-network devices, `peers-headless` hosts | Device traffic is encrypted even without TLS |
-| `wss://` / `https://` (cloud relay, `peers-services`) | Devices that cannot reach each other directly | Device traffic is encrypted, with TLS providing additional protection |
-| `wrtc://` (WebRTC data channel) | Electron and PWA peers through NAT | Device traffic is encrypted |
+| `wss://` / `https://` (TLS WebSocket) | Direct peers and the Services signaling link; Services relays device messages, while sync needs a direct device connection | Device traffic is encrypted, with TLS providing additional protection |
+| `wrtc://` (WebRTC data channel) | Peers whose listeners are unreachable; the PWA’s only device transport | Device traffic is encrypted |
 | Device pairing socket | Credential transfer to a new device | Encrypted, including the credential transfer; the rendezvous that sets it up runs through the Peers service (see [What the service can see](./Device-Pairing.md#what-the-service-can-see)) |
 
 **Which transport two devices use.** Desktop and headless hosts prefer a WebSocket when either
