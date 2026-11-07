@@ -28,6 +28,13 @@ the message fails; it is never encrypted for the whole group as a fallback. Grou
 still require matching group keys.
 
 Peers waits for the recipient's signed identity before sending a targeted group message.
+For an incoming group message, a device it has not met can introduce itself with device
+info signed by a counted member's key, with a role above None and account keys matching any
+identity already known for that user. Removed members and non-members (even in public groups)
+cannot use this path. New members and new devices can connect through Peers Services,
+including over WebRTC, without the devices first meeting directly. Signaling remains
+encrypted for the member's account, and introducing a device grants no additional group
+permissions.
 Once a device's ownership is verified, rotating or recovering the owner's account key does
 not let another member take over that device's entry. An offline device may need to reconnect
 with the confirmed new key before it can receive targeted group messages again.
@@ -108,8 +115,7 @@ files as this device holds them and shows the group's retention.
 
 Each device publishes its own entry in the group's device list, signed with its owner's key.
 Once a device's owner has signed for it, nobody else can claim that device or remove its entry.
-Messages relayed to a device you haven't connected to directly are encrypted only to a device
-whose owner signed its entry.
+Targeted messages require a verified device owner and are encrypted for that owner's account.
 
 **When an Admin's role changes.** Memberships an Admin granted count only while that Admin is
 still an Admin. Before you demote or remove an Admin, have the founder or another Admin re-sign

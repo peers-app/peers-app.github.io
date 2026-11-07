@@ -259,8 +259,15 @@ includes signed source-device identity and uses the account box key when the tar
 is not yet in the local `Devices` table. The receiver accepts the new device only when its
 signed device ID, user ID, signing key, and box key exactly match the receiver's account.
 After validating the message, the receiver saves the new device observation and normal
-protocol discovery and sync continue. This does not admit unknown devices to shared-group
-or cross-user contexts.
+protocol discovery and sync continue.
+
+In a shared group, current senders also attach signed device info. A receiver can accept an
+unmet device when the group's verified authority counts its owner as a member with the same
+signing key and a role above None. The device ID and signature must verify, and its account
+keys must match any identity the receiver already knows for that user. Replies and follow-up
+signaling use the member's account encryption key.
+New members and new devices can therefore connect through Peers Services, including over
+WebRTC when a device has no WebSocket listener, without first meeting directly.
 
 Same-account devices also start shared-group sync from the personal `Groups` list, even
 when the new install's group database is still empty. That lets the first peer pull
@@ -274,12 +281,21 @@ Two log messages identify older or unsuccessful bootstrap attempts:
   for an unknown target in its personal context.
 - `Sending device is not known in dataContext` during supported-protocol discovery means
   the receiver could not validate a preexisting device row or a fresh signed same-account
-  identity.
+  or counted-member identity. In a group this can still happen with an older sender that
+  omits device info, or when the sender's owner is not a counted member with the presented
+  key (including a removed member or role None). A public group's default role does not
+  qualify an unknown device. Invalid device signatures and conflicting identity keys are
+  also refused, with source-identity validation errors.
 
 If either message repeats between same-account devices, confirm both devices run a build
 with fresh-device bootstrap, that both signed in to the same user ID and keys, and that an
 online mesh route exists between them. A single initial connection attempt should create
 the missing `Devices` row; manual database repair should not be necessary.
+
+For a shared-group connection, update both devices to a build with group-device introductions
+and confirm that the sender has an active, signed membership for its current key with a role
+above None. Compare any existing `Users` records for conflicting signing or encryption keys.
+The group's public role alone does not admit a new device.
 
 ## Inspecting a shared-group database context
 
