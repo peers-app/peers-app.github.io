@@ -345,6 +345,27 @@ The target authorizes every call from the verified connection identity and requi
 statement and can return at most 500 rows or 1 MB. These calls do not expose shell, filesystem,
 UI, or process-lifecycle control.
 
+## When a device is slow to reconnect
+
+Peers tries the devices it knows from your own and your groups' device lists as soon as it can,
+then keeps a healthy set of connections. Desktop local connections can start while Services
+is still connecting. A broadcast is only a fallback when a context has no known devices to try;
+it is not required to find known group devices through Services. Empty personal device lists
+also use this fallback. If discovery finds no device, Peers retries less frequently. Returning to
+the app, a network change, or a new Services connection allows a fresh discovery attempt.
+
+Returning to the app or coming back online starts a check immediately, even after a short
+absence. Existing links are checked and healthy links are kept, including
+ones that take a few seconds to answer. Keep the phone app visible and an awake Writer or
+owner online for each group whose data you need. The PWA reconnects Services automatically;
+you do not need to wait for a discovery rescan.
+
+If this is a new device with empty lists, keep the device you paired with or joined through
+online until the first sync completes. Without that first connection, broadcast discovery
+can fail on a busy Services instance. Reopening the introducing device is more useful than
+repeatedly restarting the new one. **Troubleshoot** shows recent connection attempts and
+whether some contexts are waiting for connection capacity.
+
 ## Interpreting a WebRTC attempt
 
 On desktop and headless hosts WebRTC runs in the `peers-webrtc` sidecar process, which the
@@ -355,7 +376,7 @@ failures), and available. While the sidecar is not ready the host stops advertis
 to peers. Another host can use WebSocket if its listener is reachable; a PWA needs
 WebRTC and must wait for the sidecar to recover. Look for `[Sidecar]` or `[WebRTC]` lines in the logs.
 
-- No target device in Phase 2 remote network information indicates a group-discovery or
+- No known target in the group device list indicates a group-discovery or
   membership problem.
 - A target that advertises only `ws` even though it runs the desktop app means its sidecar
   is down. Desktop and headless hosts can use a reachable WebSocket listener; a PWA
@@ -422,20 +443,26 @@ so its first connection is still measured.
 | `repairStart` | Time from a connection loss to the next outgoing dial in that episode. |
 | `readyToDialMs` | Startup gate before connection setup: from page navigation on the PWA, or runtime initialization on a host. |
 
-A usable source is a ready own device, or another member's device with Writer or
-higher access in the context. Peers Services never supplies coverage. A context
-with no known eligible source device is marked `excluded`;
-for example, a group whose other devices all belong to Readers. An empty list of
-possible sources does not prove that no other device exists. After a resume, an existing
-connection counts only after it answers; a newly admitted connection also counts. A missing duration
-means the event was not observed before the episode ended, not zero.
+Coverage uses the same decisions as connection planning: a ready own device for personal data,
+and a ready Writer-or-higher device for group data. Services and pending dials never count.
+A group with no other possible Writer source has a zero target and is marked `excluded`.
+A group with Writer members but no known device remains unmet while discovery is attempted.
+An empty personal device list remains a discovery target but is excluded from `T_cover`:
+it does not establish whether another own device exists. It is still shown in `coverage`.
+`coverage` reports the current targets and `limitedByCapacity` when an unmet context cannot
+fit. Compared with earlier measurements, Reader-only links no longer satisfy group coverage,
+and an empty device list does not exclude a group with possible Writer sources.
+
+After a resume, an existing connection counts only after it answers; a newly admitted connection
+also counts once ready. A missing duration means the event was not observed before the episode
+ended, not zero.
 
 Percentiles use only observed durations in finished episodes, with `count` for
 each sample. Compare that count and unfinished episodes alongside p50/p95/p99:
-slow or incomplete episodes must not disappear from the interpretation. There
-are no pass/fail timing targets yet.
+slow or incomplete episodes must not disappear from the interpretation. The
+connectivity bench asserts startup ordering and known-device discovery.
 
-Attempts show why and where a dial was made, authenticated versus expected
+Planned attempts include priority (Services, coverage, repair, or redundancy). Attempts show why and where a dial was made, authenticated versus expected
 identity, admission or failure, and readiness and first successful sync for each
 context. Stage times are offsets from `queuedAt`. A device dial succeeds only when the
 expected device authenticates and is admitted, including when it connects back to you.

@@ -35,6 +35,28 @@ peers pair 7-guitar-revenge-tunnel
 
 Both commands are the same ceremony.
 
+## Finding and reconnecting to devices
+
+Peers starts connecting as soon as it has your identity and device lists, before every app
+has loaded. It tries the devices it knows, from your own device list and each group's, and
+keeps enough healthy connections to reach your data. On a desktop or headless host, local
+connections start alongside Peers Services instead of waiting for it.
+
+When you come back to the app, it checks its connections and reconnects at once, even after a
+short absence. Healthy connections stay open. To catch up on a group's data, a device with
+Writer access or above in that group needs to be online: Readers can't supply new group data.
+
+A brand-new device may not know any of its group's devices yet. Pair it with an awake device,
+or accept the group invitation while the inviting device is online: that device gives it its
+first connection. When Peers knows no device to try, for example two of your own devices that
+have never met, it falls back to a broadcast through Peers Services. It retries after a few
+seconds, then less often. That fallback can miss when Services is busy, so keeping the
+introducing device online is the reliable way to finish joining.
+
+The phone app keeps its Peers Services connection up by reconnecting automatically. If it
+can't connect, check its internet access, open an awake device that holds your data, and use
+**Connections → Troubleshoot**.
+
 ## What is encrypted, on which transport
 
 Peers authenticates both devices and encrypts all traffic after connection
