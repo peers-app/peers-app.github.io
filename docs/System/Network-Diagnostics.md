@@ -88,14 +88,16 @@ Use **Settings → Advanced → Delete Local Database** when a device's local co
 current personal or group context is corrupted or stuck (for example a persistent variable
 in a bad state) and you have another online device that still holds the authoritative data.
 
-The action deletes only the active context's local database snapshot. Account credentials,
+The action deletes only the active context's local database. Account credentials,
 other personal or group contexts, and file storage stay in place. After the wipe, the
 device must rebuild that context by synchronizing from another of your devices.
 
-On the PWA, the local database is sql.js in memory with snapshots stored in IndexedDB
-(`peers-pwa-sqlite`). A successful delete removes that context's snapshot and reloads the
-app automatically so the empty database can resync. This is not the same as **Logout**,
-which clears credentials and every IndexedDB database for the site.
+On the PWA, each context's database is kept in the browser's file storage (see
+[Using Peers in a browser](./Devices.md#using-peers-in-a-browser)). A successful delete
+removes that context's database and reloads the app automatically so the empty database
+can resync. This is not the same as **Logout**, which clears credentials and local account
+data. Databases used by another account still open in a different tab stay until that account
+also signs out.
 
 On Electron, delete the local SQLite files for the current context, then restart the app
 manually so it can resync.

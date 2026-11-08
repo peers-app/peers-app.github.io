@@ -121,6 +121,18 @@ If the owner is frozen in the background, return to it so it can finish the hand
 Peers requires a browser with Web Locks to keep your data safe across tabs. If your browser
 cannot start Peers, update it or use a supported browser.
 
+Peers keeps your data in the browser's file storage and reads only what it needs, reducing
+pauses when opening large groups and saving changes. Data from an earlier version of Peers
+moves into file storage the first time you open each group, so a large group may pause briefly
+that once. Peers asks the browser to retain this data when space runs low, but the browser
+may decline. Keep another device synchronized with data you need to preserve. Safari, and
+private windows in some browsers, keep your data the earlier way, in memory and saved after
+each change, which is slower for large groups. If Peers says it can't open your data in this
+browser right now, reload the page. If that doesn't help, sign out and sign back in: Peers
+then syncs your data again from your other devices. Signing out removes local account data,
+so make sure another device has it first. Databases used by another account still open in a
+different tab stay until that account also signs out.
+
 Sandbox packages run while the PWA is open, and pause when the browser freezes it. Scheduled
 work catches up when the page resumes or the app is reopened. Privileged packages require
 desktop or headless. Packages that use the internet fetch from the browser, so they reach only

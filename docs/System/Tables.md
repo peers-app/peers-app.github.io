@@ -5,7 +5,7 @@ title: Tables
 
 # Tables
 
-Peers models most structured data with **tables**: typed rows backed by metadata, Zod schemas, and a pluggable **data source** (local SQLite in the desktop app, `ClientProxyDataSource` in the renderer, IndexedDB-backed paths in the PWA, and so on).
+Peers models most structured data with **tables**: typed rows backed by metadata, Zod schemas, and a pluggable **data source** (local SQLite in the desktop app, `ClientProxyDataSource` in the renderer, local SQLite in the PWA, and so on).
 
 Package authors declare tables with `defineTable` from `@peers-app/peers-sdk/define` and
 use the returned handle with a handler's `ctx`. See [Tables in a package](../Packages/declaring-a-package#tables).
