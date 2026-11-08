@@ -349,7 +349,10 @@ UI, or process-lifecycle control.
 
 Peers tries the devices it knows from your own and your groups' device lists as soon as it can,
 then keeps a healthy set of connections. Desktop local connections can start while Services
-is still connecting. A broadcast is only a fallback when a context has no known devices to try;
+is still connecting. A desktop or headless device first dials the addresses the other device
+published (see [Finding and reconnecting to devices](./Devices.md#finding-and-reconnecting-to-devices)),
+and can also find it through another connected device or Peers Services. A broadcast is only
+a fallback when a context has no known devices to try;
 it is not required to find known group devices through Services. Empty personal device lists
 also use this fallback. If discovery finds no device, Peers retries less frequently. Returning to
 the app, a network change, or a new Services connection allows a fresh discovery attempt.
@@ -506,6 +509,13 @@ cached scan passes, `probes` counts sockets tried, and `connected` counts probes
 whose socket opened. Unanswered probes make no attempt record or log line. A
 successful probe becomes an attempt at socket open, so its stage times exclude
 the preceding probe wait. Per-hour rates are averages since startup, not a rolling window.
+
+`dialHints` shows how much published addresses help: `addressDials` counts dials that tried a
+device's published addresses, `addressWins` those an address won, and `protocolQueries` and
+`protocolQueriesSkipped` the relayed protocol lookups made, and skipped because the device's
+published protocols were known. Older devices leave `dialHints` out.
+`recipient-unknown` means this device has not yet received the target's verified identity.
+Keep the devices online so their device lists can catch up.
 
 Each attempt outcome and episode summary produces one `[Mesh]` line with a JSON
 payload; intermediate stages are available through the tool. Each admitted

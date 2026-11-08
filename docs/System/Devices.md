@@ -42,6 +42,19 @@ has loaded. It tries the devices it knows, from your own device list and each gr
 keeps enough healthy connections to reach your data. On a desktop or headless host, local
 connections start alongside Peers Services instead of waiting for it.
 
+A desktop or headless host also publishes the local network addresses it accepts connections
+on. They're signed with your account's key and stored with the device in your own device list
+and in each of its groups. Other desktops and headless hosts can use those addresses to
+reconnect directly, even while Peers Services is unavailable. If a device moves networks or
+changes its address, Peers can find it through another connected device or Peers Services.
+A device answering at an address must still prove it is the device expected. The phone app
+publishes no addresses; connecting to it needs another connected device or Peers Services
+to relay the connection setup.
+
+Members of a group can see the local network addresses of your devices in that group, and keep
+them after you leave it. Each device also remembers, on itself only, which devices it connected
+to recently and how, so after a restart it tries those first.
+
 When you come back to the app, it checks its connections and reconnects at once, even after a
 short absence. Healthy connections stay open. To catch up on a group's data, a device with
 Writer access or above in that group needs to be online: Readers can't supply new group data.

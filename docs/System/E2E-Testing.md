@@ -92,6 +92,13 @@ It warns and skips without `peers-webrtc` or Services prerequisites;
 `PEERS_E2E_REQUIRE_SERVICES=1` makes missing Services fatal. Run it on its own with
 `npm run e2e -- -t 'failed first WebRTC dial retries'`.
 
+The release gate also runs `device-addresses.e2e.test.ts`, with WebRTC off. Two own devices
+restart with no `--peer` and no Services, and must reconnect through each other's published
+addresses with no broadcast. A device whose published address now reaches another user's
+device must refuse that device. With real Services, two devices that both came back on new
+ports must find each other by device id without a broadcast and receive each other's updated
+addresses.
+
 The release gate also runs `device-scheduler.e2e.test.ts` with real Services and no
 WebRTC: eight users bootstrap from empty group device lists through their introducer, then
 restart with known Devices rows and cover the group by id without broadcasting in that group.
@@ -101,7 +108,9 @@ each other through Services by broadcast. The role and capacity case checks zero
 Writer sources than available slots. Each scenario has a 60-second bound.
 
 Tier 2 records T_cover and asserts at most two outgoing dials per outgoing connection made,
-aggregated across each fleet so both dialing ends and glare are counted fairly. Its existing
+aggregated across each fleet so both dialing ends and glare are counted fairly. A dial
+cancelled because the other end's connection won doesn't count; it's a double dial, reported
+in `doubleDials`. Its existing
 15-second cap sample also limits churn to 32 losses and 38 outgoing dials per second.
 It includes a twelve-user variant using real Services, with a two-minute bound. Run this
 alongside the existing cap and no-isolation checks; passing discovery must not hide churn.
@@ -121,7 +130,7 @@ the first cross-user connection through Services.
 ```bash
 cd peers-e2e
 npm run e2e:connectivity
-npm run e2e:connectivity -- -t S6    # any S1–S6 can run independently
+npm run e2e:connectivity -- -t S6    # any S1–S7 can run independently
 npm run e2e:connectivity -- -t 'S3 short'
 npm run e2e:connectivity -- -t 'S6 qr'
 PEERS_CONNECTIVITY_REPEATS=3 npm run e2e:connectivity -- -t S2
@@ -153,12 +162,13 @@ either S5 measurement, so Robin never contributes to S5's Services counts.
 | Scenario | What to expect with today's connection policy |
 |---|---|
 | S1: phone cold start | Asserts the first own-device dial starts within 500 ms of Services admission, with no fixed pause. Device traffic must use WebRTC. |
-| S2: desktop restart | At both Services latencies, asserts configured `--peer` and LAN dials start before Services admission. The real scanner uses a loopback address adapter and an isolated fixture port, so it never scans the operator’s LAN. |
+| S2: desktop restart | At both Services latencies, asserts a local dial (the configured `--peer`, or a known device's published address) and the LAN dials start before Services admission. The real scanner uses a loopback address adapter and an isolated fixture port, so it never scans the operator’s LAN. |
 | S3 short / long: phone resume | Starts from a covered phone, freezes the host and sidecar, confirms peers dropped it, then continues the same processes. SIGCONT runs the PWA visibility action. Both short (70 s) and long (130 s) resumes plan and probe immediately. Healthy links stay open; ICE-disconnected links use the suspect check. Reports the first resume's T_resume, every resume trigger, observed coverage recovery, and log evidence distinguishing probe starts, probe removals, ping failures and close events. T_resume requires a pong after resume or a newly admitted connection; compare it with the observed recovery cross-check. This models a device frozen with its connections left open, as after a laptop sleeps. A phone that closes its connections when it goes to the background behaves more like S1 after its resume trigger. The slice 1 baseline depended on event order (for example, whether the other side's close notice was waiting when the phone woke), with single samples ranging from about 4 s to about 23 s. Compare with `PEERS_CONNECTIVITY_REPEATS=3` or more. |
 | S4: first dial fails | Stops all other possible sources, freezes desktop D's sidecar, and requires a failed outgoing phone WebRTC dial. Restores D's sidecar and requires recovery within 20 s. D can also dial back; D's timeline and sidecar-watchdog activity explain a rescue. |
 | S5: known devices past the discovery cliff | Every variant restarts Mark’s devices and Blair’s phone, retaining Devices rows and clearing volatile dial/backoff history. With at least eight Services links, asserts Home connects with zero Home broadcasts and an outgoing group-device dial. Both ends may dial; incoming races stay visible in the report. |
 | S6 direct: Services-only group join | Robin and Mark become contacts, then Mark invites Robin to Club. Blair and the load devices are stopped to avoid S5's discovery cliff. Current builds connect through Services. Older builds refuse the group-join and broadcast-answer attempts with “Sending device is not known in dataContext: Club direct”, with no later retry within 90 s. Only Club membership on Robin's laptop and both Robin devices reaching Services are preconditions; group sync is a measurement. |
 | S6 qr: Services-only QR join | A fresh Robin accepts the URL encoded by the group-invite QR, without a prior contact invite. Matches the UI defaults: **approve**, **Reader**, one-day expiry; Mark approves the request. Measures the same Services-only join, but approval also saves the requester's observed device identity on Mark's approving host. A connection is a valid outcome; the report records identity-row presence to explain this difference. |
+| S7: desktop restart while Services is down | Stops Peers Services, then restarts a desktop with no `--peer`. Asserts the desktop is ready again in its personal context and Home, and that a published address won at least one dial (`dialHints.addressWins`). Reports the time from restart to coverage. Before published addresses only the loopback LAN-scan fixture could reconnect it. Services is started again afterwards. |
 
 Each run retains `connectivity-report.json` and `connectivity-report.md` in its printed
 artifact directory. Markdown opens with one headline row per scenario and variant,
@@ -197,7 +207,7 @@ All settings below are environment variables; delays and bounds are milliseconds
 | `PEERS_CONNECTIVITY_LINK_LATENCY_MS` | 10 | One-way listener delay for desktop/laptop links, keeping them much faster than Services. |
 | `PEERS_CONNECTIVITY_SHORT_SUSPEND_MS` | 70000 | S3 short freeze: long enough for peers to drop the frozen device. Both variants probe when SIGCONT resumes the process. |
 | `PEERS_CONNECTIVITY_SUSPEND_MS` | 130000 | S3 long freeze. Both variants emit a SIGCONT resume episode and run a probe. Too short a freeze can fail the dropped-peer precondition. |
-| `PEERS_CONNECTIVITY_OBSERVE_MS` | 45000 | Recovery/discovery observation bound for S1, S2, S3 and each S5 variant. |
+| `PEERS_CONNECTIVITY_OBSERVE_MS` | 45000 | Recovery/discovery observation bound for S1, S2, S3, S7 and each S5 variant. |
 | `PEERS_CONNECTIVITY_FAILURE_MS` | 75000 | S4 budget to observe the deliberately failed first WebRTC dial. |
 | `PEERS_CONNECTIVITY_RETRY_MS` | 120000 | How long S4 observes recovery. Its separate assertion requires recovery within 20 s, even if observation continues longer. |
 | `PEERS_CONNECTIVITY_GROUP_CONNECT_MS` | 90000 | Each S6 variant's window after Club membership reaches Robin's laptop. Captures join attempts made during setup too. |
