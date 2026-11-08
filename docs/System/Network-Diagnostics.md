@@ -400,6 +400,12 @@ WebRTC and must wait for the sidecar to recover. Look for `[Sidecar]` or `[WebRT
 - An answer followed by ICE failure indicates a connectivity or TURN problem.
 - An open data channel followed by a handshake error indicates a Peers connection
   handshake problem.
+- A connection that hasn't authenticated 10 seconds after the data channel opened ends that
+  attempt, allowing Peers to try another available device. The log
+  line `[WebRTC] Handshake with <deviceId> stalled: … (dialing; 0 frames received, 1 sent)`
+  identifies whether this device was dialing or answering and counts the frames it observed.
+  Zero frames received means this device received no frames before the deadline; compare
+  both devices' logs to investigate where communication stopped.
 
 Use timestamps, device IDs, group IDs, and the WebRTC connection ID to correlate the PWA
 trace with the desktop Network Viewer.
