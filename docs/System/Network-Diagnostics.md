@@ -410,6 +410,45 @@ WebRTC and must wait for the sidecar to recover. Look for `[Sidecar]` or `[WebRT
 Use timestamps, device IDs, group IDs, and the WebRTC connection ID to correlate the PWA
 trace with the desktop Network Viewer.
 
+### Reading the route of a WebRTC connection
+
+Each WebRTC connection logs the network route it uses: which pair of ICE candidates
+carries its traffic, and how much has crossed it. Both ends log the same connection ID,
+so you can line up the two views of one connection.
+
+- **Desktop and headless hosts** log `[Sidecar/Go] Route at connect`, `Route at disconnect`
+  and `Route after the route changed`, each with `(connectionId=… route=…)`.
+- **The PWA** logs `[WebRTC] Route at open for <deviceId> (<connectionId>, dialing|answering): …`,
+  plus `at disconnect` and `after the route changed`. When a handshake stalls, it also logs
+  `[WebRTC] Route when the handshake stalled for …`.
+
+A route reads like this:
+
+```text
+selected host/udp/lan-v4 wifi → prflx/udp/lan-v4, 4.0 KB out, 0.5 KB in, last in 6.0 s ago,
+checks sent 6, answered 1, received 2; also srflx/udp/public-v4 → host/udp/lan-v4 succeeded,
+2.0 KB in, 5 checks received; pairs 2 succeeded, 1 failed; local 1 host, 1 srflx;
+remote 1 host(mdns), 1 prflx
+```
+
+- **`selected`** is the pair this device sends on, written as local candidate → remote candidate.
+  Each candidate is `type/protocol/class`:
+  - the type is `host`, `srflx` (the address a STUN server saw), `prflx` (learned from the other
+    side's checks) or `relay` (TURN);
+  - the class is `lan-v4`, `lan-v6`, `public-v4`, `public-v6`, `cgnat-v4`, `link-local-v6`, `mdns`,
+    or `hidden` when the browser withholds the address.
+
+  The PWA adds the network adapter when Chrome reports one, such as `wifi` or `cellular`.
+  Addresses themselves are never logged.
+- **`last in … ago`** and the **check counts** show whether anything still arrives on the
+  selected pair. If the other side's checks keep arriving on a pair listed under `also`, the
+  two ends are using different routes. Traffic then flows only one way, and the connection
+  goes `disconnected` a few seconds after it opened.
+- **`pairs`** counts the candidate pairs by state. **`local`** and **`remote`** count the
+  candidates each side offered. The desktop line adds **`remote signaled`**, the candidates the
+  other side sent. A `host(mdns)` in `remote signaled` with no matching remote `host` suggests this
+  device couldn't resolve the other side's hidden (`.local`) address.
+
 ## Measuring connection speed
 
 Read the current device's measurements, or a directly connected phone's:
