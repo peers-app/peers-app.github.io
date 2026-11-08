@@ -444,6 +444,11 @@ the failure count; three consecutive failures stop the command with a nonzero ex
 of leaving a disconnected or unauthorized session running silently. In `--json` mode,
 stdout remains newline-delimited log records.
 
+On the desktop app, unexpected failures are logged rather than shown as a popup, so an
+unattended device keeps running and the cause is in its log. That covers errors nothing
+handled, the window's UI crashing (the app reloads it) or hanging, and the system sleeping
+or waking. Find them with `peers logs --device <deviceId> -q "[ProcessHealth]"`.
+
 ### `peers contacts`, `peers groups`, `peers invites` — Invites
 
 Issue, accept, and review [invites](./Invites) from the terminal. These commands talk to the
