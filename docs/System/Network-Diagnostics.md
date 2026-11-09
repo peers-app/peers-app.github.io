@@ -391,6 +391,10 @@ The phone app connects straight to a desktop on the same Wi-Fi over WebTransport
 - **The phone's log** shows `[LocalNetwork] Chrome's local-network permission: …` when it
   changes, and `[LocalNetwork] Android seems to be blocking Chrome from the local network` when
   dials to an online desktop keep failing at once.
+- **When a WebTransport connection ends,** the phone's log shows `[WebTransport] Session to …
+  ended: …`, with what was still waiting to be sent. `[WebTransport] A write has been stuck for
+  5 s; closing the session` means a write did not complete in time. The phone closes that
+  connection and reconnects on its own, over WebTransport or WebRTC.
 
 If the permission is allowed but the phone still connects through Services:
 
