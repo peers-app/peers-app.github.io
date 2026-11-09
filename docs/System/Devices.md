@@ -51,6 +51,11 @@ A device answering at an address must still prove it is the device expected. The
 publishes no addresses; connecting to it needs another connected device or Peers Services
 to relay the connection setup.
 
+Desktops and headless hosts with WebRTC also publish a direct address for the phone app,
+which carries the fingerprint of the desktop's own certificate. With your permission, the
+phone uses it to connect straight to the desktop on the same Wi-Fi, with no Peers Services
+(see [Your phone on your home network](./Phone-on-Home-Network.md)).
+
 Members of a group can see the local network addresses of your devices in that group, and keep
 them after you leave it. Each device also remembers, on itself only, which devices it connected
 to recently and how, so after a restart it tries those first.
@@ -81,15 +86,17 @@ for local connections, remote connections, or pairing.
 |---|---|---|
 | `ws://` (LAN, headless, Electron) | Same-network devices, `peers-headless` hosts | Device traffic is encrypted even without TLS |
 | `wss://` / `https://` (TLS WebSocket) | Direct peers and the Services signaling link; Services relays device messages, while sync needs a direct device connection | Device traffic is encrypted, with TLS providing additional protection |
-| `wrtc://` (WebRTC data channel) | Peers whose listeners are unreachable; the PWA’s only device transport | Device traffic is encrypted |
+| `wrtc://` (WebRTC data channel) | Peers whose listeners are unreachable; the PWA’s transport when it can’t connect directly | Device traffic is encrypted |
+| `wt://` (WebTransport) | The PWA to a desktop on the same Wi-Fi ([Your phone on your home network](./Phone-on-Home-Network.md)) | Device traffic is encrypted, inside the session’s own TLS |
 | Device pairing socket | Credential transfer to a new device | Encrypted, including the credential transfer; the rendezvous that sets it up runs through the Peers service (see [What the service can see](./Device-Pairing.md#what-the-service-can-see)) |
 
 **Which transport two devices use.** Desktop and headless hosts prefer a WebSocket when either
 can reach the other's listener (the desktop app listens on port 3333). WebRTC can connect them
 when their listeners are unreachable. On a local network a WebSocket is usually several times
 faster, so desktop and headless hosts periodically try to replace WebRTC with a WebSocket.
-Allow inbound TCP port 3333 on desktop hosts to enable this on your LAN. `peers devices`
-shows each connection's address; WebRTC ones start with `wrtc://`. An upgrade can interrupt
+Allow inbound TCP port 3333 on desktop hosts to enable this on your LAN, and UDP port 3333
+for the phone app's direct connections. `peers devices` shows each connection's address;
+WebRTC ones start with `wrtc://`, and the phone app's direct ones with `wt://`. An upgrade can interrupt
 calls in flight; see [Remote call failures](../Packages/contracts.md#remote-tool-calls-across-devices).
 
 **Older devices.** A device on a build from before 0.25.7 can't encrypt frames,

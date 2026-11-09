@@ -371,6 +371,35 @@ can fail on a busy Services instance. Reopening the introducing device is more u
 repeatedly restarting the new one. **Troubleshoot** shows recent connection attempts and
 whether some contexts are waiting for connection capacity.
 
+## A direct Wi-Fi connection from the phone app
+
+The phone app connects straight to a desktop on the same Wi-Fi over WebTransport (see
+[Your phone on your home network](./Phone-on-Home-Network.md)). To check it:
+
+- **On the phone,** **Network Viewer → Local Device → Direct on Wi-Fi** shows Chrome's
+  permission: **Allowed**, a **Connect** button while Chrome hasn't been asked, or how to undo a
+  block. A connection made this way has an address starting `wt://`.
+- **On the desktop,** the log shows `[WebTransport] Listening on UDP 3333 (certificates …)` once
+  the server is up; the two values are the certificate fingerprints in its published address.
+  `[Sidecar/Go] WebTransport session opened (connectionId=wt:… origin=https://peers.app)` and
+  `WebTransport session closed (… reason=… framesIn=… framesOut=…)` bracket each session. A
+  `[WebTransport] Server not running: …` line means the UDP port was taken or the key couldn't
+  be read, and the desktop publishes no direct address.
+- **In `getMeshStats`,** the `webtransport` path counts these dials and connections; a dial the
+  published address won also counts in `dialHints.addressWins`. Devices older than this path
+  leave it out.
+- **The phone's log** shows `[LocalNetwork] Chrome's local-network permission: …` when it
+  changes, and `[LocalNetwork] Android seems to be blocking Chrome from the local network` when
+  dials to an online desktop keep failing at once.
+
+If the permission is allowed but the phone still connects through Services:
+
+- An existing WebRTC connection stays open; direct Wi-Fi is used for new connections.
+- Check that both are on the same network, not a guest network.
+- Check that the desktop's firewall allows UDP port 3333.
+- Check that the desktop is newer than 0.30.6: the desktop's row in **Identity → Devices** syncs
+  its published addresses, and an older desktop publishes none for the phone.
+
 ## Interpreting a WebRTC attempt
 
 On desktop and headless hosts WebRTC runs in the `peers-webrtc` sidecar process, which the

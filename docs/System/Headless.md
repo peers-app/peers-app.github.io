@@ -222,6 +222,13 @@ sidecar is authenticated (`isAvailable()`), so a host whose sidecar is starting
 or gone stops inviting WebRTC attempts until it recovers. PWAs wait for WebRTC;
 other hosts may use a reachable WebSocket listener.
 
+The sidecar also serves WebTransport, the phone app's direct connection on the same Wi-Fi
+(see [Your phone on your home network](./Phone-on-Home-Network.md)). It listens on UDP, on
+the same port number as `--peer-port`, bound to `--peer-host` when that names one address.
+Allow that UDP port through the host's firewall. The host publishes its direct addresses
+automatically. Without a listener (`--no-peer`) it serves none. The log shows
+`[WebTransport] Listening on UDP <port> (certificates …)`.
+
 Failure handling is bounded. A sidecar that exits before authenticating or
 within a few seconds of spawning counts as a failed start; restarts back off
 (2 s, 4 s, ... 60 s) and after five consecutive failures the host stops

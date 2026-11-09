@@ -99,6 +99,16 @@ device must refuse that device. With real Services, two devices that both came b
 ports must find each other by device id without a broadcast and receive each other's updated
 addresses.
 
+The release gate also runs `webtransport.e2e.test.ts`, which needs a `peers-webrtc` binary
+and skips with a warning without one. Two own devices run the sidecar; the second must learn
+the first's signed WebTransport address, with two certificate fingerprints, and after the first
+restarts on its data folder it must serve the same fingerprints without rewriting its row.
+Node has no WebTransport client, so a browser dialing that address is checked separately by
+`npm run smoke:webtransport` in `peers-pwa`: a real Chromium on `http://localhost` opens
+WebTransport to a headless host's sidecar, pinned by fingerprint, and completes the Peers
+handshake. It needs `peers-headless` built and the sidecar from `make local`; it isn't part of
+the release gate.
+
 The release gate also runs `device-scheduler.e2e.test.ts` with real Services and no
 WebRTC: eight users bootstrap from empty group device lists through their introducer, then
 restart with known Devices rows and cover the group by id without broadcasting in that group.
@@ -247,7 +257,7 @@ their removal is a bench correction, not a product latency improvement.
   need `official-packages/isolation-smoke`, `isolation-consumer`, and `timers` built
   (`npm run build` in each); a missing package build fails its scenario.
   The isolation fixtures use `src/package.ts` and `peers-package build` (guest API 3).
-  `webrtc.e2e.test.ts` needs a `peers-webrtc`
+  `webrtc.e2e.test.ts` and `webtransport.e2e.test.ts` need a `peers-webrtc`
   binary (`cd peers-webrtc && make local`, requires Go); without one it prints
   a warning and skips rather than failing. `pairing.e2e.test.ts`,
   `invites-services.e2e.test.ts` and `key-registry.e2e.test.ts` need
