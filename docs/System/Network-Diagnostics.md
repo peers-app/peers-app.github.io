@@ -387,7 +387,10 @@ The phone app connects straight to a desktop on the same Wi-Fi over WebTransport
   be read, and the desktop publishes no direct address.
 - **In `getMeshStats`,** the `webtransport` path counts these dials and connections; a dial the
   published address won also counts in `dialHints.addressWins`. Devices older than this path
-  leave it out.
+  leave it out. A dial that ran out of time fails with `socket-timeout`, and its detail says
+  where. `No WebTransport session within 2000 ms` means the desktop never answered at that
+  address. `No handshake within 5000 ms of the session opening` means it answered, but the two
+  devices didn't finish connecting.
 - **The phone's log** shows `[LocalNetwork] Chrome's local-network permission: …` when it
   changes, and `[LocalNetwork] Android seems to be blocking Chrome from the local network` when
   dials to an online desktop keep failing at once.
