@@ -5,6 +5,13 @@ title: Assistants
 
 # Assistants
 
+:::note Being removed
+Assistants and workflows are leaving Peers, and agents will come back later as a package.
+Tasks no longer installs the Shell, Shell v2, Admin, Cursor Agent, Claude Code, and OpenCode
+Assistants. Records already saved stay. Shell and Admin still run on the host's runner; Shell v2
+and the three coding Assistants don't, because their CLI runner went with Common Tools.
+:::
+
 Assistant runners and included tools execute through contract providers. Historical
 unresolved tool references remain visible but unavailable; their catalog message
 explains whether to upgrade the package or migrate to a resolver. Runner flags and
@@ -16,9 +23,9 @@ Assistants are named workers that reply in normal Peers threads. A user
 runner tool (hosted inference or a local CLI) decides what to say and which
 tools to call.
 
-Built-in Assistants include **Shell**, **Shell v2**, **Admin**, **Voice Hub
-Agent**, and the local coding Assistants (**Cursor Agent**, **Claude Code**,
-**OpenCode**). Packages can install more. Unclassified package Assistants
+New installs have no built-in Assistants. Existing **Shell** and **Admin** Assistants
+remain usable with the tools still available. Voice Hub runs its own agent inside the
+[Voice Hub package](../voice-hub.md). Unclassified package Assistants
 default to access level **100 (Self)** until someone sets a lower level.
 
 ## Access levels
@@ -32,9 +39,7 @@ both:
 In a shared group, an Assistant's settings can be edited by other members. Its automatic
 tool authority is therefore **None (0)**. Tools above None require your approval for each
 exact call. Setting a shared Assistant to Admin or Self does not authorize those calls.
-CLI coding Assistants run only in your personal context. Open a personal thread to use
-Cursor Agent, Claude Code, or OpenCode; shared settings cannot select a command to run on
-your computer.
+The retired coding Assistants are unavailable in both personal and shared contexts.
 
 Named presets match group roles:
 
@@ -42,7 +47,7 @@ Named presets match group roles:
 |---|---|---|
 | 0 | None | Infrastructure / runners |
 | 20 | Reader | Diagnostics and search |
-| 40 | Writer | Ordinary domain writes (Shell, Voice Hub Agent) |
+| 40 | Writer | Ordinary domain writes |
 | 60 | Admin | Privileged diagnosis and repair (Admin) |
 | 80 | Owner | Host filesystem and high-risk device operations |
 | 100 | Self | Personal-context / founder authority; local coding CLIs |
@@ -77,8 +82,8 @@ CLI `--assistant` uses the Assistant’s ceiling and the existing approval path.
 
 Nested workflows inherit the parent run's Assistant id and do **not** escalate
 authority. The user's role is re-read at approve and execute time. Access
-identity vars are host-owned: `set-variable` cannot write them, and a
-raised `accessAssistantId` is capped at the run's default Assistant.
+identity vars are host-owned, and a raised `accessAssistantId` is capped at the run's
+default Assistant.
 
 Tool discovery and execution use the permanent catalog. Package tools may run on
 the host or in isolation; system tools are limited to Host Tools and Desktop Tools.
@@ -129,7 +134,7 @@ is selected.
 The Assistant list still shows Assistants the current user cannot invoke, with
 a badge explaining the required level.
 
-Shipped defaults:
+Defaults on previously installed Assistants (these are no longer installed):
 
 - Shell, Shell v2, Voice Hub Agent — **40**
 - Admin — **60**

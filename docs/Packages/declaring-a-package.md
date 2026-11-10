@@ -1119,6 +1119,19 @@ save the chosen device's id in a group variable, and start the work in `onStart`
 `ctx.deviceId` matches. It says where the code runs, not who is calling, so never use it to
 decide what a caller may do.
 
+`ctx.callerUserId` is the user a call acts for: the signed-in user for a call from this device's
+own screens, CLI or scheduled tools, and the member whose device called for a
+[remote tool call](./contracts#remote-tool-calls-across-devices). Use it to record who did
+something, such as who created a row. Don't use it to decide what the caller may do: Peers has
+already checked the call against the member's access rules. For a contract event delivery it
+identifies the subscriber, not the person who caused the event.
+
+It's `undefined` in `onStart`, when no user identity is available, and on Peers versions before
+it existed. Timers and `watchOwnedTable` callbacks have no caller of their own; a `ctx` captured
+from an earlier call keeps that call's metadata. For local work on an older host, you can use
+[System Identity](../System/Identity.md)'s `getSession` to learn the signed-in user. That fallback
+can't identify a remote caller.
+
 `pkg.onStop(fn)` runs `fn()` when the package's worker stops: when another version replaces
 this one, when the package is turned off or removed, and when Peers quits.
 

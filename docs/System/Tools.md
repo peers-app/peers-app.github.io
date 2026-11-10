@@ -170,14 +170,14 @@ catalog history. Calls that have already started are not replayed automatically.
 
 ## Contract-owned shipped tools
 
-Common, Tasks, Groceries, host and desktop tools belong to their contract providers.
+Tasks, Groceries, host and desktop tools belong to their contract providers.
 `Tools` supplies permanent discovery metadata;
 it does not own their code. Their existing IDs remain equal reviewed aliases:
 
 | Catalog ID | Contract v1 → member |
 |---|---|
-| `000peers0tool0000000newid` | Common Tools → `new-id` |
-| `000peers0tool00wrkflwsrch` | Common Tools → `search-workflows` |
+| `000peers0tool0000000newid` | Common Tools → `new-id` (retired) |
+| `000peers0tool00wrkflwsrch` | Common Tools → `search-workflows` (retired) |
 | `00mh0wlipkdbeaw8newtsk001` | Tasks → `new-task` |
 | `00mh0wlipkdbeaw8wrttsk001` | Tasks → `write-task` |
 | `00mh0wlipkdbeaw8wrtcmt001` | Tasks → `write-task-comment` |
@@ -201,9 +201,13 @@ owning user and still seeds bundled peers-core. Tasks and Groceries reject a
 `groupId` outside the authorized context; `write-task` no longer searches other
 groups. Writes require a trusted forwarded actor.
 
-Common's `throw-error`, `set-variable`, `send-message`, `run-a-workflow` and
-`cli_assistant_runner` now execute through its contract provider. The temporary
-alias bridge has been removed. The append-only inventory also maps:
+Common Tools v1 (`new-id`, `throw-error`, `set-variable`, `send-message`,
+`search-workflows`, `run-a-workflow` and `cli_assistant_runner`) is retired: Tasks
+stopped providing it after 0.31.4, along with its Assistants. Its ids stay in the
+inventory but no provider serves them, so they show as unavailable. Use
+[`peers new-id`](./CLI.md#new-id) for new ids.
+
+The append-only inventory also maps these system tools:
 
 | Catalog ID | Contract v1 → member |
 |---|---|
@@ -213,20 +217,16 @@ alias bridge has been removed. The append-only inventory also maps:
 | `000peers0tool000000notify` | System Desktop Tools → `send-notification` |
 
 All reviewed shipped IDs have contract targets; the unresolved inventory is empty.
-Runner metadata and configuration remain persisted without executable registration,
-including the Common CLI runner on a fresh package installation.
+Previously installed runner metadata can remain visible after its provider is removed.
+Fresh installs do not include the Common CLI runner.
 
 `requiresWorkflowRun` is host-only invocation policy, separate from contract shape
-identity. It applies to Common's throw/set/run/CLI runner, the default assistant
-runner, tool-search, cd and send-notification. Catalog invocation without a workflow
-rejects these members; CLI routes them through `runToolDirectly`. Host providers
+identity. It applies to the default assistant runner, tool-search, cd and
+send-notification. Catalog invocation without a workflow rejects these members;
+CLI routes them through `runToolDirectly`. Host providers
 receive `toolContext.workflow` only for the directly invoked tool, in the same data
 context. Nested tool/action contexts, remote callers and isolated workers never
-receive this capability. `send-message` may run without a workflow when an explicit
-channel/thread/run ID is supplied. It resolves that target and any thread root only
-inside the authorized data context, and records the checked caller as the message
-author. The active UI group and host account do not replace the caller's context or
-identity, including calls from packages and other devices.
+receive this capability.
 
 Approval requests freeze arguments and the required live level. Approval and the
 host-approved execution both recheck availability, user role and current level.
@@ -409,9 +409,8 @@ Approve and reject are exposed only through the local host
 resolve that contract. Host tickets used to execute the frozen call
 (`hostApprovedApprovalId`, `directUserInvocation`) stay on that run and are
 not copied onto thread message vars. Models cannot raise authority by
-writing those keys — or `accessAssistantId` / `assistantId` — through
-`set-variable` or child workflow vars. A missing Assistant record fails
-closed (level 0), not open to Self.
+writing those keys — or `accessAssistantId` / `assistantId` — into workflow vars.
+A missing Assistant record fails closed (level 0), not open to Self.
 
 On approve, the host rechecks the user's role, consumes the nonce, and
 executes only the stored arguments in a new host-owned run. Replay of a
@@ -424,11 +423,11 @@ required level until destructive operations are split.
 
 | Level | Examples |
 |---|---|
-| 0 | Hosted / voice / CLI runners, `throw-error`, `set-variable`, `new-id` |
-| 20 | `tool-search`, `search-workflows`, `app-version`, `list-timers`, device status / list / get, network diagnostics, App Updates status, Packages list / get / capabilities / device activation |
-| 40 | `send-message`, tasks, groceries, timer writes, notifications, `dispatch-voice-action`, `query-database`, Packages reload |
+| 0 | Hosted / voice runners |
+| 20 | `tool-search`, `app-version`, `list-timers`, device status / list / get, network diagnostics, App Updates status, Packages list / get / capabilities / device activation |
+| 40 | Tasks, groceries, timer writes, notifications, `dispatch-voice-action`, `query-database`, Packages reload |
 | 60 | Network control (connect, disconnect, refresh, sync), Packages import / create / clone / install / uninstall / promote |
-| 80 | `run-a-workflow`, filesystem path tools, `cd`, `queryDatabase`, device `runTool`, `deleteDevice`, `resetChangeTracking`, voice device-local operations, App Updates `checkForUpdates` |
+| 80 | Filesystem path tools, `cd`, `queryDatabase`, device `runTool`, `deleteDevice`, `resetChangeTracking`, voice device-local operations, App Updates `checkForUpdates` |
 | 100 | Unclassified package tools, App Updates update-and-restart |
 
 Runner tools are infrastructure level **0**, but they still validate that the

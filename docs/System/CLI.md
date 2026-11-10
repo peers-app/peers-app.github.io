@@ -9,7 +9,7 @@ The Peers CLI (`peers`) lets you interact with the Peers app entirely from the t
 The CLI communicates with a running Peers host (the desktop app or
 `peers-headless`) over a local WebSocket connection. If the desktop app isn't
 running and you have not passed `--auth-file`, the CLI starts Electron
-automatically.
+automatically. Local commands such as `peers new-id` do not connect to or start a host.
 
 ## Installation
 
@@ -24,11 +24,8 @@ peers --version
 ## Quick start
 
 ```bash
-# Chat with the built-in assistant
-peers "What tasks do I have?"
-
-# Start an interactive chat session
-peers
+# Generate an id without starting the app
+peers new-id
 
 # List all database tables
 peers db tables
@@ -90,6 +87,10 @@ fetches.
 ## Commands
 
 ### Messaging
+
+Messaging and the REPL require an existing, available Assistant. New installs no longer
+include one; use `peers tools run` to call tools directly. Without one, a message in your
+personal context fails at once with "No Assistant can reply". See [Assistants](./Assistants.md).
 
 Send a message to the assistant and get a response:
 
@@ -358,12 +359,8 @@ target, availability, providers, and access. `run --json` prints the target resu
 For example, an entry contains `availability: {dispatch: "contract"}` and
 `target: {contractId, version, toolName}`; it is no longer a raw Tools row.
 `--assistant` uses runnable catalog lookup and runs with that Assistant’s ceiling
-through a workflow. Contract members declaring `requiresWorkflowRun`, such as
-`set-variable`, also route through a one-off workflow run:
-
-```bash
-peers tools run set-variable '{"variableName":"x","variableValue":1}'
-```
+through a workflow. Contract members declaring `requiresWorkflowRun`, such as the
+desktop's `send-notification`, also route through a one-off workflow run.
 
 `--provider` and `--fallback-to-default` are rejected with `--assistant`, with
 `--device`, and for workflow-run tools. Direct catalog calls introduce
@@ -725,6 +722,17 @@ user id. Every command takes `--json`; Git's progress then goes to stderr. `doct
 `1` when a check fails. With detached HEAD, check out a branch before sharing, or use
 `--no-push` to create an empty remote.
 
+### `peers new-id`: New ids {#new-id}
+
+```bash
+peers new-id        # one new Peers id
+peers new-id 5      # five, one per line (at most 1000)
+```
+
+Prints new Peers ids for a package, contract, or screen: 25 letters and digits, the same kind
+`newid()` from `@peers-app/peers-sdk` makes in code. It runs locally, so the app needn't be
+running.
+
 ### `peers contracts add`: Contract declarations
 
 From your package folder, generate a declaration from a contract registered on the running host:
@@ -765,10 +773,10 @@ The CLI makes Peers fully accessible to AI coding assistants and automation scri
 
 - Query data with `peers db query "..."` and get structured JSON with `--json`
 - Discover direct targets with `peers devices` and add `--device <deviceId>` to remote operations
-- Run tools with `peers tools run` to create tasks, set timers, or trigger workflows
+- Run tools with `peers tools run` to create tasks or set timers
 - Import, reload, and diagnose packages with `peers packages` (JSON output and exit codes)
 - Share, clone, and inspect Git repositories with `peers git` (`--json` throughout)
-- Chat with the built-in assistant via `peers "..."`
+- Chat with an existing, available Assistant via `peers "..."`
 - Inspect and interact with the UI via `peers ui`, and see it by opening the file `peers ui screenshot` prints
 - Tail logs for debugging with `peers logs -f`
 
