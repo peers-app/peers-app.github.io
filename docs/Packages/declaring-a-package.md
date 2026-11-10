@@ -396,6 +396,13 @@ keep the data, the new version copies it once, on each device:
   can't undo an edit made after another device's copy. Still let the device sync first, so it
   copies current rows. A row this device deleted since stays deleted: its save is refused as
   deleted, so count it as skipped. Pause the package's writes during the copy.
+- **Put the copy tool on a contract of its own.** The later version that removes the copy then
+  simply stops providing that contract. A tool on the package's main contract can't be removed
+  once a stable release freezes that contract, only replaced by a stub.
+- **Parse old rows leniently.** Rows read in the UI and sent to a tool come in their stored
+  form: an `any` field (a `z.record`, for one) is JSON text, and an empty field can be `null`.
+  Give the copy tool a schema that drops `null`s, parses JSON text, and coerces dates
+  (`z.coerce.date()`).
 - **Copy into read-only tables through a tool.** A table whose class refuses consumers' saves
   ([read-only to its consumers](#overriding-table-methods)) takes the copy through a tool of
   your own: the UI reads the old rows in pages and passes them to it in batches, and the tool
@@ -415,7 +422,11 @@ keep the data, the new version copies it once, on each device:
   stay in storage; nothing reads them any more.
 
 Package settings stored with `deviceVar` and the like don't carry over either: new-style
-variables are named per package. Copy the ones worth keeping the same way.
+variables are named per package. Copy the ones worth keeping the same way. The exception is a
+variable the old version already named `<packageId>_<name>` with its own package id. A new-style
+variable `<name>` in the same scope is stored under that name, so the new version reads the old
+value with no copy. For the group scopes, that holds when the old version wrote it in the same
+group.
 
 ### Overriding table methods
 
@@ -552,6 +563,10 @@ more about the value:
   (`z.object({}).passthrough()`) is opaque: its entry has no `fields`, and any keys pass.
 - Some schemas are described by type only: records (`z.record`), unions of objects, tuples,
   lazy schemas, a value inside a transform or a preprocess, and arrays of arrays.
+- In a table row, a field described by type only is an `any` field. Storage keeps an object in
+  one as its JSON text, and reads hand that text back, not the object. For a map in a row, such
+  as item names to numbers, use `z.object({}).catchall(z.number())`: it's an `object` field,
+  so it reads back as an object.
 - The IR can't say that an array's elements may be empty, and then lists no enum values for
   them. For now, avoid `null` or `undefined` elements and arrays of arrays in table rows and tool
   inputs: the Runtime refuses them even where the schema allows them.
