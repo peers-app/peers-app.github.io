@@ -106,6 +106,20 @@ Node API and rejects literal `SECRET_KEY`, `rootPrivateKey`,
 `userPrivateKey`, or `devicePrivateKey` values without writing extracted files
 into the repository.
 
+## peers-core
+
+`peers-core` is the Tasks app: a sandbox package (declared with `/define`) that keeps
+peers-core's package id. Its `npm run build` makes the sandbox bundle
+(`dist/package.bundle.js`, which carries the package's manifest), the UI bundle and the
+routes bundle.
+
+Step 3 builds it, then records the contract versions it provides in
+`frozen-contracts.json` (`npx peers-package contract freeze --bundle
+dist/package.bundle.js`), which is committed with the release. A release that changes a
+contract version an earlier release froze stops there: declare a new version of the
+contract instead. Step 5 signs the three bundles and uploads them to S3 (see
+[Signing key](#signing-key)).
+
 ## Signing key
 
 `peers-core` is signed by an Ed25519 publisher key. The public half is

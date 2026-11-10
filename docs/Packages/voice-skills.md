@@ -158,8 +158,8 @@ Catalog's `listContractProviders`, which includes the contracts each one exposes
 the caller may run. A package that doesn't provide Voice Skill isn't a skill. Voice Hub's screen
 finds skills when it opens; reopen it to see one installed while it was open.
 
-News, Weather, Timers, and Groceries in `official-packages/`, and Tasks from its `peers-core`
-package boundary, provide Voice Skill v2. Groceries exposes Grocery List and Tasks exposes Task
+News, Weather, Timers, and Groceries in `official-packages/`, and Tasks (in the `peers-core`
+repo), provide Voice Skill v2. Groceries exposes Grocery List and Tasks exposes Task
 List: small contracts with the tools a person asks for by voice, which the assistant and the CLI
 can use too.
 

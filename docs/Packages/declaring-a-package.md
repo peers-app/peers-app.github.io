@@ -396,6 +396,14 @@ keep the data, the new version copies it once, on each device:
   can't undo an edit made after another device's copy. Still let the device sync first, so it
   copies current rows. A row this device deleted since stays deleted: its save is refused as
   deleted, so count it as skipped. Pause the package's writes during the copy.
+- **For a big table, compare ids before sending rows.** Give the copy contract a Reader tool
+  that takes a page of ids and returns the ones the new table lacks, and send only those rows.
+  Once the first device's copy has synced, a later device only sends ids. Read the old table in
+  pages by id (`{ taskId: { $gt: lastId } }`, sorted by id) rather than by page number, so rows
+  syncing in meanwhile can't shift a page. Tasks copies about 29,000 rows this way in about
+  30 seconds, 300 per call; a device whose rows were already copied takes about 10 seconds.
+- **Skip a row that won't parse** rather than failing its batch: count it, and name a few in
+  the result so they can be looked at.
 - **Put the copy tool on a contract of its own.** The later version that removes the copy then
   simply stops providing that contract. A tool on the package's main contract can't be removed
   once a stable release freezes that contract, only replaced by a stub.

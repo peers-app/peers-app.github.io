@@ -199,7 +199,8 @@ so those rows stay unavailable. `query-database` remains Writer-level and distin
 from Device Operations `queryDatabase`. `create-group` creates for the provider's
 owning user and still seeds bundled peers-core. Tasks and Groceries reject a
 `groupId` outside the authorized context; `write-task` no longer searches other
-groups. Writes require a trusted forwarded actor.
+groups. A new task or comment records the call's caller as its creator, or the
+signed-in user when the host doesn't name a caller.
 
 Common Tools v1 (`new-id`, `throw-error`, `set-variable`, `send-message`,
 `search-workflows`, `run-a-workflow` and `cli_assistant_runner`) is retired: Tasks

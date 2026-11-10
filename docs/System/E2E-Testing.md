@@ -386,8 +386,9 @@ it("a row written on one device reaches the others", async () => {
   isolated worker booted. `PEERS_OFFICIAL_PACKAGES_DIR` overrides the default
   `<monorepo>/official-packages`.
 - `fleet.installLocalPeersCore(device, others, dataContextId)` imports the
-  monorepo's peers-core (Tasks) as a dev build and activates it on `others`:
-  the group may already run a released peers-core of the same version.
+  monorepo's peers-core (Tasks, a sandbox package; build it with `npm run build`
+  in `peers-core`) as a dev build and activates it on `others`: the group may
+  already run a released peers-core of the same version.
 - `package-lifecycle.e2e.test.ts` makes a fleet-private copy of the built
   `isolation-smoke` artifact and emits schema-v4/v5/v6 versions without
   modifying the official checkout. Its offline follower receives v4 and v5
