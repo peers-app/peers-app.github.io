@@ -203,8 +203,12 @@ machine downloads the `mongod` binary (see
 
 Typical Azure time is about seven minutes. The wait polls `gh run list` for
 the just-pushed commit (20 minute timeout) and treats any conclusion other
-than `success` as a failed release. You need an authenticated `gh` that can
-read Actions on `peers-app/peers-services`.
+than `success` as a failed release, with one exception. The deploy installs
+the just-published `@peers-app` packages from npm, and a runner can get a 404
+for a tarball for a few minutes after it's published. When the failed job's
+log shows that, the release waits a minute and reruns the failed job, at
+most twice. You need an authenticated `gh` that can read Actions on
+`peers-app/peers-services` and rerun its workflow.
 
 ## Server first when the verifier changes
 
@@ -272,9 +276,10 @@ If either sync fails, the release stops before the later publish steps. A
 repeat of the same version skips the commit when those manifests are already
 pinned.
 
-After `npm publish`, Step 3 waits for the version to be served before the next repo installs it.
-npm scans new versions first ("Your package is being processed and may take a few minutes to
-become available"), which has taken up to about 25 minutes, so the wait allows 45. If a release
+After `npm publish`, Step 3 waits for the version to be served before the next repo installs it:
+npm must list the version and its tarball must download. npm scans new versions first ("Your
+package is being processed and may take a few minutes to become available"), which has taken up
+to about 25 minutes, so the wait allows 45. If a release
 stops partway through Step 3, run it again without a release type (`npm run release`): it keeps the
 version, skips packages already on npm after tagging and pushing their release commits, and
 carries on from the first repo it hadn't finished.
