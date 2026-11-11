@@ -302,22 +302,24 @@ and retry. Uninstall retains catalog rows, which then report `no-provider`.
 
 The executable Tools registry and source execution are removed. Dispatch is either
 `contract` or `unavailable`. An unresolved row with `packageId` reports
-`legacy-package-upgrade-required`: “Package PACKAGE_ID must be upgraded to implement this
-tool through a contract resolver.” Without package provenance it reports
-`legacy-execution-removed`: “Legacy tool execution has been removed; implement this
-tool through a contract resolver.” Both messages link to the
+`legacy-package-upgrade-required`: “Package PACKAGE_ID must be upgraded to provide this
+tool through a contract.” Without package provenance it reports
+`legacy-execution-removed`: “Legacy tool execution has been removed; provide this
+tool through a contract.” Both messages link to the
 [migration note](../Packages/contracts.md#migrating-from-toolinstances).
 A provider declaring a member without a resolver reports `no-implementation`,
 names the provider and member, and asks for a version that implements it.
 Missing providers, removed members and quarantined identities remain actionable
 unavailable records; catalog history is retained. Unreviewed custom IDs stay
 unresolved after migration: update saved workflow and Assistant references to the
-resolver’s catalog ID. The old custom row remains deletable.
+contract's catalog ID. The old custom row remains deletable.
 
 For package implementations, declare tools and handlers with `defineTool`, provide their
 contracts through `definePackage` from `@peers-app/peers-sdk/define`, and rebuild with
-`peers-package`. Raw package bundles no longer load, including tool-free bundles;
-the package status includes a rebuild instruction. See [Declaring a package](../Packages/declaring-a-package) and the
+`peers-package`. Only isolated package artifacts load. An older bundle, whether a
+host-backed `definePackage()` build from the SDK root or a raw bundle, fails to load with a
+rebuild instruction in the package status, and the package's previous version keeps serving
+if one was running. See [Declaring a package](../Packages/declaring-a-package) and the
 [older-format migration note](../Packages/contracts#isolated-contract-packages-electron).
 
 `code` and `codeRepository` remain historical columns at Tools schema version 2.

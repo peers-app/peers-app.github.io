@@ -181,6 +181,11 @@ After peers-core is on S3, `full-release.js` runs `yarn release:local` in `peers
 
 ## Implementation phases
 
+Phases 1 and 3 describe the retired SDK-root `definePackage()` package format. Those
+builds no longer load. Rebuild them with `definePackage` from `@peers-app/peers-sdk/define`
+and `peers-package`. Do not set `versionTag` or contract `devTag` in package declarations;
+contract maturity follows the selected package version's tag.
+
 ### Phase 1: Fix the immediate bug (Tasks not showing)
 
 - Ensure navigation declared with `definePackage()` appears after the package loads.
@@ -236,9 +241,6 @@ After peers-core is on S3, `full-release.js` runs `yarn release:local` in `peers
 
 | File | Change |
 |------|--------|
-| `peers-sdk/src/contracts/builder.ts` | Remove versionTag setter, remove devTag param from `contract()` |
-| `peers-sdk/src/contracts/types.ts` | Remove versionTag from `IPackageDefinitionResult` |
-| `peers-sdk/src/package-loader/contract-package-loader.ts` | Handle appNavs propagation |
 | `peers-sdk/src/package-loader/package-loader.ts` | Preserve declared navigation and finish installation before reporting success |
 | `peers-sdk/src/data/package-permissions.ts` | Allow Writer role for dev versions |
 | `peers-sdk/src/data/package-version-permissions.ts` | Allow Writer role for dev versions |

@@ -101,9 +101,9 @@ Each package summary has two parts.
 The other runtime fields:
 
 - `running`: the version that is serving. Gives `packageVersionId`, `version`,
-  `versionTag`, `kind` (`isolated` or `contract`), and `executionMode`. For
-  isolated packages it also gives `provides` and `consumes`, and each `consumes` entry
-  says whether a provider was found (`satisfied`).
+  `versionTag`, `kind` (always `isolated`; Peers versions before the host-backed loader
+  was removed also report `contract`), and `executionMode`. It also gives `provides` and
+  `consumes`, and each `consumes` entry says whether a provider was found (`satisfied`).
 - `lastError`: the most recent load failure. Gives `phase`, `message`, `version`, and
   `at`, and is cleared by the next successful load.
 - `worker`: isolated worker health, `workerRunning` plus `lastWorkerError`. Isolated

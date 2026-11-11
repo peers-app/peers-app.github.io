@@ -190,9 +190,8 @@ Replace `toolInstances` assignments with tools declared using `defineTool` and
 provided through `definePackage` from `@peers-app/peers-sdk/define`. Rebuild with
 `peers-package`. See [Declaring a package](./declaring-a-package).
 
-For an existing host-backed `definePackage()` package, supply implementations
-through `registerContractResolver`, using `IContractToolImplementation` and the
-resolver's data context. Use the exact public member names. Update saved workflow
+Host-backed packages (a `definePackage()` from the SDK root, evaluated in the host
+process) no longer load, so there's no other way to provide a tool. Update saved workflow
 and Assistant references to the contract's catalog IDs; arbitrary `toolId` values
 cannot allocate catalog identities. See [Legacy execution removed](../System/Tools.md#legacy-execution-removed).
 

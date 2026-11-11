@@ -202,8 +202,3 @@ Retired: nothing provides or reads it, and the Runtime no longer supports its ac
 skill's own tools. A skill on v1 should move to v2 and expose its contracts. A package whose
 manifest still lists action aliases is refused at install and at load ("manifest.actionAliases
 is not supported"); move it to v2 and rebuild it.
-
-Host-backed packages must also replace calls to `context.dispatchAction`: those calls no longer
-work, including calls from the package's own screens or other tools. Provide context-bound tools
-on the appropriate contracts and move callers to them; changing the voice declaration alone
-doesn't migrate those callers. See [context-bound tool providers](./contracts#context-bound-tool-providers).
