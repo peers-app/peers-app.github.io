@@ -632,8 +632,10 @@ const page = await SystemHttp(ctx).tools.request({
 `SystemIdentity` exposes only `getSession()` to packages; the other System Identity tools
 refuse package callers. `SystemGroupMembers.getMembers()` returns current membership of the
 calling package's own context, with no group-id argument. `SystemFiles` saves and reads files
-in that context ([System Files](../System/Files.md)). All six references are exported from
-`@peers-app/peers-sdk/define` and declared with `pkg.consumes(...)`.
+in that context ([System Files](../System/Files.md)). `SystemNotifications` notifies the
+signed-in user or members of the package's group ([Notifications](../System/Notifications.md)).
+All seven references are exported from `@peers-app/peers-sdk/define` and declared with
+`pkg.consumes(...)`.
 
 ```ts
 import { SystemIdentity, SystemGroupMembers } from "@peers-app/peers-sdk/define";
