@@ -197,7 +197,9 @@ System Host Tools (`00mvbrni9wjucq4q1jbfe9ep3`) and System Desktop Tools
 devices. Headless hosts expose desktop catalog rows but have no desktop resolver,
 so those rows stay unavailable. `query-database` remains Writer-level and distinct
 from Device Operations `queryDatabase`. `create-group` creates for the provider's
-owning user and still seeds bundled peers-core. Tasks and Groceries reject a
+owning user and still seeds bundled peers-core. `remove-group` and `restore-group` take one of
+that user's groups off, or back onto, their list on all of their devices, and refuse calls
+from packages. Tasks and Groceries reject a
 `groupId` outside the authorized context; `write-task` no longer searches other
 groups. A new task or comment records the call's caller as its creator, or the
 signed-in user when the host doesn't name a caller.

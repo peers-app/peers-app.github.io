@@ -79,6 +79,23 @@ approval is imported. A member can only approve a role at or below their own.
 From the CLI: `peers groups invite <groupId> <userId>`, `peers groups invite <groupId> --link`,
 and `peers groups join <token>`. See [CLI](./CLI#peers-contacts-peers-groups-peers-invites--invites).
 
+## Removing a group
+
+**Remove group**, at the bottom of a group's **Info** tab, takes the group off your list on all
+your devices. Other members keep the group, and you stay a member: they still see you in it,
+but your devices stop syncing it until you restore it. If it was the group you had open, Peers
+switches to Personal. Its data stays on each of your devices, so removing a group doesn't free
+disk space yet. **Removed groups**, under the list on **Identity → Groups**, shows the groups you
+removed, and **Restore** brings one back on all your devices. **Remove**, in the menu next to
+**Save**, does the same as **Remove group**. After you restore a group, restart Peers on each
+device where you want to use its apps: they start again on the next launch.
+
+From the CLI: `peers groups remove <groupId>`, `peers groups removed`, and
+`peers groups restore <groupId>`. `peers groups delete <groupId>` is an alias of `remove`,
+with the same reversible behavior. Agents and scripts can also call System Host Tools'
+`remove-group` and `restore-group`, for example
+`peers tools run remove-group '{"groupId":"<groupId>"}'`. Packages can't call them.
+
 ## Who can change what
 
 Group roles and settings require a signature from someone allowed to change them:

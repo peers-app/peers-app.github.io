@@ -448,9 +448,9 @@ or waking. Find them with `peers logs --device <deviceId> -q "[ProcessHealth]"`.
 
 ### `peers contacts`, `peers groups`, `peers invites` — Invites
 
-Issue, accept, and review [invites](./Invites) from the terminal. These commands talk to the
-running app's System Invites contract, so they act as the signed-in user and share the same
-pending list as the UI.
+Manage groups and issue, accept, and review [invites](./Invites) from the terminal. These
+commands act as the signed-in user in the running app and share the same pending invite list
+as the UI.
 
 ```bash
 # Contacts
@@ -462,12 +462,15 @@ peers contacts pending                  # pending contact invites, in and out
 
 # Groups
 peers groups                            # list my groups
+peers groups removed                    # list the groups I removed
+peers groups remove <groupId>           # remove a group from my groups on all my devices (other members keep it)
+peers groups restore <groupId>          # bring back a removed group
 peers groups invite <groupId> <userId>  # invite an existing contact directly
 peers groups invite <groupId> --link    # shareable link (approve each join)
 peers groups invite <groupId> --link --mode open --expires 24h
 peers groups join <token|link>          # join a group from a link
 peers groups pending                    # pending group invites and join requests
-peers groups resign <groupId> | --all   # re-sign memberships (bound to each member's key), settings and packages with your key (--all: groups you founded)
+peers groups resign <groupId> | --all   # re-sign memberships (bound to each member's key), settings and packages with your key (--all: groups you founded and haven't removed)
 
 # Everything pending
 peers invites                           # show pending invites
@@ -480,6 +483,11 @@ peers invites revoke <inviteId>
 peers invites sync                      # fetch mailbox, retry queued sends
 peers invites regenerate-profile        # revoke all my tokens, issue a new profile QR
 ```
+
+`peers groups delete <groupId>` is an alias of `remove`. Both are reversible: they hide the
+group on all your devices without deleting its data or changing other members' lists. Use
+`peers groups removed` to find it and `peers groups restore <groupId>` to bring it back.
+`peers groups` (including `--json`) lists only groups you haven't removed.
 
 **Options:**
 

@@ -156,7 +156,8 @@ describe **this device**, not every device in the group.
 - **Kept** or **Never freed:** the file is kept, or the group's retention is set to never.
 - **References not ready:** Peers cannot yet check all references, so it keeps the contents.
 
-A disabled group's files are kept on this device, and its list shows once the group is enabled.
+A removed group's files are kept on this device, and its list shows again once you restore the
+group.
 
 Yellow **Legacy** and **Kept** badges mark files that stay even when unused. You can't remove
 these flagged files yet; explicit deletion comes in a later release. A grey **Package bundle**
