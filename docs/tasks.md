@@ -37,6 +37,18 @@ are in view. A new task goes into the current group if it's in view, otherwise t
 listed. Start its title with `#groupname` to put it in a specific group. A subtask always goes in
 its parent's group.
 
+## Closing a task with subtasks
+
+A task closes (Done or Canceled) only with its subtasks. Closing one that still has open subtasks,
+at any level, asks first: **Complete them too**, **Cancel them too**, or **Keep it open**. Each
+subtask closed this way gets a comment saying which task it was closed with. A repeating subtask
+closes too, rather than moving to its next date. The unlogged time goes to the task you closed,
+not to its subtasks.
+
+The question counts subtasks in every group in view, so a subtask kept in another group from its
+parent is included when that group is in view. This applies to repeating tasks as well, even
+though completing one moves it to its next date.
+
 ## Moving tasks around
 
 Right-click a task on desktop, or touch and hold it on a phone, for its menu. Every action is one
@@ -89,3 +101,28 @@ When the selected task moves away, the task below it is selected next (or the on
 of a section). If its section is now empty, the first task in the next section down is selected,
 and that section opens. You keep your place in the list: it doesn't scroll to follow the task you
 moved.
+
+## For agents and the CLI
+
+Tasks' tools work in the group the call is made in (`-c <groupId>` on the CLI; your personal
+space by default).
+
+- **`describe-task`** `{ taskId }` writes a task up as Markdown: its status, where it sits, its
+  details and plan, its subtasks, its newest comments with who wrote them, the time logged (its
+  own, and with its subtasks), and what keeps it from closing. Optional: `subtaskDepth` (1 by
+  default, up to 5; 0 lists none), `includeComments` (true by default), `commentLimit` (20 by
+  default, up to 100).
+- **`get-task`** `{ taskId, includeSubtaskIds? }` returns a task's stored fields, and its direct
+  subtasks' ids if asked.
+- **`write-task`** creates, updates, or deletes a task. An update that closes a task with open
+  subtasks fails unless it says how to close them: `"openSubtasks": "Done"` or `"Canceled"`.
+- **`write-task-comment`** adds a comment to a task, or deletes one.
+
+```bash
+peers tools run describe-task '{"taskId": "<taskId>"}'
+peers tools run write-task '{"operation": "update", "taskId": "<taskId>", "status": "Done", "openSubtasks": "Done"}'
+```
+
+Lists of tasks (`list-tasks`, `get-task`'s subtask ids, `describe-task`, and the Tasks card in
+Voice Hub) come in one order: In Progress, then snoozed, Queued, Backlog, then Done and Canceled,
+each by position.
