@@ -8,7 +8,8 @@ Peers keeps its own notifications. A package asks for one at an attention level,
 for each recipient, and each recipient's devices present it the closest way they can. The desktop
 app shows OS notifications, sets the dock or taskbar badge, and keeps a priority alarm going
 until the user deals with it (up to 30 minutes). Every app shows a bell with the badge and a Notifications screen
-with history and settings.
+with history and settings. On a phone or a narrow window, notifications are in the menu (☰)
+instead, and the menu button carries the badge.
 
 Dealing with a notification on one device clears it on the user's other devices. A notification
 stays in the history for 90 days after it's dealt with; one nobody deals with is removed 90 days
@@ -88,8 +89,30 @@ The recipient's settings decide what actually reaches them:
   user's own things, such as their timers, come through as asked.
 - **Do not disturb**: while paused, loud notifications arrive without sound. Priority still
   comes through.
+- **When you're away**: how long without input before a computer counts you as away, so loud
+  and priority notifications also go to your phone. See [When you're away](#when-youre-away).
 
 Settings are in **Notifications → Settings** and sync across the user's devices.
+
+## When you're away
+
+While you aren't using any of your devices, loud and priority notifications also go to your
+phone, and to any other browser where you turned notifications on. That way you can walk away
+from your computer and still hear about what matters.
+
+- A computer counts you as away when its screen locks, when it sleeps, or after a few minutes
+  without keyboard or mouse input: 5 by default, set under **When you're away** in
+  **Notifications → Settings**.
+- The Peers app in a browser counts you as there while its page is showing.
+- Loud notifications go to your phone only while you're away from every device. Priority ones
+  always do.
+- If a notification arrived in the last few minutes before you walked away from your computer
+  and you didn't look at it, it goes to your phone then.
+- Each notification goes to your phone once, and your phone shows its title and text. Your own
+  device encrypts that for your phone's browser, so neither Peers Services nor the browser's
+  push service can read it.
+- Your phone needs notifications turned on (see [In the browser](#in-the-browser)), and your
+  computers need to be connected to Peers Services, which sends the push.
 
 ## From the CLI
 
@@ -109,7 +132,8 @@ peers tools run actOnNotifications '{"action":"dismiss","all":true}'
   while the app is running. On macOS, whether a popup stays on screen also depends on the
   Peers alert style in System Settings → Notifications.
 - **PWA** (installed web app or a browser tab): browser notifications and the app badge while
-  the app is open where supported, and a wake-up push while it is closed. See below.
+  the app is open where supported, and a push while it is closed: when you're away from your
+  other devices, or when something arrives and none of your devices is online. See below.
 
 ## In the browser
 
@@ -120,11 +144,15 @@ then on:
 - While the app is open, fresh notifications appear as browser notifications (silent for quiet
   ones, requesting a persistent popup for priority), and supported installed apps show an icon badge. Clicking
   one opens what it is about.
-- While the app is closed, Peers Services sends your browser an empty push when something arrives
-  for you and none of your devices is online. The browser shows **"New activity in Peers"**;
+- While the app is closed and you're away from your other devices, a loud or priority
+  notification shows with its title and text ([When you're away](#when-youre-away)). Clicking it
+  opens the app and what it is about.
+- While the app is closed and none of your devices is online, Peers Services sends your browser
+  an empty push when something arrives for you. The browser shows **"New activity in Peers"**;
   opening it starts the app, which fetches what was waiting and shows the real notifications.
-  The push itself carries no content, so neither Peers Services nor the browser's push service
-  learns what the notification says.
+- Either way, Peers Services and the browser's push service never learn what a notification
+  says: the empty push carries nothing, and the text in the other is encrypted for your browser
+  by your own device.
 
 What you need:
 
