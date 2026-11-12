@@ -5,8 +5,8 @@ title: Tools and access
 
 # Tools and access
 
-Tools are the actions Assistants and users can run: send a message, write a
-task, search workflows, query a device database, and so on. Each live tool implementation
+Tools are the actions users, packages and agents can run: write a task, create a
+group, query a device database, and so on. Each live tool implementation
 has an integer `accessLevel` from **0–100**. Missing or unclassified tools
 default to **100 (Self)** so a new package tool cannot run until someone
 explicitly lowers it.
@@ -36,9 +36,10 @@ hashes UTF-8 compact `JSON.stringify(["peers.tools-catalog.v1", contractId, vers
 toolName])` with SHA-512, interprets the digest as an unsigned big-endian integer,
 and takes its residue modulo `36^17`, padded to 17 characters. Names are not
 trimmed or normalized; malformed Unicode and non-positive/unsafe versions fail.
-Global peer-ID validation is unchanged. Catalog validation alone accepts the
-shipped 26-character Tool Access Control contract ID (`000peers0toolaccessctl0001`)
-and Scheduler `list` tool ID (`00muxgugn661g0qmpuwafrmsi4`).
+Global peer-ID validation is unchanged. Catalog validation alone accepts two shipped
+26-character IDs: the contract ID of the retired Tool Access Control
+(`000peers0toolaccessctl0001`), whose aliases stay in the inventory, and the Scheduler
+`list` tool ID (`00muxgugn661g0qmpuwafrmsi4`).
 
 This is the approved permanent protocol from the Tools Catalog Foreman specification
 (2026-10-13). The SDK uses its existing `tweetnacl.hash` SHA-512 implementation.
@@ -143,26 +144,11 @@ permission to execute: the contract registry supplies availability and the selec
 live provider supplies authorization. Catalog reconciliation does not overwrite
 provider-specific policy.
 
-Workflow and assistant references resolve through the catalog on every invocation.
-They can run package contract tools, and
-system tools only from **Host Tools** or **Desktop Tools**. Tool Access Control,
-Identity, Invites, Device Operations, App Updates, Packages, both catalogs, HTTP, Scheduler,
-Local Folders and Network remain excluded. This prevents a workflow from approving itself or
-entering administrative contracts. Discovery uses live access levels and never
-starts an isolated worker. Equal aliases are deduplicated by target.
-
-Argument gathering uses the current contract member's fields. Tool calls keep their
-logs, timing, errors and runner services in the workflow's own context, even when
-another group is active.
-
 Device Operations keeps `getTool` and `listTools` metadata behavior. Its `runTool`
-uses runnable catalog lookup. Ordinary contract calls execute under the remote
-caller's own user ID and group role, including Self-trusted other accounts.
-`requiresWorkflowRun` members and any `assistantId` require the
-caller to be the host account. Package callers cannot enter the Device Operations
-workflow adapter. Local-only targets are always rejected remotely.
-CLI `--assistant` uses catalog lookup and the workflow path; `--device` sends the
-original lookup query to Device Operations.
+uses runnable catalog lookup and runs the tool through the catalog under the remote
+caller's own user ID and group role, including Self-trusted other accounts. Package
+callers are refused, and local-only targets are always rejected remotely. CLI
+`--device` sends the original lookup query to Device Operations.
 
 Successful replacement makes subsequent calls use the new implementation. Failed replacement
 keeps the previous one available. Uninstall makes its tools unavailable while retaining
@@ -210,7 +196,11 @@ stopped providing it after 0.31.4, along with its Assistants. Its ids stay in th
 inventory but no provider serves them, so they show as unavailable. Use
 [`peers new-id`](./CLI.md#new-id) for new ids.
 
-The append-only inventory also maps these system tools:
+These system members were retired with assistants and workflows. Their IDs stay in the
+append-only inventory and still resolve to their old targets, but nothing declares those
+members any more. A device that already has their rows shows them as `member-removed` (or
+`no-provider` for Tool Access Control, which is gone entirely); a fresh install doesn't create
+them.
 
 | Catalog ID | Contract v1 → member |
 |---|---|
@@ -218,25 +208,14 @@ The append-only inventory also maps these system tools:
 | `000peers0tool00toolsearch` | System Host Tools → `tool-search` |
 | `000peers0tool0000000dircd` | System Desktop Tools → `cd` |
 | `000peers0tool000000notify` | System Desktop Tools → `send-notification` |
+| `000peers0tacapprove000001` | System Tool Access Control → `approve` |
+| `000peers0tacreject0000001` | System Tool Access Control → `reject` |
+| `000peers0taclist000000001` | System Tool Access Control → `listPending` |
 
 All reviewed shipped IDs have contract targets; the unresolved inventory is empty.
-Previously installed runner metadata can remain visible after its provider is removed.
-Fresh installs do not include the Common CLI runner.
 
-`requiresWorkflowRun` is host-only invocation policy, separate from contract shape
-identity. It applies to the default assistant runner, tool-search, cd and
-send-notification. Catalog invocation without a workflow rejects these members;
-CLI routes them through `runToolDirectly`. Host providers
-receive `toolContext.workflow` only for the directly invoked tool, in the same data
-context. Nested tool/action contexts, remote callers and isolated workers never
-receive this capability.
-
-Approval requests freeze arguments and the required live level. Approval and the
-host-approved execution both recheck availability, user role and current level.
-A provider switch that raises the level above the approved value fails the request;
-thread/context grants recorded below the current level are ignored. Each subsequent
-workflow call resolves the current compatible provider. A call already executing
-is allowed to finish; an endpoint retired before execution is resolved once again.
+`requiresWorkflowRun` is retired along with workflow runs. A definition that still
+carries it, such as peers-core's frozen contracts, is accepted, and the key is ignored.
 
 Older runtimes do not know the newly appended host/desktop aliases. They park
 resolved rows for those aliases in sync recovery rather than accepting an unknown
@@ -255,8 +234,7 @@ current context's registry and provider policy:
 | `invokeTool` | `{toolId, args?, providerPackageId?, fallbackToDefaultProvider?}` | `{result}` |
 
 Entries include `toolId`, all equal `aliases`, descriptive schemas, catalog state
-and identity, the requested `target`, live provider information, `workflowInvocable`,
-and `availability` including `requiresWorkflowRun`.
+and identity, the requested `target`, live provider information, and `availability`.
 `getTool` also projects `access` for contract entries: required level, caller level,
 and `allowed`. Availability does not grant permission. The selected target endpoint
 checks the original caller's live role and inherited authority on every invocation.
@@ -277,10 +255,9 @@ lookup fail on multiple distinct targets; equal aliases form one target. With
 The contract is local-only and rejects package callers for all three tools.
 Invocation also rejects device callers, missing identity, a mismatched data
 context, unresolved/quarantined identities, and targets on the catalog itself.
-Only the four documented invocation keys are accepted: payload `authority`,
-assistant IDs and workflow variables are rejected. The wrapper admits at None and
-preserves authority; it supplies neither a system-package caller nor its own frame
-to the selected target. No delegated sessions or new approvals are introduced.
+Only the four documented invocation keys are accepted; any other key, such as a payload
+`authority`, is rejected. The wrapper admits at None and preserves authority; it supplies
+neither a system-package caller nor its own frame to the selected target.
 
 Invocation accepts a plain argument object (omitted means `{}`), checks it against
 the requested version's public schema (required fields, types, and top-level
@@ -311,8 +288,7 @@ A provider declaring a member without a resolver reports `no-implementation`,
 names the provider and member, and asks for a version that implements it.
 Missing providers, removed members and quarantined identities remain actionable
 unavailable records; catalog history is retained. Unreviewed custom IDs stay
-unresolved after migration: update saved workflow and Assistant references to the
-contract's catalog ID. The old custom row remains deletable.
+unresolved after migration: update saved references to the contract's catalog ID. The old custom row remains deletable.
 
 For package implementations, declare tools and handlers with `defineTool`, provide their
 contracts through `definePackage` from `@peers-app/peers-sdk/define`, and rebuild with
@@ -325,9 +301,9 @@ if one was running. See [Declaring a package](../Packages/declaring-a-package) a
 `code` and `codeRepository` remain historical columns at Tools schema version 2.
 Their saved bytes are preserved and never refreshed or executed by this runtime.
 `packageId` is historical provenance, not ownership, availability or permission.
-Supplemental `isAssistantRunner`, `configSchema` and `detailedDescription` metadata
-is keyed by a declared contract target and written only after successful preparation.
-System metadata updates accept only existing resolved system members.
+Supplemental `detailedDescription` metadata is keyed by a declared contract target and
+written only after successful preparation. `isAssistantRunner` and `configSchema` are
+historical columns too, kept but no longer written.
 
 Older runtimes may still execute and describe their own legacy tools, and their
 synced descriptions may alternate with those from newer runtimes. Sync does not
@@ -344,23 +320,25 @@ of a catalog identity; both are parked. Deletes of unresolved legacy rows apply
 normally. Older runtimes reject the
 26-character Scheduler `list` alias in their own peer-ID validation. They park it
 as a schema failure and materialize it from local history once they upgrade.
-Tool mention queries show workflow-invocable catalog entries. Browser-only hosts
+Tool mention queries show catalog entries. Browser-only hosts
 without the catalog API fall back to non-quarantined rows. Historical mention IDs
 remain readable even when their provider is unavailable.
 
 ## Policy
 
-Compare the current user's context role (**U**), the Assistant's level
-(**A**), and the tool's level (**T**):
+Compare the current user's context role (**U**), the delegated ceiling (**A**) of a call
+made on the user's behalf, such as one a package or an agent makes, and the tool's level
+(**T**):
 
 | Condition | Result |
 |---|---|
-| `T > U` | Hidden from the model and denied at execution |
-| `T <= A` | Runs automatically |
-| `A < T <= U` | Assistant may request it; user must approve |
-| Direct user call, `T <= U` | Runs (CLI, UI, Device Operations `runTool`) |
+| `T > U` | Denied |
+| `T <= A` | Runs |
+| `A < T <= U` | Needs [step-up approval](#step-up-approval), which isn't available yet, so it's denied |
+| No delegated ceiling, `T <= U` | Runs (CLI, UI, Device Operations `runTool`) |
 
-The model only receives tools the current user could approve (`T <= U`).
+The System Contract Catalog, which agents such as Voice Hub's use to find tools, lists only
+the tools its caller can run.
 Tool metadata in the Tools table remains broadly visible in the UI.
 
 Contract tools use the same levels. Level **0** tools do not need a caller
@@ -384,42 +362,15 @@ compared against the caller's role in the shared group the call names.
 Both checks apply on the executing device: a remote group member must clear
 `remoteAccessLevel` to be admitted and `accessLevel` to run. Tools whose
 `accessLevel` is Self stay effectively local-only for other accounts even if
-`remoteAccessLevel` is set. Remote callers never receive step-up approval
-prompts; a denied call simply fails. Packages reach remote tools through
+`remoteAccessLevel` is set. A denied call simply fails. Packages reach remote tools through
 `ctx.callRemoteTool(contractId, version, deviceId, toolName, args)` from a handler — see
 [Package contracts](../Packages/contracts#remote-tool-calls-across-devices).
 
 ## Step-up approval
 
-Approvals are local-only records. They store the tool id, a sanitized
-argument preview, a hash of the frozen arguments, a nonce, an expiry, and a
-scope. They do not store secrets or raw logs. Pending approvals expire after
-15 minutes. Reusable thread and context grants receive a fresh 15-minute
-window when approved.
-
-Default approval is **one exact frozen call**. That grant is not stored on
-the thread — a later request for the same tool needs a new approval, or a
-reusable thread/context grant. A thread grant follows the thread root, so a
-later reply in the same conversation does not need another prompt. Optional
-scopes allow the same tool for the current thread or data context without
-raising the Assistant globally during that 15-minute window.
-
-In shared groups, approval is always **Allow once** for the exact call shown. Shared
-Assistant settings do not grant automatic access above None, and earlier thread or
-context approvals in groups no longer authorize calls. Personal contexts retain those
-reusable approval options.
-
-Approve and reject are exposed only through the local host
-**System Tool Access Control** contract. Remote device connections cannot
-resolve that contract. Host tickets used to execute the frozen call
-(`hostApprovedApprovalId`, `directUserInvocation`) stay on that run and are
-not copied onto thread message vars. Models cannot raise authority by
-writing those keys — or `accessAssistantId` / `assistantId` — into workflow vars.
-A missing Assistant record fails closed (level 0), not open to Self.
-
-On approve, the host rechecks the user's role, consumes the nonce, and
-executes only the stored arguments in a new host-owned run. Replay of a
-used, denied, or expired nonce fails.
+Step-up approval isn't available yet. It went with workflows, its only callers, and comes
+back with delegates. Until then a call that would need it, a delegated ceiling below the
+tool's level, is denied with a message that says approval isn't available.
 
 ## Shipped classifications
 
@@ -428,22 +379,18 @@ required level until destructive operations are split.
 
 | Level | Examples |
 |---|---|
-| 0 | Hosted / voice runners |
-| 20 | `tool-search`, `app-version`, `list-timers`, device status / list / get, network diagnostics, App Updates status, Packages list / get / capabilities / device activation |
+| 0 | Voice runners |
+| 20 | `app-version`, `list-timers`, device status / list / get, network diagnostics, App Updates status, Packages list / get / capabilities / device activation |
 | 40 | Tasks, groceries, timer writes, notifications, `dispatch-voice-action`, `query-database`, Packages reload |
 | 60 | Network control (connect, disconnect, refresh, sync), Packages import / create / clone / install / uninstall / promote |
-| 80 | Filesystem path tools, `cd`, `queryDatabase`, device `runTool`, `deleteDevice`, `resetChangeTracking`, voice device-local operations, App Updates `checkForUpdates` |
+| 80 | Filesystem path tools, `queryDatabase`, device `runTool`, `deleteDevice`, `resetChangeTracking`, voice device-local operations, App Updates `checkForUpdates` |
 | 100 | Unclassified package tools, App Updates update-and-restart |
-
-Runner tools are infrastructure level **0**, but they still validate that the
-current user may invoke the **target Assistant**.
 
 ## Configuration
 
 Catalog records can display historical access metadata. Execution reads the
 selected live provider's current declaration and the caller's role; editing a
-catalog row does not grant access or override that provider's policy. Historical
-workflow logs are retained.
+catalog row does not grant access or override that provider's policy.
 
 ## Authority propagation and dynamic dispatch
 
@@ -462,7 +409,7 @@ The `cap` ceiling from an ordinary tool's own level applies inside the strict di
 whenever a `preserve` tool is on the chain, the caller is already under strict dispatch,
 a built-in tool dispatches to another tool, or a call is admitted through an `exposes`
 relationship. A direct call through a contract reference from an ordinary tool outside
-that scope uses the ordinary user/assistant/tool policy. Declared tool levels, consume
+that scope uses the ordinary user/delegate/tool policy. Declared tool levels, consume
 ceilings, and group roles always apply.
 
 Package handlers call public tools through a declared contract reference, such as
@@ -475,4 +422,3 @@ Catalog filtering is advisory and execution rechecks the current role, ceiling, 
 Tool details and field tables are read-only: identity, aliases, contract member,
 provider, dispatch reason and live access come from the catalog. The code editor,
 Save action, create-on-Enter flow and obsolete Settings Tasks importer are removed.
-The runner dropdown hides unavailable runners when host catalog data is available.

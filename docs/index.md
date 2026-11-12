@@ -22,7 +22,7 @@ There is a decent amount of AI slop in these docs so keep that in mind.  This is
 
 New to building on Peers? Start with the **[Packages — Getting Started](/Packages/getting-started)** guide, which covers how packages work, what they contribute (tables, tools, routes, UI), and how to build and install one.
 
-Already have Peers installed? The **[CLI](/System/CLI)** lets you interact with the app from your terminal — chat with assistants, query your database, run tools, and more. It also makes Peers fully accessible to AI coding assistants and automation scripts.
+Already have Peers installed? The **[CLI](/System/CLI)** lets you interact with the app from your terminal — query your database, run tools, and more. It also makes Peers fully accessible to AI coding assistants and automation scripts.
 
 ## Resources
 

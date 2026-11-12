@@ -191,8 +191,8 @@ provided through `definePackage` from `@peers-app/peers-sdk/define`. Rebuild wit
 `peers-package`. See [Declaring a package](./declaring-a-package).
 
 Host-backed packages (a `definePackage()` from the SDK root, evaluated in the host
-process) no longer load, so there's no other way to provide a tool. Update saved workflow
-and Assistant references to the contract's catalog IDs; arbitrary `toolId` values
+process) no longer load, so there's no other way to provide a tool. Update saved tool
+references to the contract's catalog IDs; arbitrary `toolId` values
 cannot allocate catalog identities. See [Legacy execution removed](../System/Tools.md#legacy-execution-removed).
 
 ## Consuming a contract through a proxy

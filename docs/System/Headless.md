@@ -250,8 +250,9 @@ move an existing WebRTC connection to it; see
 ## What it does
 
 - Calls `initializePeerDevice` with `DBLocal` (file or `:memory:`)
-- Encrypts secret persistent variables and decrypts them for workflows
-- Loads system tools and installs `peers-core` from the local bundle (S3 only
+- Encrypts secret persistent variables and decrypts them for the host features that use
+  them, such as System HTTP credentials
+- Installs `peers-core` from the local bundle (S3 only
   when `--services-url` is not `none`)
 - Registers the Node isolated-package runtime
 - Captures console output into `ConsoleLogs`

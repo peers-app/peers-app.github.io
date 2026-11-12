@@ -145,8 +145,8 @@ The wake word is not a second login.
 
 Voice Hub's entry tool is Reader and preserves the caller's authority for skill calls.
 Ordinary skill tools cap subsequent calls at their own effective level.
-A delegated Reader cannot dispatch a Writer action even for a Writer user; this path does not
-use assistant approvals. Delegated remote-device action calls fail closed. Weather and news
+A delegated Reader cannot dispatch a Writer action even for a Writer user; there's no step-up
+approval to ask for. Delegated remote-device action calls fail closed. Weather and news
 voice answers use cached data only; refresh requires Writer. These checks cover the migrated
 tool paths, not general table or observable writes.
 

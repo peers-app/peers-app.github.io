@@ -72,9 +72,7 @@ access that survives revocation. Grant Self only when that level of control is i
 Self trust is for you, through the UI or the CLI. A package can call package contracts on
 your other devices, but your device refuses, before it sends anything, every package call
 to a system contract on another device (System Packages,
-System Host Shell, App Updates, Device Operations, and the rest). Workflows and assistants
-cannot call these administrative contracts. They can still use workflow-enabled Host Tools
-and Desktop Tools locally.
+System Host Shell, App Updates, Device Operations, and the rest).
 
 **Current limitation:** forwarded package-contract calls still arrive as the sending user;
 the package identity and consume limits do not cross devices. A Self-level tool in a

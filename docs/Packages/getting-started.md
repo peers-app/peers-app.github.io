@@ -331,4 +331,3 @@ Explicitly deleting `packageSigningKey_<packageId>` removes your local author si
 - **[System Files](../System/Files)** — save and read files, such as images, in the package's context.
 - **[Package lifecycle design](../Roadmap/package-lifecycle)** — design doc and shipped vs planned work.
 - **[System: Tables](../System/Tables)** — how Peers models data with tables and reactivity.
-- **[System: Workflows](../System/Workflows)** — how tools run in workflow runs (often used together with package tools).

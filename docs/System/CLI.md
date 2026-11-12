@@ -4,7 +4,7 @@ sidebar_position: 0
 
 # CLI
 
-The Peers CLI (`peers`) lets you interact with the Peers app entirely from the terminal. You can chat with assistants, query databases, run tools, tail logs, inspect directly connected devices, grant local folders, and control the UI — all without opening the app window.
+The Peers CLI (`peers`) lets you interact with the Peers app entirely from the terminal. You can query databases, run tools, tail logs, inspect directly connected devices, grant local folders, and control the UI — all without opening the app window.
 
 The CLI communicates with a running Peers host (the desktop app or
 `peers-headless`) over a local WebSocket connection. If the desktop app isn't
@@ -86,34 +86,12 @@ fetches.
 
 ## Commands
 
-### Messaging
+### `peers` and unknown commands
 
-Messaging and the REPL require an existing, available Assistant. New installs no longer
-include one; use `peers tools run` to call tools directly. Without one, a message in your
-personal context fails at once with "No Assistant can reply". See [Assistants](./Assistants.md).
-
-Send a message to the assistant and get a response:
-
-```bash
-peers "your message here"
-```
-
-For an interactive session with conversation history, start the REPL:
-
-```bash
-peers
-```
-
-REPL commands:
-- `/clear` — start a new thread
-- `/exit` or `/quit` — exit the REPL
-
-**Options:**
-
-| Flag | Description |
-| --- | --- |
-| `-v, --verbose` | Show detailed progress output |
-| `-c, --context <id>` | Data context: a groupId, or `personal` (default) |
+Bare `peers`, and `peers --help`, print the list of commands; `peers <command> --help`
+shows one command's options. Neither starts the app. An unknown command or option, such as
+`peers status` or `peers --hlep`, is an error: the CLI prints it on stderr with the help and
+exits with status 1, without starting the app or calling it.
 
 ### `peers db` — Database
 
@@ -344,8 +322,7 @@ peers tools run "new-task" '{"title": "Remote task"}' --device <deviceId>
 
 Local `tools list [query]`, `tools get`, and direct `tools run` use the
 [System Tool Catalog](./Tools.md#system-tool-catalog). Omitted `-c` always means
-your personal context, including assistant runs. `personal` and `me`
-are aliases for that context.
+your personal context. `personal` and `me` are aliases for that context.
 
 Lookup uses exact ID, exact name, then text. Multiple distinct targets are ambiguous
 for both names and text; use the stable tool ID. Contract tools invoke the selected
@@ -358,15 +335,10 @@ The list columns are toolId, name, dispatch/reason, contract@version, and descri
 target, availability, providers, and access. `run --json` prints the target result.
 For example, an entry contains `availability: {dispatch: "contract"}` and
 `target: {contractId, version, toolName}`; it is no longer a raw Tools row.
-`--assistant` uses runnable catalog lookup and runs with that Assistant’s ceiling
-through a workflow. Contract members declaring `requiresWorkflowRun`, such as the
-desktop's `send-notification`, also route through a one-off workflow run.
 
-`--provider` and `--fallback-to-default` are rejected with `--assistant`, with
-`--device`, and for workflow-run tools. Direct catalog calls introduce
-no approval prompts. `--device` retains Device Operations metadata JSON and sends
-the original lookup query to the remote host. Ordinary remote contract calls retain
-the caller’s identity and role; workflow paths require the host’s own account.
+`--provider` and `--fallback-to-default` are rejected with `--device`. `--device` retains
+Device Operations metadata JSON and sends the original lookup query to the remote host,
+which runs the tool through its catalog under the caller’s own identity and role.
 Local-only targets cannot run remotely.
 
 **Options:**
@@ -375,7 +347,6 @@ Local-only targets cannot run remotely.
 | --- | --- |
 | `--json` | Output as JSON |
 | `-c, --context <id>` | Data context: a groupId, or `personal` (default) |
-| `-a, --assistant <id>` | Assistant ID to use as context for the tool run |
 | `-n, --limit <count>` | Max tools to list (default: 100) |
 | `--device <id>` | Query or run tools on a directly connected device |
 | `--provider <packageId>` | Prefer this contract provider; fail if absent |
@@ -784,13 +755,12 @@ The CLI makes Peers fully accessible to AI coding assistants and automation scri
 - Run tools with `peers tools run` to create tasks or set timers
 - Import, reload, and diagnose packages with `peers packages` (JSON output and exit codes)
 - Share, clone, and inspect Git repositories with `peers git` (`--json` throughout)
-- Chat with an existing, available Assistant via `peers "..."`
 - Inspect and interact with the UI via `peers ui`, and see it by opening the file `peers ui screenshot` prints
 - Tail logs for debugging with `peers logs -f`
 
 ## Architecture
 
-The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. Commands for contacts, groups, invites, folders, keys, packages, tools, `ui`, and `app restart|quit` call versioned system contracts over that socket. A few older commands (`db` and messaging) still use the desktop RPC bridge, which is being migrated to contracts. Remote operations use that desktop as a bridge to a versioned System Device Operations or System Logs contract over an existing verified device connection.
+The CLI connects to the running Peers desktop app via a local WebSocket (Socket.IO). On first launch, the app writes an auth token to `~/peers/cli/cli-auth.json` that the CLI uses to authenticate. Commands for contacts, groups, invites, folders, keys, packages, tools, `ui`, and `app restart|quit` call versioned system contracts over that socket. The `db` command still uses the desktop RPC bridge, which is being migrated to contracts. Remote operations use that desktop as a bridge to a versioned System Device Operations or System Logs contract over an existing verified device connection.
 
 The Device Operations surface is deliberately portable: status, bounded read-only SQL, tool
 listing/lookup/execution, and logs. It does not expose arbitrary shell, filesystem, or
@@ -805,8 +775,6 @@ Configuration is stored at `~/peers/cli-config.json`.
 ## Related topics
 
 - **[System: Tools](./Tools)** — defining and using tools that the CLI can execute.
-- **[System: Workflows](./Workflows)** — workflows triggered by CLI messages.
-- **[System: Assistants](./Assistants)** — the assistants that respond to CLI messages.
 - **[System: Tables](./Tables)** — the data model behind `peers db`.
 - **[System: Packages](./Packages)**: the contract behind `peers packages`.
 - **[System: Git](./Git)**: the package behind `peers git` and `peers://` remotes.

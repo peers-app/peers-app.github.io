@@ -44,7 +44,7 @@ A field whose schema Peers can't map to one of its types, such as `z.record()`, 
 
 ## Local-only tables
 
-A table whose metadata sets `localOnly` keeps its rows on the device that writes them. Peers records no change rows for it, so nothing about its rows syncs. System tables such as console logs, sync bookkeeping and workflow runs work this way.
+A table whose metadata sets `localOnly` keeps its rows on the device that writes them. Peers records no change rows for it, so nothing about its rows syncs. System tables such as console logs and sync bookkeeping work this way.
 
 For package tables, the schema still syncs through `TableDefinitions`. So every device in the group has its own, separate copy, and a device keeps the table out of sync even before it loads the package that declared it.
 
@@ -54,6 +54,15 @@ A later schema version can switch a table either way. Changing the flag is a sch
 
 - **Synced to local-only:** each device keeps the rows it has and stops sending the table's changes once it has the new definition. It deletes its change rows for the table when it loads the table under that definition; a device that doesn't run the package keeps them, unsent.
 - **Local-only to synced:** when a device loads the table under the new definition, it records its existing rows with a near-zero timestamp, so they sync but any real write wins. Where two devices hold a row with the same primary key, one copy wins. A device still on the older version doesn't apply the table's changes from other devices; it gets them on a later sync, after it loads the newer version. A device that kept change rows from before the table went local-only (because it never loaded that version) sends them with their original timestamps, so its copy of those rows wins.
+
+## Retired system tables
+
+Some system tables belong to features Peers no longer has: `Assistants`, `Messages` and
+`Channels` (the old built-in Threads app), `Workflows`, `WorkflowRuns`, `WorkflowLogs`,
+`ToolAccessApprovals` and `Embeddings`. Their rows stay in each device's storage, unread, and
+no longer sync: a device you add later doesn't receive them. A device on an older version may
+still send changes for them; a current device skips those changes and keeps syncing. The
+Threads package has its own `Messages` and `Channels` tables, which aren't affected.
 
 ## Sync timestamps and conflict resolution
 

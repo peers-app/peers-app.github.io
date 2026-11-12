@@ -69,9 +69,8 @@ on another device. The screenshot is still written on this one.
 Every tool except `getCapabilities` needs **Self** access: the device's own account, or a
 caller the device trusts as Self, in the device's personal context.
 
-- **Not for packages or workflows.** Calls from package code are refused, and a device
-  refuses to forward a package's call to it on another device. Workflows and assistants
-  cannot call it.
+- **Not for packages.** Calls from package code are refused, and a device refuses to
+  forward a package's call to it on another device.
 - **Secrets on the clipboard.** On the desktop app a copied secret is cleared from the
   clipboard after 30 seconds if it is still there; the PWA tries the same where the browser
   allows reading the clipboard.

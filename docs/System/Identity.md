@@ -198,9 +198,7 @@ operations such as sign in, sign out, pairing, and invite decisions. They are
 available to the local UI and CLI host transport only. Mesh callers, including
 another device with Self trust, cannot resolve these host contracts remotely.
 Installed packages can't call them either, with one exception: a package that
-declares System Identity may call `getSession` to learn who is signed in. Tool
-Access Control, which approves assistants' tool requests, refuses packages the
-same way.
+declares System Identity may call `getSession` to learn who is signed in.
 
 See [Contacts](./Contacts.md), [Groups](./Groups.md),
 [Devices](./Devices.md), [Invites](./Invites.md), and

@@ -433,7 +433,8 @@ Timeouts scale with fleet size: `scaledTimeoutMs(n)` is `base + perDevice × n`.
 `FleetDevice` wraps one process and its `DeviceHandle`:
 
 - `device.handle.table(dataContextId, "Tasks").list(filter)` / `.get` / `.save`
-- `device.handle.query(sql)`, `device.handle.runTool(name, args)`
+- `device.handle.query(sql)`; `device.handle.runTool(name, args, dataContextId?)` runs a tool
+  through the System Tool Catalog, as `peers tools run` does, and throws if it fails
 - `device.handle.contract(definition, { dataContextId })` for invites, groups, pairing,
   and any installed package's contract (tools, tables, observables)
 - `device.handle.remoteContract(definition, { dataContextId }).device(peerId).tools.x()`

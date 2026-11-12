@@ -216,7 +216,6 @@ peers packages reload <packageId> --device <deviceId>
 - **Not for packages.** It refuses calls that come from package code, and a device refuses
   to forward a package's call to it on another device (see
   [Trust](./Trust.md#code-you-run-does-not-get-your-self)).
-- **Not for workflows or Assistants.** It is not callable from either.
 
 Every call is bound to one data context, and the access level is checked against your
 role in that context. In your personal context you are Self, so every tool is allowed.

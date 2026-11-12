@@ -133,7 +133,7 @@ deploys without the call are ignored.
 
 The UI and CLI use the **System App Updates** system contract. The desktop app provides
 it; other hosts provide a default that reports `supported: false` and can still relay
-requests to other devices. It is not available to workflows or Assistants.
+requests to other devices.
 
 | Tool | Access level | Notes |
 |---|---|---|
