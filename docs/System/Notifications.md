@@ -68,7 +68,9 @@ await SystemNotifications(ctx).tools.notify({
   members.
 - **`link`**: the route that opens what it's about. It must start with
   `package-nav/<your package id>/`. Clicking the notification switches to its group and opens
-  the link, so read any query parameters in your screen to show the right thing.
+  the link, so read any query parameters in your screen to show the right thing. Without a
+  link, clicking it opens the Notifications screen without switching groups; it stays in the
+  Active list for a few seconds, then moves to History.
 - **`expiresAt`**: epoch milliseconds after which it no longer shows as active.
 
 `notify` returns `{ queued }`, the number of recipients it is on its way to. It returns as soon
@@ -172,3 +174,12 @@ refreshes an existing subscription. If notifications show as **Off**, choose **T
 
 Priority alarms don't repeat their sound outside the app. Browsers that support persistent
 notifications may keep the popup on screen; the in-app banner rings while the app is open.
+
+**On Android, your phone decides how a notification gets your attention.** Chrome gives
+peers.app its own notification category (**General**, under Peers, if you installed the app).
+By default it plays the notification sound, but it doesn't vibrate or pop up as a banner. With
+the phone on vibrate, you get only a short, light buzz instead of the sound. For a longer buzz,
+whether the phone is on vibrate or the ringer is on, long-press a Peers notification, open its
+settings, and turn on **Vibration** (and **Pop on screen** if you want a banner). Peers can't
+change these settings or how long the buzz lasts. Do Not Disturb and bedtime modes silence it
+like any other app's notification.
