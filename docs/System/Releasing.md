@@ -210,6 +210,13 @@ log shows that, the release waits a minute and reruns the failed job, at
 most twice. You need an authenticated `gh` that can read Actions on
 `peers-app/peers-services` and rerun its workflow.
 
+The deploy builds `peers-device`, which isn't on npm, from its `v<version>`
+tag, using the version in the pushed `peers-services` `package.json`. That's
+the same release as the `@peers-app` packages it installs, so a push to
+`peers-device` `main` never changes what Services deploys, and a
+Services-only push between releases builds the last released `peers-device`.
+The Update Download Links workflow builds it the same way.
+
 ## Server first when the verifier changes
 
 New signatures, handshakes, and other objects that `peers-services` must
