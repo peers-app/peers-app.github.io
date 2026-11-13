@@ -31,8 +31,8 @@ Creating or cloning a package from the desktop app requires **git**, **Node.js**
 The fastest way to start a new package is from the Peers app
 (**Packages → Create**), which clones the
 [peers-package-template](https://github.com/peers-app/peers-package-template),
-patches IDs, builds bundles, registers the `Packages` record, and provisions a
-per-package author signing key in your personal space. A package made from the template needs
+patches IDs, builds bundles, starts a Git repository on `main` with one commit, registers the
+`Packages` record, and provisions a per-package author signing key in your personal space. A package made from the template needs
 the latest Peers release; an older app refuses to install it, so update Peers first.
 
 You can also scaffold on disk and import:
@@ -40,7 +40,7 @@ You can also scaffold on disk and import:
 ```bash
 git clone https://github.com/peers-app/peers-package-template.git ~/peers/packages/my-app
 cd ~/peers/packages/my-app
-rm -rf .git
+rm -rf .git && git init && git symbolic-ref HEAD refs/heads/main
 # fill in src/consts.ts and peers.packageId in package.json (see Set up IDs below)
 # update README.md's title and first paragraph, then:
 npm install && npm run build

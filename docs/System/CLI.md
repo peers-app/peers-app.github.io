@@ -723,6 +723,7 @@ peers git status [repo]                  # branches, their states, copies to thi
 peers git policy [repo]                  # shared branches and maintainers
 peers git policy [repo] --branch main --maintainers alice,bob [--threshold 2]
 peers git policy [repo] --remove-branch release
+peers git policy [repo] --default-branch main [--remove-branch master]   # owner: change the default
 peers git adopt [repo]                   # Admins: adopt a repository whose owner left
 peers git doctor -c <groupId>            # check Git, the helper, Peers and the package
 ```
@@ -730,8 +731,9 @@ peers git doctor -c <groupId>            # check Git, the helper, Peers and the 
 `share` uses the folder's name unless you give one, and makes the current branch the shared
 default branch (`--default-branch` picks another). `--no-push` adds the remote without
 pushing; `--remote <name>` names it. In a package's folder it also records the URL as the
-package's source when the package has none. Maintainers are named by their branch prefix or
-user id. Every command takes `--json`; Git's progress then goes to stderr. `doctor` exits
+package's source when the package has none. `policy --default-branch` makes an already shared
+branch the default, the one clones check out ([Git](./Git.md#change-the-default-branch)).
+Maintainers are named by their branch prefix or user id. Every command takes `--json`; Git's progress then goes to stderr. `doctor` exits
 `1` when a check fails. With detached HEAD, check out a branch before sharing, or use
 `--no-push` to create an empty remote.
 

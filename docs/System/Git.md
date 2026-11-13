@@ -100,11 +100,12 @@ peers git policy --remove-branch release              # stop sharing it
 ```
 
 Name maintainers by their branch prefix (as in `alice/feature`) or user id. Each change keeps
-the other shared branches as they are. The default branch can't be removed or renamed. Agents
+the other shared branches as they are. The default branch stays shared until you make another
+branch the default (see [Change the default branch](#change-the-default-branch)). Agents
 can call the package's `setPolicy` tool directly; it replaces the complete list of shared
-branches, with user ids. You can share up to 32 branches, each with up to 10
-distinct maintainers who are current Writers or above. Shared names cannot overlap each
-other or sit under a member's prefix.
+branches, with user ids, and takes an optional `defaultBranch`. You can share up to 32 branches,
+each with up to 10 distinct maintainers who are current Writers or above. Shared names cannot
+overlap each other or sit under a member's prefix.
 
 With threshold 1, any maintainer can advance the branch. When their tips lie on one line of
 history, everyone sees the newest tip. Push normally:
@@ -121,6 +122,33 @@ With several maintainers, everyone also sees each maintainer's latest tip as `al
 `bob/main`, and so on, including their own. These names let you review work that has not
 landed on `main`, and recover it on another device. Push to `main` to update your tip;
 the prefixed names are for fetching and merging.
+
+### Change the default branch
+
+The default branch is the one `git clone` checks out. The repository's owner can make another
+shared branch the default; an Admin who adopted the repository can't. For example, to move a
+repository from `master` to `main`, in the owner's working copy:
+
+```bash
+git branch -m master main
+git push -u peers main
+peers git policy --branch main --maintainers alice
+peers git policy --default-branch main --remove-branch master
+git push peers --delete master
+git remote set-head peers -a
+```
+
+`peers git policy` marks the default branch with `(default)`. A branch that stops being
+shared stays as each maintainer's personal branch until they delete it, as the
+`git push peers --delete master` line does for yours. Other members' working copies keep
+their local branch names; to follow along, they run:
+
+```bash
+git fetch --prune peers
+git branch -m master main
+git branch -u peers/main main
+git remote set-head peers -a
+```
 
 ### Offline forks
 
