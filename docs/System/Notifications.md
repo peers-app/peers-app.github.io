@@ -66,6 +66,14 @@ await SystemNotifications(ctx).tools.notify({
   with that key as no longer needed, for example when the timer is dismissed in your UI. It
   doesn't reach notifications other people's actions caused, or anything already sent to other
   members.
+- **`once`**: with a `key`, send it once per recipient. Each recipient's copy gets the same id
+  wherever it's sent from, so the same notification sent from several of the sender's devices
+  (or sent again) is one notification, and arrives once. Later calls with that key do nothing for
+  that recipient, even after they've dealt with it, so make the key name exactly one occurrence:
+  `reminder:<eventId>:<occurrence>:<minutes before>`, not `reminder:<eventId>`. Use it for
+  something every device does for itself, such as a reminder each device books with System
+  Scheduler, since bookings don't sync. A Peers that doesn't know `once` ignores it and stores
+  each copy.
 - **`link`**: the route that opens what it's about. It must start with
   `package-nav/<your package id>/`. Clicking the notification switches to its group and opens
   the link, so read any query parameters in your screen to show the right thing. Switching

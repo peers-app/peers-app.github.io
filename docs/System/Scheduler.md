@@ -24,6 +24,8 @@ Writer access can stop their scheduled callbacks; scheduling does not grant Self
 
 Schedules live in the device persistent variable `system:scheduler`. They do not sync. A timer created on another device gets a local alarm on this device only when something on this device schedules it, or when a screen or widget on this device is open and does the work itself.
 
+When every device books the same thing for itself, such as a reminder, each one fires it. If the scheduled tool notifies, send it with System Notifications' `once` and a key that names the occurrence, so the copies are one notification ([Notifications](./Notifications.md)).
+
 The host re-arms a `setTimeout` that would exceed the platform maximum. A time that is already past fires on the next turn.
 
 ## Host lifecycle
