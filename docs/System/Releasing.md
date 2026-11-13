@@ -304,6 +304,28 @@ isolated package runtime, and the Tier 1 e2e scenarios fail. If the relink
 fails, the script says so; run `node link-deps.js` before using the dev app or
 running e2e.
 
+If Step 6 fails (notarization refused with HTTP 403 means Apple wants a new
+developer agreement signed), everything else is already published, so re-run
+only that step. By then the abort has put the links back, and
+`yarn release:local` must not run against them: `peers-device`'s
+`npm rebuild` follows the link into `peers-sdk` and fails in its esbuild, and
+the installer would bundle the links instead of the registry packages. First
+put the registry installs back in the repos the Mac build compiles: in each of
+`peers-isolate`, `peers-device`, `peers-ui`, `peers-cli`, `peers-core`, and
+`peers-electron`, delete the `node_modules/@peers-app/peers-sdk` and
+`node_modules/@peers-app/peers-ui` links, then run `npm install --force`.
+Then build with the release secrets loaded, and relink whether it succeeds or
+not:
+
+```bash
+cd peers-electron
+op run --env-file ~/.config/peers/release.env -- yarn release:local
+cd .. && node link-deps.js --host-only
+```
+
+Without `op run`, the build has no Apple or AWS credentials, so it can neither
+notarize nor publish.
+
 Official packages (`official-packages/`) are not part of this release. Each
 one is versioned, built, and promoted on its own through the package
 [lifecycle](../Packages/package-lifecycle.md) (dev, then Promote to beta or
