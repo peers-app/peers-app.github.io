@@ -268,7 +268,9 @@ devices. See [Trust](../System/Trust.md) for that limitation.
 
 Use `hostContract<typeof Contract>(contractId, version)` from `@peers-app/peers-sdk` in a
 screen or widget. Import the contract with `import type` so its handlers stay out of the UI
-bundle. The client follows the active group, waits for a connection, and reattaches
+bundle. The client follows the active group, or the group its `dataContextId` option names
+([Screens that show any group](./declaring-a-package#screens-that-show-any-group)), waits for
+a connection, and reattaches
 subscriptions after reconnecting. `useRows` and `useTool` from `@peers-app/peers-ui` keep
 React views current. Tests can use `mockHostContract` from `@peers-app/peers-sdk/testing`.
 

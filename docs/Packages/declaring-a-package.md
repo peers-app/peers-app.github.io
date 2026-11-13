@@ -1277,7 +1277,9 @@ function Feeds() {
   replacement subscription is live. The returned subscription's `ready` promise reports whether
   its initial attachment succeeded; unsubscribing before attachment resolves it to `false`. When
   the initial attachment fails, the next one that goes live after a reconnect calls `onReconnect`.
-  Calls go to the active group; switching groups reloads the window.
+  Calls go to the active group unless the client names another
+  ([Screens that show any group](#screens-that-show-any-group)); switching the active group
+  reloads the window.
 - **One client per contract.** `hostContract` without options returns the same client for
   the same contract id and version, even from a new reference. It isn't a hook, so it works in
   event handlers and plain functions too.
@@ -1298,6 +1300,52 @@ function Feeds() {
 - **Files.** `hostContract(SystemFiles)` saves a file from a screen, and `useFileUrl(fileId)`
   from `@peers-app/peers-ui` gives a URL to show it, such as an `<img src>`
   ([System Files](../System/Files.md#from-a-screen)).
+
+### Screens that show any group
+
+A screen follows the user's active group. A screen can instead show any of the user's groups
+and let them switch inside it, as Threads does, without changing the active group, which reloads
+the app. Such a screen keeps one client per group:
+
+```ts
+// ui/client.ts
+import { hostContract } from "@peers-app/peers-sdk";
+import { contractId, contractVersion, packageId } from "../consts";
+import type { News } from "../package";
+
+const clients = new Map<string, ReturnType<typeof clientIn>>();
+const clientIn = (groupId: string) =>
+  hostContract<typeof News>(contractId, contractVersion, {
+    dataContextId: async () => groupId,
+    providerPackageId: packageId,
+  });
+
+/** News in one of the user's groups; Personal's id is the user's id. */
+export function newsIn(groupId: string) {
+  let client = clients.get(groupId);
+  if (!client) clients.set(groupId, (client = clientIn(groupId)));
+  return client;
+}
+```
+
+- **Each group's own provider answers**, and checks the user's role in that group. Your
+  package must be installed and running there; otherwise calls fail as having no provider.
+- **`providerPackageId`** keeps the calls on your package where another package also provides
+  the contract.
+- **Clients with options aren't shared.** Keep one per group, and `dispose()` it when the
+  user leaves the group.
+- **Files** in that group: `hostContract(SystemFiles, { dataContextId })`. `useFileUrl` reads
+  the active group's files only.
+- **Notifications.** Declare `opensAnyGroup: true` on the screen's route
+  ([Authoring routes](./routes-and-ui#authoring-routes)):
+  - Opening a notification from any of the user's groups, the active one included, then goes to
+    its link in place, with `groupId=<the notification's group>` added, instead of switching
+    the active group. That needs your package installed in the active group too; otherwise
+    Peers switches groups first, as before.
+  - Read `groupId` from the path (`mainContentPath`) and show that group.
+  - A link without `groupId` means the active group: after such a switch, and in Peers versions
+    that don't know the field.
+- **The user's groups.** No contract lists them to a screen yet.
 
 ### Opening a link
 

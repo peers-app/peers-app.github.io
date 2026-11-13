@@ -86,6 +86,7 @@ Key points:
 - **`peersUIId`** — a stable ID that maps to a specific React component in your UI bundle.
 - **`path`** — the URL path this route handles. For package app screens, use `package-nav/{packageId}/{navPath}` to match the tab navigation path.
 - **`uiCategory`** — `"screen"` for full-page views, `"field"` for inline field renderers, `"list"` for list views, etc.
+- **`opensAnyGroup`** — optional, for a screen that shows any of the user's groups itself rather than the active group. Opening a notification from another group then goes to its link in place, with `groupId` added, instead of switching groups (which reloads the app). See [Screens that show any group](./declaring-a-package#screens-that-show-any-group).
 - **`declare const exportRoutes`** — tells TypeScript about the function that the runtime injects when evaluating the bundle. Do not import it.
 
 Build the routes bundle with a dedicated webpack config (entry: `src/routes.ts`, output: `dist/routes.bundle.js`). The template includes a working `webpack.routes.config.js`.

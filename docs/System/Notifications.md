@@ -68,7 +68,12 @@ await SystemNotifications(ctx).tools.notify({
   members.
 - **`link`**: the route that opens what it's about. It must start with
   `package-nav/<your package id>/`. Clicking the notification switches to its group and opens
-  the link, so read any query parameters in your screen to show the right thing. Without a
+  the link, so read any query parameters in your screen to show the right thing. Switching
+  groups reloads the app, so a screen that shows any of the user's groups itself can declare
+  `opensAnyGroup` on its route
+  ([Screens that show any group](../Packages/declaring-a-package#screens-that-show-any-group)).
+  The link then opens in place, with `groupId=<the notification's group>` added, when the
+  active group has your package too. Without a
   link, clicking it opens the Notifications screen without switching groups; it stays in the
   Active list for a few seconds, then moves to History.
 - **`expiresAt`**: epoch milliseconds after which it no longer shows as active.
