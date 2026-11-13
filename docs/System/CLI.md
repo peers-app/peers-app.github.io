@@ -126,7 +126,21 @@ peers db tables --json | jq
 
 # Query a directly connected device
 peers db query "SELECT * FROM PersistentVars" --device <deviceId> --json
+
+# Database files on the device: size, free space, journal; removed groups and orphans included
+peers db size
+peers db size --device <deviceId>
+
+# VACUUM every open database (or the ones named) to return free space to the disk
+peers db vacuum
+peers db vacuum <groupId> --device <deviceId>
 ```
+
+`peers db size` and `peers db vacuum` use System Storage, not the database access setting.
+`--device` runs them on one of your own directly connected devices (it trusts you as `Self`).
+VACUUM rewrites a database and takes a few seconds per 100 MB. Meanwhile the desktop app pauses,
+and in the browser app every database waits. Peers may also vacuum a database once by itself, a
+few minutes after starting, when that frees a lot of space.
 
 **Options:**
 
@@ -444,6 +458,8 @@ peers groups                            # list my groups
 peers groups removed                    # list the groups I removed
 peers groups remove <groupId>           # remove a group from my groups on all my devices (other members keep it)
 peers groups restore <groupId>          # bring back a removed group
+peers groups purge <groupId>...         # list what deleting a removed group's files on this device would free
+peers groups purge --all-removed --yes  # delete this device's files for every removed group and orphan
 peers groups invite <groupId> <userId>  # invite an existing contact directly
 peers groups invite <groupId> --link    # shareable link (approve each join)
 peers groups invite <groupId> --link --mode open --expires 24h
@@ -468,6 +484,12 @@ group on all your devices without deleting its data or changing other members' l
 `peers groups removed` to find it and `peers groups restore <groupId>` to bring it back.
 `peers groups` (including `--json`) lists only groups you haven't removed.
 
+`peers groups purge` deletes a removed group's database files, permanently, on one device: this
+one, or one of yours with `--device <id>`. Without `--yes` it only lists what it would delete.
+It also deletes orphans: files for groups that no longer have a record. It refuses a group you
+haven't removed. After a purge, restoring the group can only sync its data again from another
+member, so a group only you were in can't come back.
+
 **Options:**
 
 | Flag | Description |
@@ -479,6 +501,9 @@ group on all your devices without deleting its data or changing other members' l
 | `--trust <level>` | Trust level for a new contact when accepting |
 | `--status <status>` | `peers invites list` filter: `pending`, `accepted`, `declined`, `expired`, `revoked`, `used` |
 | `--direction <dir>` | `peers invites list` filter: `in` or `out` |
+| `--all-removed` | `peers groups purge`: every removed group's and orphan's files |
+| `--yes` | `peers groups purge`: delete, rather than list what would be deleted |
+| `--device <id>` | `peers groups purge`: run on one of your directly connected devices |
 | `--json` | Output JSON |
 
 Tokens are accepted in any of their forms: the raw code, the `https://peers.app/i#…` link,

@@ -85,16 +85,22 @@ and `peers groups join <token>`. See [CLI](./CLI#peers-contacts-peers-groups-pee
 your devices. Other members keep the group, and you stay a member: they still see you in it,
 but your devices stop syncing it until you restore it. If it was the group you had open, Peers
 switches to Personal. Its data stays on each of your devices, so removing a group doesn't free
-disk space yet. **Removed groups**, under the list on **Identity → Groups**, shows the groups you
-removed, and **Restore** brings one back on all your devices. **Remove**, in the menu next to
-**Save**, does the same as **Remove group**. After you restore a group, restart Peers on each
-device where you want to use its apps: they start again on the next launch.
+disk space: `peers groups purge <groupId>` deletes one device's copy (see below). **Removed
+groups**, under the list on **Identity → Groups**, shows the groups you removed, and **Restore**
+brings one back on all your devices. **Remove**, in the menu next to **Save**, does the same as
+**Remove group**. After you restore a group, restart Peers on each device where you want to use
+its apps: they start again on the next launch.
 
 From the CLI: `peers groups remove <groupId>`, `peers groups removed`, and
 `peers groups restore <groupId>`. `peers groups delete <groupId>` is an alias of `remove`,
 with the same reversible behavior. Agents and scripts can also call System Host Tools'
 `remove-group` and `restore-group`, for example
 `peers tools run remove-group '{"groupId":"<groupId>"}'`. Packages can't call them.
+
+`peers groups purge <groupId>` deletes a removed group's files on one device (this one, or one
+of yours with `--device <id>`), and `peers groups purge --all-removed` every removed group's and
+orphan's. Both only list what they'd delete until you add `--yes`. This is permanent: a group
+restored after a purge can only sync its data again from another member's device.
 
 ## Who can change what
 
