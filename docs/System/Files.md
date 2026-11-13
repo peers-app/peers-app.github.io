@@ -89,6 +89,13 @@ and returns `url`, `loading` and `error`. The URL stops working when the compone
 the file id changes, so use it only for rendering. It reads the whole file into memory, so it
 refuses one over 64 MiB, as `readWholeFile` does.
 
+To let someone open or save a file, offer a download: a link with the file's URL and a
+`download` attribute. The desktop app doesn't open new windows, so `window.open(url)` returns
+`null` there and nothing appears. In a browser it opens a tab. To open a PDF in a tab where
+that works and download it elsewhere, try `window.open` and fall back to the link when it
+returns `null`. For a list of files, read each one when it's chosen (`readWholeFile`) rather
+than calling `useFileUrl` for every row, so the list doesn't load every file.
+
 ## Reading a large file
 
 A `read` returns at most 8 MiB, starting at `offset` (0 by default). Give `length` to read

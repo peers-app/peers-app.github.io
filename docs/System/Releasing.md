@@ -21,6 +21,10 @@ npm run release -- patch  # or minor / major
 still asks you to approve the request. The arguments after `--` are passed to
 `full-release.js`.
 
+A release takes most of an hour. On macOS the script keeps the Mac from idle-sleeping
+until it exits (`caffeinate -i`): on battery an idle Mac sleeps, the e2e devices' timers stall,
+and the gate times out. Closing the lid still sleeps the Mac, so leave it open.
+
 ## Release credentials
 
 No release step reads a `.env` file inside a repository. Every credential is
