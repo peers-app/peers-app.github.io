@@ -139,8 +139,9 @@ peers db vacuum <groupId> --device <deviceId>
 `peers db size` and `peers db vacuum` use System Storage, not the database access setting.
 `--device` runs them on one of your own directly connected devices (it trusts you as `Self`).
 VACUUM rewrites a database and takes a few seconds per 100 MB. Meanwhile the desktop app pauses,
-and in the browser app every database waits. Peers may also vacuum a database once by itself, a
-few minutes after starting, when that frees a lot of space.
+and in the browser app every database waits. The free space `peers db size` shows counts only
+empty pages, so a VACUUM can get back more than that, from pages left part-filled. Peers may also
+vacuum a database once by itself, a few minutes after starting, when that frees a lot of space.
 
 **Options:**
 
