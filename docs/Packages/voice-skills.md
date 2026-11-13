@@ -101,6 +101,19 @@ equal.
 Omit `appNavs` when the package should appear only as a widget. Voice Hub subscribes to `widget`
 while it's open, so changing it to another widget or to `null` updates the context picker.
 
+Give the widget a route in your routes bundle, next to your screen's. Voice Hub finds the package
+that owns a `peersUIId` through its route. Without one, the card shows "Could not find package
+that owns peersUIId" on any device where your screen hasn't been opened yet:
+
+```ts
+const widgetRoute: IPeersUIRoute = {
+  packageId,
+  peersUIId: newsWidgetId,
+  path: `package-nav/${packageId}/widget`,
+  uiCategory: "other",
+};
+```
+
 Voice Hub renders the widget through `PeersUI` with these props:
 
 ```json
