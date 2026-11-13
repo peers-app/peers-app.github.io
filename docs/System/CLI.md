@@ -417,6 +417,14 @@ unattended device keeps running and the cause is in its log. That covers errors 
 handled, the window's UI crashing (the app reloads it) or hanging, and the system sleeping
 or waking. Find them with `peers logs --device <deviceId> -q "[ProcessHealth]"`.
 
+The PWA logs one `[Storage]` line a minute after it opens: what the browser holds for it
+(usage and quota, split into OPFS files, IndexedDB and the service worker's cache where the
+browser reports that), then each open database's size and free space. Find it with
+`peers logs --device <deviceId> -q "[Storage]"`. On any device you can also read one database's
+size with `peers db query "PRAGMA page_count" --device <deviceId> -c <groupId>` (times
+`PRAGMA page_size`), and its free pages with `PRAGMA freelist_count`. A phone's PWA is reachable
+only while it's open on screen.
+
 ### `peers contacts`, `peers groups`, `peers invites` — Invites
 
 Manage groups and issue, accept, and review [invites](./Invites) from the terminal. These
