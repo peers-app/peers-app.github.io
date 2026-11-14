@@ -176,6 +176,14 @@ Voice Hub speaks it once. Alerts wait for an active voice turn and queue in orde
 speech plays before a short rising three-note pluck that repeats about every 3 seconds.
 Say “stop” to dismiss all alarming timers, or use the widget's Dismiss control. Other running timers
 continue. With voice output off, no spoken line delays the chime.
+
+A timer still ringing 30 seconds after it finished also notifies the person who set it, on their
+phone and computers, through [notifications](System/Notifications.md). On a shared screen, choose
+who hears its timers: open the Timers app there, tap the bell, and tick the people who use it.
+Dismissing the timer anywhere clears the alarm on everyone's devices. A timer set from another
+person's account arrives as loud until you allow that person priority under **Notifications →
+Settings**.
+
 Successful changes that do not need an answer are a tone and an emoji, not a spoken confirmation.
 The screen aims to minimize listening and searching: speech answers questions and announces
 time-sensitive events, while completed actions use the done tone. A failed action uses the failed

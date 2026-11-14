@@ -61,11 +61,8 @@ await SystemNotifications(ctx).tools.notify({
 - **`title`** is required; **`body`** is optional. Long text is shortened.
 - **`kind`**: your name for this sort of notification, such as `reply` or `assigned`. Users can
   set a level for one kind.
-- **`key`**: your id for what the notification is about. `retractNotifications({ key })` later
-  marks the unhandled notifications your package sent the signed-in user in the current group
-  with that key as no longer needed, for example when the timer is dismissed in your UI. It
-  doesn't reach notifications other people's actions caused, or anything already sent to other
-  members.
+- **`key`**: your id for what the notification is about, so you can withdraw it later (see
+  [Withdrawing notifications](#withdrawing-notifications)).
 - **`once`**: with a `key`, send it once per recipient. Each recipient's copy gets the same id
   wherever it's sent from, so the same notification sent from several of the sender's devices
   (or sent again) is one notification, and arrives once. Later calls with that key do nothing for
@@ -93,6 +90,32 @@ write succeeds, and don't let a failure to notify fail your tool: wrap it in `tr
 
 Like other system contracts, `notify` can only be called inside a tool run, not from `onStart`
 or a table watch.
+
+## Withdrawing notifications
+
+When what a notification was about is over (the timer was dismissed, the message deleted),
+withdraw it with the same `key`, from a tool handler:
+
+```ts
+await SystemNotifications(ctx).tools.retractNotifications({
+  key: `timer:${timerId}:${wentOffAt}`,
+  recipientUserIds: alertedUserIds,
+});
+```
+
+- It withdraws your package's unhandled notifications with that key in the current group: the
+  signed-in user's, and, on their own devices, those of each member in `recipientUserIds`.
+  Withdrawn notifications stop asking for attention and move to History.
+- It doesn't matter which member sent them. Any member can withdraw a key for everyone it went
+  to, so whoever dismisses the timer clears the alarm on everyone's devices. Keep the list of
+  people you notified (store it with your row), and pass it here.
+- Other members' copies are withdrawn in the background, like deliveries, including on devices
+  that are offline now. A copy that arrives shortly after it was withdrawn is withdrawn too.
+- Notifications created more than a few minutes after the withdrawal aren't touched, so a key
+  that names one occurrence (`timer:<id>:<when it went off>`) is safest.
+- It returns `{ retracted }`, how many of the signed-in user's own notifications it withdrew.
+- Devices on Peers 0.33.3 or older don't receive withdrawals from other members. Give
+  notifications that should end on their own an `expiresAt`.
 
 ## What recipients control
 
@@ -123,6 +146,8 @@ from your computer and still hear about what matters.
   always do.
 - If a notification arrived in the last few minutes before you walked away from your computer
   and you didn't look at it, it goes to your phone then.
+- A notification you snoozed counts as new when its snooze ends: a priority one goes to your
+  phone again, and buzzes again even if its earlier notice is still showing.
 - Each notification goes to your phone once, and your phone shows its title and text. Your own
   device encrypts that for your phone's browser, so neither Peers Services nor the browser's
   push service can read it.
@@ -182,8 +207,10 @@ stays with the browser. Signing out also removes the subscription; after signing
 choose **Turn on** to enable notifications for that account.
 
 A device or browser that goes a long time without opening Peers may lose its subscription
-(browsers drop them; the service drops ones the browser reports gone). Opening the app
-refreshes an existing subscription. If notifications show as **Off**, choose **Turn on** again.
+(browsers drop them; the service drops ones the browser reports gone). When a browser replaces
+the subscription itself (Chrome tells Peers), Peers subscribes again and registers the new one
+the next time the app runs. Opening the app also refreshes an existing subscription. If
+notifications show as **Off**, choose **Turn on** again.
 
 Priority alarms don't repeat their sound outside the app. Browsers that support persistent
 notifications may keep the popup on screen; the in-app banner rings while the app is open.
@@ -193,6 +220,12 @@ peers.app its own notification category (**General**, under Peers, if you instal
 By default it plays the notification sound, but it doesn't vibrate or pop up as a banner. With
 the phone on vibrate, you get only a short, light buzz instead of the sound. For a longer buzz,
 whether the phone is on vibrate or the ringer is on, long-press a Peers notification, open its
-settings, and turn on **Vibration** (and **Pop on screen** if you want a banner). Peers can't
-change these settings or how long the buzz lasts. Do Not Disturb and bedtime modes silence it
-like any other app's notification.
+settings, and turn on **Vibration** (and **Pop on screen** if you want a banner). **This
+device** in **Notifications → Settings** says this on Android. Peers can't change these
+settings or how long the buzz lasts. Do Not Disturb and bedtime modes silence it like any other
+app's notification.
+
+Pushes can arrive late when the phone's connection to its push service has dropped. Each time
+one arrives, the app logs `[notifications] away push arrived Ns after it started`
+(`peers logs -q "away push arrived" --device <phone>`), so a late one shows whether the delay
+was on the phone's side.
