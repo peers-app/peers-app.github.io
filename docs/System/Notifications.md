@@ -148,6 +148,9 @@ from your computer and still hear about what matters.
   and you didn't look at it, it goes to your phone then.
 - A notification you snoozed counts as new when its snooze ends: a priority one goes to your
   phone again, and buzzes again even if its earlier notice is still showing.
+- Snoozed loud and priority notifications can reach your phone even if all your devices are
+  asleep when the snooze ends. Dismissing the notification first cancels the push, and so does
+  Do Not Disturb that covers the snooze's end, for a loud one.
 - Each notification goes to your phone once, and your phone shows its title and text. Your own
   device encrypts that for your phone's browser, so neither Peers Services nor the browser's
   push service can read it.
