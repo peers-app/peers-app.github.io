@@ -436,6 +436,16 @@ variable `<name>` in the same scope is stored under that name, so the new versio
 value with no copy. For the group scopes, that holds when the old version wrote it in the same
 group.
 
+### Mentionable rows
+
+Give a table `mentions` to make its rows mentionable: `@` in any Peers editor finds them by
+title, in every group, and a link to one shows its live title and opens your screen. Peers reads
+the table itself for this; no package code runs. See [Mentions](./mentions).
+
+```ts
+mentions: { kind: "note", label: "Note", titleField: "title", route: "app?noteId={id}" },
+```
+
 ### Overriding table methods
 
 To change what a table does, give it a class, as you would any table class. Extend
@@ -1345,6 +1355,8 @@ export function newsIn(groupId: string) {
   - Read `groupId` from the path (`mainContentPath`) and show that group.
   - A link without `groupId` means the active group: after such a switch, and in Peers versions
     that don't know the field.
+- **Mentions.** With `opensAnyGroup: true`, a mention of one of your records in another group
+  opens in place too, with its `groupId` ([Mentions](./mentions#opening-a-record)).
 - **The user's groups.** No contract lists them to a screen yet.
 
 ### Opening a link
@@ -1497,4 +1509,5 @@ module loading.
 - **[Getting started](./getting-started)** — create, import, and build a package.
 - **[Package contracts](./contracts)** — contracts, the Guest API, and isolated packages.
 - **[Voice skills](./voice-skills)** — the Voice Skill contract.
+- **[Mentions](./mentions)** — making a table's rows mentionable.
 - **[System: Tables](../System/Tables)** — filters, local-only tables, and reactivity.

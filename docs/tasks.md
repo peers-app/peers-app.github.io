@@ -30,6 +30,14 @@ that title instead.
 A task's details show its id at the top, next to its status. Click it to copy the id, a short way
 to point someone (or an agent) at that task that stays the same when the title changes.
 
+## Mentions
+
+Type `@` in a task's details or a comment to link a person, another task, or a record from another
+package (a note, say), from any of your groups. `@task:` narrows the search to tasks. The link
+shows the record's current title, struck through once a task is Done or Canceled, and a click
+opens it, switching groups when it's in another one. Elsewhere in Peers, `@` finds tasks the same
+way. See [Mentions](./Packages/mentions).
+
 ## Choosing groups
 
 The groups button in the list header (next to the timer) picks which groups the list shows:
