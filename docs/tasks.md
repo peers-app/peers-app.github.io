@@ -17,12 +17,18 @@ The list is grouped into sections:
 - **Recently Completed:** what you've finished since you last cleared it.
 - **In Progress**, **Snoozed**, **Queued**, **Backlog**, and **Completed.**
 
-A snoozed task waits in **Snoozed** and comes back to In Progress when its time is up. A task with
+A snoozed task waits in **Snoozed** and comes back to In Progress when its time is up. A snoozed
+task is always In Progress: snoozing a Queued or Backlog task moves it to In Progress, and moving a
+snoozed task out of In Progress (or closing it) clears its snooze. A task with
 subtasks shows its first open subtask under it, indented, with **show more** for the rest. You can
 check a subtask off right there.
 
-Typing in the search box searches the groups in view. Open matches come first; completed and
-canceled matches follow under **Completed**. Press Enter to create a task with that title instead.
+Typing in the search box searches the groups in view once you pause typing. Open matches come
+first; completed and canceled matches follow under **Completed**. Press Enter to create a task with
+that title instead.
+
+A task's details show its id at the top, next to its status. Click it to copy the id, a short way
+to point someone (or an agent) at that task that stays the same when the title changes.
 
 ## Choosing groups
 
@@ -115,7 +121,9 @@ space by default).
 - **`get-task`** `{ taskId, includeSubtaskIds? }` returns a task's stored fields, and its direct
   subtasks' ids if asked.
 - **`write-task`** creates, updates, or deletes a task. An update that closes a task with open
-  subtasks fails unless it says how to close them: `"openSubtasks": "Done"` or `"Canceled"`.
+  subtasks fails unless it says how to close them: `"openSubtasks": "Done"` or `"Canceled"`. A
+  `snoozeDT` makes the task In-Progress, so a call that snoozes it with another status fails, and
+  a status other than In-Progress clears its snooze.
 - **`write-task-comment`** adds a comment to a task, or deletes one.
 
 ```bash

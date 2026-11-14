@@ -179,7 +179,9 @@ or every successful call.
 Voice Hub consumes Voice Skill v2 as optional and lists its providers with the Contract
 Catalog's `listContractProviders`, which includes the contracts each one exposes, with the tools
 the caller may run. A package that doesn't provide Voice Skill isn't a skill. Voice Hub's screen
-finds skills when it opens; reopen it to see one installed while it was open.
+finds skills when it opens, then checks again every 30 seconds and whenever it comes back into
+view, so a skill installed or removed while Voice Hub is open shows up or goes away within half a
+minute.
 
 News, Weather, Timers, and Groceries in `official-packages/`, and Tasks (in the `peers-core`
 repo), provide Voice Skill v2. Groceries exposes Grocery List and Tasks exposes Task
