@@ -160,7 +160,8 @@ Opening Weather refreshes a stale forecast; after that, Weather refreshes about 
 the background on devices whose user is a Writer, and a Reader's device picks up those forecasts
 within a few minutes. Weather shows the last good forecast with its age, **Stale** after an hour,
 or **Last forecast (refresh failed)** after a failed refresh, and never shows another city's
-forecast as the saved city's. **Update** fetches the typed city and saves it, keeping the unit; a
+forecast as the saved city's. The city and **°F / °C** are in Weather's settings, behind the gear
+at the top of its focus view. **Update** fetches the typed city and saves it, keeping the unit; a
 city that can't be found leaves the saved city unchanged. A typed city survives forecast and
 unit updates, and only **Update** disables the controls. Asked about the weather, Voice Hub answers
 from the cached forecast without fetching.

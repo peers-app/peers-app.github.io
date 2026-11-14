@@ -130,9 +130,13 @@ without importing Voice Hub.
 
 Other hubs show your widget too. Family Hub's screensaver puts each widget's `focus` view beside
 its photos, with `active: true` and `host: "family-hub"`, for about 20 seconds at a time, then
-hides it (`display: none`) until its next turn. The screensaver covers the widget, so taps don't
-reach it. Make the focus view read well at a glance without interaction, such as what's left on a
-list or what's next, and keep it working while it's mounted but hidden.
+hides it (`display: none`) until its next turn. The screensaver covers the widget there, so taps
+don't reach it. A tap on it opens a second copy of the same focus view on its own, in a tall card
+about 760 pixels wide, covered until someone taps Edit; then it's in use until it goes untouched for
+20 seconds. Make the focus view read well at a glance without interaction, such as what's left on a
+list or what's next, keep it working while it's mounted but hidden, and let it fill a tall
+container. A dialog the view opens should be `position: fixed` in place, not portaled to
+`document.body`, so it stays above a full-screen host.
 
 A summary should be quick to mount, compact, and useful from cached or local state. Keep freshness
 in the provider rather than the view: Weather's provider books its next refresh through System
