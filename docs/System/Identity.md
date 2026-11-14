@@ -160,6 +160,16 @@ new list. A contact row that arrives with no anchors on record yet accepts
 the first list it is given with the key already on record; that is a trust
 decision made once, when the contact is added, the same as the key itself.
 
+A contact whose stored profile lists no anchors (one saved before anchors
+existed, or an account that removed them all) has no anchors to ask. For that
+contact a device with Peers Services on asks the key registry instead, and
+accepts only a rotation the old key co-signed. A recovery, a veto, or no answer
+from the registry leaves the old key in place. So does a contact who changed
+keys more than once since this device last saw them, because the old key did
+not co-sign their current one. Until a new key is accepted,
+accepting an invite to a group that contact belongs to fails with "Key change
+is not confirmed by the anchors on record".
+
 Your own device, holding the old key, learns it has been replaced when an
 anchor confirms the new one. It does not adopt that key. It has to be paired
 again. The reverse case is handled at startup: when a device holds a key its

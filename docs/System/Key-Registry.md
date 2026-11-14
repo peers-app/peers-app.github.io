@@ -8,9 +8,10 @@ title: Key Registry
 A **key registry** is one kind of **identity anchor**. An anchor publishes
 which public key is a user's current key. `peers.app` runs the default
 anchor as part of `peers-services`. A user can also name an `https` URL that
-serves the same document. Everything that works without `peers-services`
-keeps working with an empty anchor list: peers simply have no outside
-confirmation, so a different key stays untrusted.
+serves the same document. With an empty anchor list, a peer with Peers
+Services enabled accepts a different key only when its registry carries a
+valid succession co-signature by the key on record. With Peers Services
+disabled, a different key stays untrusted.
 
 The registry stores only public keys and signatures. It never holds secret
 keys, password hashes, or recovery codes. Holding the current key proves you
@@ -58,8 +59,14 @@ Each anchor answers in one of three ways:
 | Abstain | timeout, network error, a redirect, a 408 or 429, or a 5xx |
 
 The presented key is confirmed only when at least one anchor confirms and
-none veto. Any veto refuses it. No anchors, or every anchor abstaining,
-leaves the change pending. A confirmed key whose `authorizedBy` is a valid
+none veto. Any veto refuses it. Every anchor abstaining leaves the change
+pending. When the record lists no anchors (a contact stored before anchors
+existed, or one that removed them all), the peer asks its configured
+registry's document for that user instead, and accepts only a rotation: a
+key whose `authorizedBy` is signed by the key on record. Anything else the
+registry says leaves the change pending; it cannot veto or start a recovery.
+With services off there is nothing to ask, and the change stays pending.
+A confirmed key whose `authorizedBy` is a valid
 co-signature by the key on record is a **rotation** and replaces the personal
 row immediately. A confirmed key without that co-signature is a **recovery**.
 Peers wait 72 hours from when they first saw it, then adopt it if nobody who
