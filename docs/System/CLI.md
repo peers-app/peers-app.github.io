@@ -96,7 +96,11 @@ exits with status 1, without starting the app or calling it.
 ### `peers db` — Database
 
 Query the local SQLite database, or a directly connected device's database, with read-only
-`SELECT` and approved introspection `PRAGMA` statements.
+statements. Locally, any single statement SQLite reports as read-only and returning rows runs:
+`SELECT`, `WITH ... SELECT` (recursive CTEs included), and pragmas that read, such as
+`PRAGMA table_info(Users)`. Writes and pragmas that set something (`PRAGMA user_version = 1`)
+are refused. With `--device`, the query is limited to `SELECT` and an allowlist of introspection
+`PRAGMA` statements.
 
 :::note
 Database access must be enabled in the app: **Help → Enable CLI Database Access**
@@ -120,6 +124,9 @@ peers db query "SELECT * FROM Users WHERE name LIKE '%mark%'"
 
 # Inspect table structure
 peers db query "PRAGMA table_info(Users)"
+
+# Walk a tree with a recursive CTE
+peers db query "WITH RECURSIVE t(id) AS (SELECT '<taskId>' UNION ALL SELECT c.taskId FROM Tasks_00mh0wlipjixk2gqmurbwee0o c JOIN t ON c.parentTaskId = t.id) SELECT count(*) FROM t"
 
 # Output as JSON for piping
 peers db tables --json | jq
@@ -689,6 +696,11 @@ logs failures to the developer console. Import and reload also warn when the fol
 newer than Peers, without failing the operation (exit `0`). Reload-all identifies each affected
 package. Pin `@peers-app/peers-sdk` to the Peers version your devices run, or update Peers.
 See [Packages](./Packages.md#requested-and-observed-state).
+
+`get` also lists each contract the running package uses that nothing on this device serves, as
+`Not served here: <contractId> v<version>` (with `--json`, `runtime.running.consumes` entries with
+`satisfied: false`). Calls to those fail on this device; not every host serves every system
+contract.
 
 `promote` says what the group runs, including when it already selected that version.
 If the selection stays unchanged, it explains why and gives the activation command.

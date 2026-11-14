@@ -180,8 +180,9 @@ npx peers-package contract freeze
 ```
 
 It writes `frozen-contracts.json` at the package root: each contract version the package
-provides, its shape, and the package version that froze it. Commit it with the release. From then
-on:
+provides, its shape, and the package version that froze it. Commit it with the release, and leave
+it as written: the file is generated, so the template's `biome.json` leaves it out of Biome (add
+`"!frozen-contracts.json"` to `files.includes` in a package made before that). From then on:
 
 - `peers-package build` fails when the build would change a frozen version's shape, and names the
   table, tool, observable, or event that changed. New descriptions are fine, and so is a tool's

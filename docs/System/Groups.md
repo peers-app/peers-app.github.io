@@ -88,8 +88,8 @@ switches to Personal. Its data stays on each of your devices, so removing a grou
 disk space: `peers groups purge <groupId>` deletes one device's copy (see below). **Removed
 groups**, under the list on **Identity → Groups**, shows the groups you removed, and **Restore**
 brings one back on all your devices. **Remove**, in the menu next to **Save**, does the same as
-**Remove group**. After you restore a group, restart Peers on each device where you want to use
-its apps: they start again on the next launch.
+**Remove group**. A restored group's apps and tools start again on each of your devices as the
+restore reaches it, with no restart.
 
 From the CLI: `peers groups remove <groupId>`, `peers groups removed`, and
 `peers groups restore <groupId>`. `peers groups delete <groupId>` is an alias of `remove`,
