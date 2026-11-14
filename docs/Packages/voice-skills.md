@@ -128,6 +128,12 @@ Voice Hub renders the widget through `PeersUI` with these props:
 `active` is true for the focused widget. `host` lets a reusable UI make small host-specific choices
 without importing Voice Hub.
 
+Other hubs show your widget too. Family Hub's screensaver puts each widget's `focus` view beside
+its photos, with `active: true` and `host: "family-hub"`, for about 20 seconds at a time, then
+hides it (`display: none`) until its next turn. The screensaver covers the widget, so taps don't
+reach it. Make the focus view read well at a glance without interaction, such as what's left on a
+list or what's next, and keep it working while it's mounted but hidden.
+
 A summary should be quick to mount, compact, and useful from cached or local state. Keep freshness
 in the provider rather than the view: Weather's provider books its next refresh through System
 Scheduler after each one, and its widget only calls `refresh({ ifStale: true })` when it opens,
