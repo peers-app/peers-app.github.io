@@ -400,8 +400,8 @@ keep the data, the new version copies it once, on each device:
   that takes a page of ids and returns the ones the new table lacks, and send only those rows.
   Once the first device's copy has synced, a later device only sends ids. Read the old table in
   pages by id (`{ taskId: { $gt: lastId } }`, sorted by id) rather than by page number, so rows
-  syncing in meanwhile can't shift a page. Tasks copies about 29,000 rows this way in about
-  30 seconds, 300 per call; a device whose rows were already copied takes about 10 seconds.
+  syncing in meanwhile can't shift a page. Tasks copied about 29,000 rows this way in about
+  30 seconds, 300 per call; a device whose rows were already copied took about 10 seconds.
 - **Skip a row that won't parse** rather than failing its batch: count it, and name a few in
   the result so they can be looked at.
 - **Put the copy tool on a contract of its own.** The later version that removes the copy then
