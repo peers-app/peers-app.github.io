@@ -32,11 +32,13 @@ to point someone (or an agent) at that task that stays the same when the title c
 
 ## Mentions
 
-Type `@` in a task's details or a comment to link a person, another task, or a record from another
-package (a note, say), from any of your groups. `@task:` narrows the search to tasks. The link
-shows the record's current title, struck through once a task is Done or Canceled, and a click
-opens it, switching groups when it's in another one. Elsewhere in Peers, `@` finds tasks the same
-way. See [Mentions](./Packages/mentions).
+Type `@` or `<` in a task's details or a comment to link a person, another task, or a record from
+another package (a note, say), from any of your groups. `@task:` narrows the search to tasks, and
+the picker shows the start of the highlighted task's details. To link a task by its id, copy the
+id from the task, then type `<` and paste it. The link shows the record's current title, struck
+through once a task is Done or Canceled, and a click opens it, switching groups when it's in
+another one. Elsewhere in Peers, `@` and `<` find tasks the same way. See
+[Mentions](./Packages/mentions).
 
 ## Choosing groups
 
