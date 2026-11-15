@@ -14,6 +14,12 @@ promotion updates the reported tag and isolated contract maturity without restar
 worker. Promoting to stable freezes those contract shapes, so later dev builds must use a
 new contract version to change them.
 
+At startup, Peers loads packages for your personal context and current group before opening
+the app. Packages in other groups load in the background, and each group starts syncing once
+its packages are ready. Calls into a group that is still loading wait until it is ready.
+Package workers start on first use, so the first call after a start may take longer while
+the package's code loads.
+
 You administer packages from the **Packages** screen, from `peers packages`, or from any
 local client of the **System Packages** contract. All three use the same contract, so they
 behave the same way and are checked against the same access levels. To build a package,
@@ -109,11 +115,12 @@ The other runtime fields:
   `at`, and is cleared by the next successful load.
 - `worker`: isolated worker health, `workerRunning` plus `lastWorkerError`. Isolated
   workers start on the first tool call, so a provider that throws while starting shows up
-  only after a call has failed. An unexpected worker exit also updates health immediately,
-  including an exit while idle. A tool call that times out is rejected and the worker keeps
-  running; only if the worker then misses a liveness check (its event loop is stuck) is it
-  stopped, with the timeout recorded as the worker error. A successful worker restart clears
-  the worker error.
+  only after a call has failed. A bundle that becomes unavailable or fails verification can
+  also cause a worker error on first use. An unexpected worker exit also updates health
+  immediately, including an exit while idle. A tool call that times out is rejected and the
+  worker keeps running; only if the worker then misses a liveness check (its event loop is
+  stuck) is it stopped, with the timeout recorded as the worker error. A successful worker
+  restart clears the worker error.
 
 Runtime state is in memory. It describes the current process and starts again when Peers
 restarts, which reloads every package anyway. The Packages screen shows the status as a
