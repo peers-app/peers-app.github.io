@@ -84,6 +84,29 @@ Older versions of Peers refuse packages that provide no contracts. Update all of
 devices to the current Peers before promoting one to beta or stable. A contract you do declare
 must still have at least one member.
 
+### App icons
+
+Each entry in `pkg.appNavs` is one app on the [Apps screen](../System/Packages.md#the-apps-screen):
+a `name`, an optional `displayName`, a [Bootstrap Icons](https://icons.getbootstrap.com/) class in
+`iconClassName`, its `navigationPath`, and an optional `color` for its icon:
+
+```ts
+pkg.appNavs = [
+  { name: "Games", iconClassName: "bi-controller", navigationPath: "games", color: "violet" },
+];
+```
+
+`color` names a color from the Peers palette, `APP_COLORS` in the SDK: `blue`, `teal`, `red`,
+`amber`, `purple`, `orange`, `green`, `pink`, `violet` or `slate`. Each looks the same in light and
+dark mode, and the icon's glyph is readable on it in both. An app without a `color` gets one
+picked from its package id and name, the same on every device. `peers-package build` warns about
+a name outside the palette, and the app is drawn in its picked color.
+
+Peers 0.33.8 and earlier refuse a package whose app nav has `color`, or any other key they don't
+know, so the package doesn't load there. Add `color` once every device that runs your package has
+a newer Peers. Newer versions leave out app-nav keys they don't know, so a package built with a
+later SDK still loads.
+
 ## Layout
 
 News, for example:

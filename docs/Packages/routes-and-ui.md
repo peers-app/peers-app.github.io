@@ -12,7 +12,7 @@ Peers packages split their browser-side code into two bundles with distinct load
 | **Routes** | `routes.bundle.js` | Eagerly at startup | Path/context metadata, optional match logic |
 | **UI** | `uis.bundle.js` | Lazily on first render | React components |
 
-A third piece of data, **`appNavs`**, lives directly on the `IPackageVersion` record as JSON. It tells the Apps launcher what navigation items exist without loading any code at all.
+A third part, **`appNavs`**, declares the apps users can find and open on the Apps screen, without loading the UI bundle.
 
 This architecture ensures that adding more packages does not degrade startup or runtime performance — only the screens a user actually visits get loaded into memory. For initial project setup, see **[Getting started](./getting-started)**.
 
@@ -48,10 +48,11 @@ sequenceDiagram
 
 These three concepts serve different purposes in the package lifecycle:
 
-**appNavs** are declarative metadata stored on the `IPackageVersion` record. A package
-declares them with `pkg.appNavs` in `src/package.ts`; Peers copies them from the manifest
-during install. They populate the Apps tab in the launcher so users can see what apps are
-available. An `IAppNav` has a `name`, `iconClassName`, and `navigationPath` — no executable code.
+Declare **appNavs** with `pkg.appNavs` in `src/package.ts`. Each entry adds an app to the
+[Apps screen](../System/Packages.md#the-apps-screen) so users can find and open it.
+An `IAppNav` has a `name`, an optional `displayName`, an
+`iconClassName`, a `navigationPath`, and an optional `color`
+([App icons](./declaring-a-package.md#app-icons)), and no executable code.
 
 **Routes** (`routes.bundle.js`) are a lightweight JavaScript bundle that registers URL-path-to-component mappings. Routes can contain logic (e.g., an `isMatch` function that parses a path and extracts an ID), which is why they must be a bundle rather than a JSON field. They are loaded eagerly so the runtime knows how to resolve any path before the user navigates.
 

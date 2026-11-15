@@ -31,6 +31,60 @@ A package's source can be a `peers://` URL shared that way (`peers git share` in
 package's folder records it); package details then offer to copy it, since it opens with
 `git clone`, not a browser.
 
+## The Apps screen
+
+The **Apps** tab is the home screen of each group, and of Personal. It shows the apps installed
+there:
+
+- **Pinned apps** come first, in the order you choose. Your pins are kept per group and sync to
+  your other devices. When you upgrade, each group's initial pins are up to four apps from its
+  old Recently Used list. Opening an app doesn't change your pins; choose **Edit** to change
+  them. New groups start with no pins.
+- **More in &lt;group&gt;** lists the group's other apps by name.
+- **System apps** are the apps built into Peers. The **System apps** button shows or hides them.
+  Each device remembers its choice; they start hidden on a phone.
+
+The search box filters all three. An app matches on its name, its package's name, and its
+package's description; a built-in app matches on its own name only.
+
+**Get apps** lists the apps your other groups use that this one doesn't, by group, and, in a
+group, the apps in Personal too. Its count is how many packages you can add here; a package
+listed under two groups counts once. **Add** copies the version that group runs into this one,
+for every device here; it appears under More. Only admins can add apps. A package that adds no
+screen (a widget or a voice skill) says **No screen**, and one this device can't run says so
+instead of offering Add. If an added package then fails to start here, its row says why; it stays
+installed for the group's other devices, and its menu on the Apps screen shows the same reason.
+
+Choose **Edit** to change your pins: **−** unpins an app, **+** pins it at the end, and dragging
+a pinned app moves it. In edit mode, choosing an app opens its menu, where **Move earlier** and
+**Move later** reorder pins from the keyboard. **Done** or Escape leaves edit mode. A pinned app
+that isn't installed any more stays pinned but hidden, so installing it again brings it back.
+
+An app's menu opens with a right-click, a press-and-hold on a touch screen, or Shift+F10 (or the
+context-menu key). Its header shows the version running on this device and the channel it
+follows. It offers:
+
+| Item | What it does |
+|---|---|
+| Open | Opens the app. |
+| Pin or Unpin | Adds the app to your pins, or takes it off. |
+| Update | Shown when a newer release is ready on the channel the package follows. Selects it, as the Packages screen's update button does. |
+| Details and versions | Opens the package on the Packages screen. |
+| Remove from &lt;group&gt;… | Admins only. Asks first, then uninstalls the package for every device in the group ([Uninstall](#operations)). |
+
+A built-in app's menu says **Built into Peers** in its header and offers only Open, Pin or Unpin,
+and, when it's pinned and you're editing, Move earlier and Move later.
+
+A tile's corner shows when an app needs you:
+
+- a blue arrow: an update is ready;
+- a red **!** on a dimmed icon: the app failed to start on this device, and its menu says why;
+- **DEV**: this device runs a dev build from a local folder.
+
+Each app's icon has a color: the one its package names
+([App icons](../Packages/declaring-a-package.md#app-icons)), or one picked from its package id
+and name. Built-in apps are grey.
+
 ## Quick reference
 
 ```bash
@@ -236,6 +290,7 @@ role in that context. In your personal context you are Self, so every tool is al
 | `importPackage` | Admin (60) | `{ path, name? }`. `path` must be absolute or start with `~`. |
 | `createPackage` | Admin (60) | `{ name, location? }`. Returns `created` and an optional `warning`. |
 | `clonePackage` | Admin (60) | `{ url }` |
+| `listPackagesToAdd` | Reader (20) | `{ packages }`: each package in your other contexts that this one doesn't have, as `{ sourceDataContextId, sourceName, packageId, name, description?, appNavs, version?, unsupportedHere }`, listed once per context it's in. Pass `sourceDataContextId` to `installPackage` as `fromDataContextId`. |
 | `installPackage` | Admin (60) | `{ packageId, fromDataContextId? }` |
 | `activatePackageVersion` | Reader (20) | `{ packageId, packageVersionId?, scope? }`. Group scope also needs Admin, enforced when the `Packages` row is signed. |
 | `reloadPackage` | Writer (40) | `{ packageId }`. Writers may update dev versions. |
