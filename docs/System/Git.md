@@ -297,6 +297,23 @@ can be retried immediately. If a different failure leaves a push still publishin
 to two minutes before retrying.
 Do not treat that push as shared successfully.
 
+## Remove a repository
+
+The owner can remove a repository they no longer need, such as a test. On the **Git** screen,
+select it and choose **Remove repository**. An agent or the CLI uses the `removeRepository`
+tool:
+
+```bash
+peers tools run removeRepository '{"repoId": "<repoId from peers git list --json>"}'
+```
+
+A removed repository leaves the list for everyone in the group, and fetches and pushes to its
+`peers://` URL fail with "was removed by its owner". Each device deletes its copy when the
+change reaches it, so the space comes back on every device. Clones keep their history and
+their local branches; only the `peers` remote stops working. Removing can't be undone: share
+the repository again to get a new URL. Only the owner can remove a repository, so an Admin who
+adopted one can't.
+
 ## Current limits
 
 This version supports SHA-1 repositories and branches under `refs/heads/`. Tags and SHA-256
