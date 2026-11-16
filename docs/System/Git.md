@@ -314,6 +314,10 @@ their local branches; only the `peers` remote stops working. Removing can't be u
 the repository again to get a new URL. Only the owner can remove a repository, so an Admin who
 adopted one can't.
 
+A device that had Git 0.3.1 or earlier when the removal reached it keeps listing the
+repository even after it updates. Run `removeRepository` again for that repository: it sends
+the removal again, and the device then deletes its copy.
+
 ## Current limits
 
 This version supports SHA-1 repositories and branches under `refs/heads/`. Tags and SHA-256
