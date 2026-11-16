@@ -74,8 +74,9 @@ behind as top-level tasks). The arrows
 in its corner open the task as the page. Drag the panel's left edge to resize it.
 
 Your unlogged time and the **Details** button sit in the middle of the row above the page. Click
-the time to pause, resume or reset the timer (paused, you can type a new time), and to log the time
-to any task in progress. Completing a task logs the time to it, as before.
+the time to pause, resume or reset the timer (paused, you can type a new time), and to log the
+time: to the current task (the one selected, or else the page's task), or to one of the open tasks
+you logged time to most recently. Completing a task logs the time to it, as before.
 
 Search (⌘P) finds open tasks by their title and details as you type, and closed ones by full text
 a moment later; pick one to go to it.
