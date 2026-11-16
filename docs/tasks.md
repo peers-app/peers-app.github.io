@@ -63,7 +63,7 @@ there; dropped to the right of a task's bullet, it goes inside as its first subt
 to an open task, it takes that task's status. A task can't be dropped into its own subtasks, or at
 the top level of another group (move it between groups from its details instead).
 
-### Details and the dock
+### Details and the unlogged time
 
 **Details** shows the current task beside the page: its title, its status (In progress, Queued,
 Backlog, Done or Canceled), its due date, snooze, repeat, parent and group (click one to change
@@ -73,9 +73,9 @@ move the task there with its comments (a task with subtasks asks whether they go
 behind as top-level tasks). The arrows
 in its corner open the task as the page. Drag the panel's left edge to resize it.
 
-The dock at the bottom shows your unlogged time. Click it to pause, resume or reset the timer
-(paused, you can type a new time), and to log the time to any task in progress. Completing a task
-logs the time to it, as before.
+Your unlogged time and the **Details** button sit in the middle of the row above the page. Click
+the time to pause, resume or reset the timer (paused, you can type a new time), and to log the time
+to any task in progress. Completing a task logs the time to it, as before.
 
 Search (⌘P) finds open tasks by their title and details as you type, and closed ones by full text
 a moment later; pick one to go to it.
