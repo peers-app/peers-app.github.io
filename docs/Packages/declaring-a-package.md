@@ -1164,9 +1164,10 @@ export default definePackage((pkg) => {
 - Worker timers (`setTimeout`, `setInterval`) can use the package's own tables and variables
   the same way, but not other contracts. To fetch or call other contracts on a timer, have a
   tool book its next run with [System Scheduler](../System/Scheduler.md): the scheduled tool
-  runs as a call, as the person signed in on the device, so a Reader's device can't run a Writer
-  tool this way. Weather's `refresh` books the next refresh an hour out each time it runs,
-  keeping the booking's id in a `groupDeviceVar` so the next refresh replaces it, and its widget
+  runs as a call, with the access of the person signed in on the device, so a Reader's device
+  can't run a Writer tool this way. Whether it also runs as that person depends on what made the
+  schedule ([Who a wake-up runs as](../System/Scheduler.md#who-a-wake-up-runs-as)). Weather's
+  `refresh` books the next refresh an hour out each time it runs, keeping the booking's id in a `groupDeviceVar` so the next refresh replaces it, and its widget
   calls `refresh({ ifStale: true })` when it opens to start the cycle.
 - Workers start on first use, so `onStart` runs when something first calls or reads the package
   on that device, not at install.
