@@ -184,12 +184,15 @@ space by default).
 - **`write-task`** creates, updates, or deletes a task. An update that closes a task with open
   subtasks fails unless it says how to close them: `"openSubtasks": "Done"` or `"Canceled"`. A
   `snoozeDT` makes the task In-Progress, so a call that snoozes it with another status fails, and
-  a status other than In-Progress clears its snooze.
+  a status other than In-Progress clears its snooze. Completing a task (status Done) logs your
+  unlogged time against it, as the checkbox does; add `"logTime": false` to complete it without
+  logging, and the timer keeps counting (Tasks 0.33.13 and later).
 - **`write-task-comment`** adds a comment to a task, or deletes one.
 
 ```bash
 peers tools run describe-task '{"taskId": "<taskId>"}'
 peers tools run write-task '{"operation": "update", "taskId": "<taskId>", "status": "Done", "openSubtasks": "Done"}'
+peers tools run write-task '{"operation": "update", "taskId": "<taskId>", "status": "Done", "logTime": false}'
 ```
 
 Lists of tasks (`list-tasks`, `get-task`'s subtask ids, `describe-task`, and the Tasks card in
