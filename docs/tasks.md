@@ -67,7 +67,9 @@ the top level of another group (move it between groups from its details instead)
 
 **Details** shows the current task beside the page: its title, its status (In progress, Queued,
 Backlog, Done or Canceled), its due date, snooze, repeat, parent and group (click one to change
-it), its details, its subtasks with a box to add one, and its comments and logged time. The arrows
+it), its details, its subtasks with a box to add one, and its comments and logged time. The group
+chip lists the groups you can write in: pick one to move the task there with its comments (a task
+with subtasks asks whether they go too, or stay behind as top-level tasks). The arrows
 in its corner open the task as the page. Drag the panel's left edge to resize it.
 
 The dock at the bottom shows your unlogged time. Click it to pause, resume or reset the timer
