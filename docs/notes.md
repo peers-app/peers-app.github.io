@@ -34,12 +34,13 @@ The dock works in every view:
 
 ## Writing
 
-Notes saves as you type, a moment after you pause. Type `#tags` anywhere in the text. Type `@` and
-a few letters to link a person, a task or a note from any of your groups; the link shows the
-record's current title, and clicking it opens it (a note opens beside the page). Select some text
-for **Make note** or **Make task**: the selection becomes a new note, or a task waiting in Tasks'
-Inbox, and a link to it takes its place. Changes from your other devices, other people in the
-group, or an agent show in the open note, unless you have typing there that hasn't saved yet.
+Notes saves as you type, a moment after you pause. Type `#tags` anywhere in the text. Type `<` and
+a few letters to link a person, a task or a note from any of your groups (`@` finds people only);
+the link shows the record's current title, and clicking it opens it (a note opens beside the
+page). Select some text for **Make note** or **Make task**: the selection becomes a new note, or a
+task waiting in Tasks' Inbox, and a link to it takes its place. Changes from your other devices,
+other people in the group, or an agent show in the open note, unless you have typing there that
+hasn't saved yet.
 
 ## Journals
 
