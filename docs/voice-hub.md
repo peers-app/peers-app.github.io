@@ -194,12 +194,13 @@ Voice Hub uses skill activity and alerts for this selection; it does
 not guess from transcript text or hard-code package identities.
 
 Tasks summary and voice results rank all matching tasks in the current personal/group context
-before limiting results: In-Progress, Queued, Backlog, Done, then Canceled; earliest valid due
-date first, followed by descending sort order and task ID. Undated tasks follow dated tasks.
+before limiting results: Inbox, In-Progress, Queued, Backlog, Done, then Canceled; earliest valid
+due date first, followed by descending sort order and task ID. Undated tasks follow dated tasks.
 Overview shows four unsnoozed actionable tasks; focus includes snoozed tasks, with up to 25 per
 section and eight Done tasks ordered by most recent completion. Subtasks remain eligible and
 summary/voice counts include all matching rows; focus badges count displayed rows. Voice defaults
-to In-Progress/Queued. Tap a task title on Overview or in focus to open
+to In-Progress/Queued. A task created by voice or by the card's quick create waits in the Inbox
+until you file it (Tasks 0.33.19 and later; an older Tasks makes it In Progress). Tap a task title on Overview or in focus to open
 that exact task in Tasks, with its detail view on phones. Complete/Reopen is a separate button.
 After a successful quick create, the title field clears even if the task list refreshes again.
 Failed creates keep the entered title. Focus shows action errors for the current context, but a

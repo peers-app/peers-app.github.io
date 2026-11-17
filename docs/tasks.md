@@ -13,6 +13,22 @@ On a desktop, Tasks is an outline you zoom into, like a page in Notes. On a phon
 grouped by status. The outline arrives with Tasks 0.33.10 on the beta channel; on stable, every
 screen shows the list until the outline reaches stable.
 
+## The Inbox
+
+A task is in the **Inbox** until you decide where it belongs. Quick capture puts tasks there:
+Desk's Capture and its add box, Notes' **Make task**, Voice Hub, and the Tasks card's quick
+create. A task you add inside a list or under another task is already filed, so it starts with
+that list's status as before.
+
+The Inbox counts as open, like In Progress, Queued and Backlog, so its tasks show wherever open
+tasks do: Due Soon and search, and Desk's **Plan the day** when it's due or overdue, or a
+project's next task. To clear a task from it, give it its real status:
+**Move down a status** (or a swipe left on a phone) sends it to Backlog, or pick any status from
+its menu or details. Menus and pickers list Inbox first.
+
+The Inbox status needs Tasks 0.33.19 or later. A device on an older Tasks keeps an Inbox task, but
+doesn't list it under a status, and can only change its status, not edit it.
+
 ## The outline (desktop)
 
 The page shows your top-level tasks, each group under its own heading when several groups are in
@@ -20,8 +36,9 @@ view. Zoom into a task and it becomes the page: its status, title, group, progre
 the top, then its subtasks. The path above the page goes back up. Click the arrow next to a task's
 **done/total** count to zoom into it, or press ⌘. (Ctrl+. elsewhere) on it; ⌘, zooms back out.
 
-Each task's status is the shape of its bullet: a half-filled ring is In Progress, a ring is
-Queued, a dashed ring is Backlog, a moon is snoozed, and a filled check is done. Click the bullet
+Each task's status is the shape of its bullet: a ring with a dot is in the Inbox, a half-filled
+ring is In Progress, a ring is Queued, a dashed ring is Backlog, a moon is snoozed, and a filled
+check is done. Click the bullet
 to complete the task (or reopen it); a task you complete stays where it was for a moment before
 it folds away. Under each list, Backlog tasks fold into one **N later** line and closed tasks into
 one **N done** line; click either to show them, and **Hide** to fold them again. The first words
@@ -65,8 +82,8 @@ the top level of another group (move it between groups from its details instead)
 
 ### Details and the unlogged time
 
-**Details** shows the current task beside the page: its title, its status (In progress, Queued,
-Backlog, Done or Canceled), its due date, snooze, repeat, parent and group (click one to change
+**Details** shows the current task beside the page: its title, its status (Inbox, In progress,
+Queued, Backlog, Done or Canceled), its due date, snooze, repeat, parent and group (click one to change
 it), its details, its subtasks with a box to add one, and its comments and logged time. The group
 chip, and the group's name at the top of the panel, list the groups you can write in: pick one to
 move the task there with its comments (a task with subtasks asks whether they go too, or stay
@@ -85,9 +102,9 @@ a moment later; pick one to go to it.
 
 The list is grouped into sections:
 
-- **Due Soon:** Queued and Backlog tasks due within a week.
+- **Due Soon:** Inbox, Queued and Backlog tasks due within a week.
 - **Recently Completed:** what you've finished since you last cleared it.
-- **In Progress**, **Snoozed**, **Queued**, **Backlog**, and **Completed.**
+- **Inbox**, **In Progress**, **Snoozed**, **Queued**, **Backlog**, and **Completed.**
 
 A snoozed task waits in **Snoozed** and comes back to In Progress when its time is up. A snoozed
 task is always In Progress: snoozing a Queued or Backlog task moves it to In Progress, and moving a
@@ -155,14 +172,15 @@ status, or set the due date. On a phone the menu opens as a sheet from the botto
   you moved to the bottom in the last five minutes.
 - **Move down a status** takes In Progress to Queued and Queued to Backlog. The task goes to the
   top of its new section, with the same five-minute rule, and any snooze is cleared. Changing the
-  status to a lower one from the menu or the task's details does the same.
+  status to a lower one from the menu or the task's details does the same. On an Inbox task it
+  clears it to Backlog, keeping its place.
 - Dragging a task puts it exactly where you drop it.
 
 ### On a phone
 
 Swipe a task:
 
-- **Left:** move it down a status (In Progress to Queued, Queued to Backlog).
+- **Left:** move it down a status (In Progress to Queued, Queued to Backlog, Inbox to Backlog).
 - **Right:** snooze it until tomorrow morning.
 
 Touch and hold until the task lifts, then:
@@ -190,7 +208,8 @@ space by default).
   `snoozeDT` makes the task In-Progress, so a call that snoozes it with another status fails, and
   a status other than In-Progress clears its snooze. Completing a task (status Done) logs your
   unlogged time against it, as the checkbox does; add `"logTime": false` to complete it without
-  logging, and the timer keeps counting (Tasks 0.33.13 and later).
+  logging, and the timer keeps counting (Tasks 0.33.13 and later). `"status": "Inbox"` puts a
+  task in the Inbox (Tasks 0.33.19 and later); a new task without a status goes to Backlog.
 - **`write-task-comment`** adds a comment to a task, or deletes one.
 
 ```bash
@@ -200,5 +219,20 @@ peers tools run write-task '{"operation": "update", "taskId": "<taskId>", "statu
 ```
 
 Lists of tasks (`list-tasks`, `get-task`'s subtask ids, `describe-task`, and the Tasks card in
-Voice Hub) come in one order: In Progress, then snoozed, Queued, Backlog, then Done and Canceled,
-each by position.
+Voice Hub) come in one order: Inbox, In Progress, then snoozed, Queued, Backlog, then Done and
+Canceled, each by position.
+
+## For packages that use Tasks
+
+Since Tasks 0.33.19 a task's status can be **Inbox**.
+
+- **Reading.** Tasks v1's table gives `status` as stored, and so does `get-task` through Tasks v2
+  and v3, so they can return `"Inbox"`. Treat a status you don't know as open: everything but
+  Done and Canceled is. Task List v1 and Tasks Screen v1 to v3 show an Inbox task as Backlog.
+- **Writing Inbox.** Consume Tasks v4 (`peers contracts add 00mp287gdl5atltgs5bh0vm9z@4`) and call
+  its `write-task` with `"status": "Inbox"`. Task List v2 and Tasks Screen v4 take Inbox too.
+- **Groups on an older Tasks** don't provide v4, and the call fails with "No contract provider
+  registered for 00mp287gdl5atltgs5bh0vm9z v4" (or "… is not a registered provider for …"). Fall
+  back to v1, with Backlog, only on that error for that contract and version. Any other failure
+  may come after the task was written, so retrying it could make the task twice. Desk and Notes do
+  this with a small `orOlderVersion` helper.
