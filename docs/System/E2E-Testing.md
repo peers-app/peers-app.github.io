@@ -273,9 +273,9 @@ their removal is a bench correction, not a product latency improvement.
 
 `full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
 smoke tests) as Step 2b before anything is versioned or published, and aborts
-the release on failure. It builds `isolation-smoke`, `isolation-consumer`, and `timers`
-first so the package and scheduler scenarios have bundles, without versioning or publishing
-those packages. It runs `make local` in `peers-webrtc` so the
+the release on failure. It builds `peers-core` (Tasks, which headless hosts install from
+its `dist`), `isolation-smoke`, `isolation-consumer`, and `timers` first so the package and
+scheduler scenarios have bundles, without versioning or publishing those packages. It runs `make local` in `peers-webrtc` so the
 WebRTC scenario cannot silently skip on the release machine, and sets
 `PEERS_E2E_REQUIRE_SERVICES=1` so the pairing and invites scenarios fail instead
 of skipping when `peers-services` or Mongo is unavailable. After `peers-services` is pushed it also waits for the

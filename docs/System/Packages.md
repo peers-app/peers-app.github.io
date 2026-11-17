@@ -226,8 +226,8 @@ choose it:
   install from the publisher's release source to establish it.
 - An unauthorized release or group selection appears in **Sync recovery** as
   *Parked, not authorized*. The device keeps running the version it had.
-- peers-core releases signed by the Peers publisher are accepted from any member, since every
-  device installs the bundled release.
+- peers-core releases signed by the Peers publisher are accepted from any member: the
+  publisher key every host pins vouches for them.
 
 Removing a package or version does not let an older approval replace a newer decision that
 this device already received. Reinstalling requires a fresh signature from someone allowed

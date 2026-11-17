@@ -5,7 +5,8 @@ sidebar_position: 11
 # Releasing
 
 `full-release.js` at the monorepo root versions, tests, publishes, and deploys
-the packages that ship together. Run it from the root. Before any release
+the packages that ship together. Tasks isn't one of them: it ships on its own
+(see [Tasks (peers-core)](#tasks-peers-core)). Run it from the root. Before any release
 mutation or external login check, the script runs the current-tree and history
 secret scans, then runs `npm whoami` against the registry `npm publish` will use.
 It aborts if either scan fails or the npm login is missing or rejected. `gh`
@@ -46,9 +47,9 @@ APPLE_APP_SPECIFIC_PASSWORD="op://<vault>/<notarization item>/password"
 
 | Variable | Used by |
 |---|---|
-| `PEERS_CORE_SIGNING_KEY` | Step 5, `scripts/publish-peers-core.mjs` (dedicated item, see [Signing key](#signing-key)) |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Step 5 S3 upload and Step 6 electron-builder publish; the IAM user `peers-release-publisher` is limited to the `peers-electron-app` bucket |
-| `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PASSWORD` | Step 6 macOS notarization |
+| `PEERS_CORE_SIGNING_KEY` | `scripts/publish-peers-core.mjs`, which releases Tasks; `full-release.js` doesn't use it (dedicated item, see [Signing key](#signing-key)) |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Step 5 electron-builder publish, and the Tasks S3 upload; the IAM user `peers-release-publisher` is limited to the `peers-electron-app` bucket |
+| `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PASSWORD` | Step 5 macOS notarization |
 
 The macOS code-signing certificate comes from the login keychain (`identity`
 in `peers-electron/electron-builder.js`). npm publishing uses the login from
@@ -56,8 +57,8 @@ in `peers-electron/electron-builder.js`). npm publishing uses the login from
 built by the `Build and Release` workflow in `peers-electron` from Actions
 secrets when Step 3 pushes the tag.
 
-That workflow builds `peers-sdk`, `peers-device`, `peers-isolate`, `peers-core`
-and `peers-cli` at the same tag, so a re-run rebuilds the same release. A
+That workflow builds `peers-sdk`, `peers-device`, `peers-isolate` and
+`peers-cli` at the same tag, so a re-run rebuilds the same release. A
 re-run also uses the workflow file as it was at that tag. To rebuild a release
 with a newer workflow, run it from `main` with the release's version:
 
@@ -110,19 +111,93 @@ Node API and rejects literal `SECRET_KEY`, `rootPrivateKey`,
 `userPrivateKey`, or `devicePrivateKey` values without writing extracted files
 into the repository.
 
-## peers-core
+## Tasks (peers-core)
 
 `peers-core` is the Tasks app: a sandbox package (declared with `/define`) that keeps
 peers-core's package id. Its `npm run build` makes the sandbox bundle
 (`dist/package.bundle.js`, which carries the package's manifest), the UI bundle and the
 routes bundle.
 
-Step 3 builds it, then records the contract versions it provides in
-`frozen-contracts.json` (`npx peers-package contract freeze --bundle
-dist/package.bundle.js`), which is committed with the release. A release that changes a
-contract version an earlier release froze stops there: declare a new version of the
-contract instead. Step 5 signs the three bundles and uploads them to S3 (see
-[Signing key](#signing-key)).
+Tasks ships on its own, apart from the app. `full-release.js` doesn't version, lint,
+build, test, freeze, commit, tag, push, or publish it, and its version doesn't count
+toward the app's. peers-core's `package.json` version is Tasks' own. Step 2b builds it
+only as an e2e fixture, because `peers-headless` installs Tasks from that build.
+
+**No app bundles a copy.** Electron and the PWA install Tasks from S3, or copy it from
+another of the user's contexts (see [Where apps get Tasks](#where-apps-get-tasks)).
+`peers-headless` still reads the sibling `peers-core/dist`, so the e2e fleet and
+`--services-url none` hosts install it offline.
+
+### Releasing Tasks
+
+`scripts/publish-peers-core.mjs` runs peers-core's lint and tests, builds it, signs the
+three bundles with the peers-core publisher key (see [Signing key](#signing-key)), and
+uploads the tarball and `latest-<tag>.json` to `packages/peers-core/` on S3. The lint and
+tests add about three seconds. `--version-tag` is required, and is `beta` or `stable`:
+
+```bash
+# Beta: what Tasks ships on while it's reworked. Never freezes contracts.
+op run --env-file ~/.config/peers/release.env -- node scripts/publish-peers-core.mjs --version-tag beta
+
+# Stable: only when Mark releases Tasks stable. Check the freeze first. This writes nothing,
+# but rebuilds dist (add --skip-build to keep it):
+node scripts/publish-peers-core.mjs --version-tag stable --dry-run
+op run --env-file ~/.config/peers/release.env -- node scripts/publish-peers-core.mjs --version-tag stable
+```
+
+A beta on S3 reaches only the Tasks package rows that follow beta. Every install follows
+`stable`, so a group gets an S3 beta only once its package **Info** tab follows
+`stable,beta`. During the revamp, Mark's own context gets each beta with
+`peers packages promote <versionId> beta --group` instead (see
+[Package lifecycle](../Packages/package-lifecycle.md)).
+
+A stable release:
+
+1. Proves it can publish before it writes anything: `PEERS_CORE_SIGNING_KEY` must be the
+   current publisher key (not revoked), and the AWS credentials must be there. Both come
+   from `op run`, so a freeze only happens after Mark approves the 1Password request. A
+   stable release never uses the CLI signing fallback, and refuses `--skip-upload` and
+   `--skip-build`.
+2. Checks that it names what it ships: a committed peers-core checkout; a version newer
+   than S3's current stable and not tagged `tasks-v<version>`, here or on `origin`; and
+   `peers-sdk` and `peers-ui` from npm, or linked (`link-deps.js`) to clean checkouts at
+   their `v<version>` release tags. A linked checkout's `dist` isn't tracked, so build it
+   from that tag.
+3. Runs peers-core's lint and tests, builds, then freezes the contract versions the build
+   provides: `npx peers-package contract freeze --bundle dist/package.bundle.js`, then
+   `npx biome format --write frozen-contracts.json`. **A freeze can't be undone** once
+   it's committed and the release is out. If the build changed a contract version an
+   earlier stable release froze, the freeze fails, nothing is written or published, and
+   the contract needs a new version instead.
+4. Signs and uploads `latest-stable.json`. Every new user and every Tasks row that follows
+   `stable` gets it. If signing or the upload fails after the freeze, the script says that
+   `frozen-contracts.json` was written and nothing was published, and how to undo it
+   (`git -C peers-core checkout -- frozen-contracts.json`). Running it again instead
+   finishes the release: an uncommitted `frozen-contracts.json` is allowed, and the freeze
+   has nothing new to add.
+5. Says what's left: commit `frozen-contracts.json`, tag the release `tasks-v<version>`,
+   push both, and stage the `peers-core` submodule pointer at the monorepo root.
+
+peers-core's release tags are `tasks-v<version>`, created by hand after a stable publish.
+Its older `v<version>` tags came from the app releases that used to carry it. Beta
+publishes aren't tagged.
+
+### Where apps get Tasks
+
+Hosts install Tasks with `ensurePeersCore` (`peers-sdk`), into a context that has no
+version of it yet:
+
+- **A new group** copies it from the user's personal context or another of their groups,
+  then falls back to S3.
+- **A new user's personal context** installs the latest stable release from S3 when the app
+  starts.
+- **Without S3** (an account created offline in the desktop app, or a network that blocks
+  the bucket), nothing installs and Tasks is missing from the Apps screen. A failed S3 check
+  isn't remembered, so the next check tries again: the automatic update check about a minute
+  after the app starts, a new group's install, and each start of the desktop app or load of
+  the PWA. A group created meanwhile gets Tasks from the same update check.
+- **A dev Electron build** installs the same S3 release. To run the local build instead,
+  use `peers packages reload <peers-core id> -c <context>`, as for any package.
 
 ## Signing key
 
@@ -143,10 +218,10 @@ node scripts/generate-publisher-key.mjs --public-only
 Paste the secret into the 1Password item and keep only the public key.
 
 **Publish** with the secret injected into the process environment for the
-duration of the command (`full-release.js` does this as Step 5; standalone):
+duration of the command:
 
 ```bash
-op run --env-file ~/.config/peers/release.env -- node scripts/publish-peers-core.mjs
+op run --env-file ~/.config/peers/release.env -- node scripts/publish-peers-core.mjs --version-tag beta
 ```
 
 `publish-peers-core.mjs` derives the public key from the secret and aborts
@@ -296,22 +371,22 @@ version, skips packages already on npm after tagging and pushing their release c
 carries on from the first repo it hadn't finished.
 
 Steps 3 and 4 replace the local `@peers-app/*` links with registry installs,
-because the published builds and the desktop installer must use them. Step 7
-runs `link-deps.js --host-only` after Step 6 to put the links back; a release
+because the published builds and the desktop installer must use them. Step 6
+runs `link-deps.js --host-only` after Step 5 to put the links back; a release
 that aborts after Step 3 starts relinks on exit too. Without the links, the dev
 checkout loads two copies of `@peers-app/peers-sdk`: the dev app reports no
 isolated package runtime, and the Tier 1 e2e scenarios fail. If the relink
 fails, the script says so; run `node link-deps.js` before using the dev app or
 running e2e.
 
-If Step 6 fails (notarization refused with HTTP 403 means Apple wants a new
+If Step 5 fails (notarization refused with HTTP 403 means Apple wants a new
 developer agreement signed), everything else is already published, so re-run
 only that step. By then the abort has put the links back, and
 `yarn release:local` must not run against them: `peers-device`'s
 `npm rebuild` follows the link into `peers-sdk` and fails in its esbuild, and
 the installer would bundle the links instead of the registry packages. First
 put the registry installs back in the repos the Mac build compiles: in each of
-`peers-isolate`, `peers-device`, `peers-ui`, `peers-cli`, `peers-core`, and
+`peers-isolate`, `peers-device`, `peers-ui`, `peers-cli`, and
 `peers-electron`, delete the `node_modules/@peers-app/peers-sdk` and
 `node_modules/@peers-app/peers-ui` links, then run `npm install --force`.
 Then build with the release secrets loaded, and relink whether it succeeds or
@@ -339,7 +414,9 @@ checks first that `official-packages` is on main and that those two fixtures'
 
 Step 2b still builds `isolation-smoke`,
 `isolation-consumer`, and `timers` so the Tier 1 package and scheduler scenarios
-can install them; that build does not commit or publish those packages.
+can install them; that build does not commit or publish those packages. It first
+builds `peers-core` the same way, before the `peers-headless` tests, since headless
+hosts install Tasks from that build.
 The two isolation fixtures build their guest API 3 declarations with
 `peers-package build` through `npm run build`, as do the isolate test-artifact
 builder and Electron's release workflow. Keep their SDK build dependency and
