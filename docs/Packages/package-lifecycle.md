@@ -172,8 +172,14 @@ it (`alsoImplements: [1]`), or provide both versions explicitly. See
 ### Freeze your contracts before a stable release
 
 A stable release freezes every contract version it provides. Record them in your package, so a
-later build can't change one by accident. Before you promote a version to stable, run this in the
-package:
+later build can't change one by accident.
+
+**A freeze can't be undone.** Run it only as part of a stable release. Until then (in development
+or beta), change your contracts in place: keep each addition optional so existing callers keep
+working, with no new version and no `alsoImplements`. Agents working on your package shouldn't run
+it unless you ask.
+
+Before you promote a version to stable, run this in the package:
 
 ```bash
 npx peers-package contract freeze

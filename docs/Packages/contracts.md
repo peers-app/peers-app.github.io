@@ -117,7 +117,10 @@ export const Notes = defineContract({
 - An older version is named by its number. The build reads its shape from the package's
   `frozen-contracts.json`, so it has to have been frozen by a stable release
   ([Package lifecycle](./package-lifecycle#freeze-your-contracts-before-a-stable-release)). A
-  version that was never released stable can simply change.
+  version that was never released stable can simply change, and should: while your package is in
+  development or beta, add to its contract in place instead of making a new version. Don't freeze
+  a version just to name it here. A group may still run an older provider, which drops an input
+  field it doesn't know, so never let a new field choose which record a tool writes.
 - The new version has to satisfy each one, which the build checks. Every older tool, table,
   observable, and event exists with a compatible shape: an input may become optional or gain
   optional fields, and an output or event may gain fields. Required outputs and event payload
