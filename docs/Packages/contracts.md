@@ -63,9 +63,10 @@ without writing. Offline, use `peers-package contract add <module#export|bundle|
 The same contract produces the same file whichever route you use.
 See [declaration options](./declaring-a-package#getting-a-declaration-you-dont-have).
 
-- `{ optional: true }` marks a dependency your package can work without.
-- Peers reports missing dependencies but currently doesn't block installation, even for a
-  required one. Calls fail until a matching provider is available.
+- `{ optional: true }` marks a dependency your package can work without. Calls to it fail
+  while no package provides it.
+- Without `optional`, the contract is **required**: your package doesn't start until a package
+  that provides it is running in the same group. See [Required contracts](#required-contracts).
 - `providerPackageIds` selects the first listed package registered for that contract version.
   `fallbackToDefaultProvider: true` permits the active provider when none of those packages
   provides it. Without a provider list, calls use the active provider.
@@ -74,10 +75,50 @@ See [declaration options](./declaring-a-package#getting-a-declaration-you-dont-h
   when that list is nonempty, even if fallback is enabled.
   See [Calling every provider](./declaring-a-package#calling-every-provider-of-a-contract).
 
+### Required contracts
+
+Require a contract only when your package can't do its main job without it, and make the other
+links optional. A package depends on a contract, not on a package: any package that provides that
+contract version meets the requirement, including one that serves a newer version and also
+implements yours with [`alsoImplements`](#evolving-stable-contracts-with-alsoimplements). With
+`providerPackageIds` and no `fallbackToDefaultProvider`, only the packages you list meet it.
+
+What to expect:
+
+- **Each group, and Personal, is checked on its own.** A requirement is met only by a provider
+  running in the same group as your package: a provider in Personal doesn't meet it for a group,
+  and one in another group doesn't either.
+- **Installing never fails for a missing provider.** If no package running in the group provides
+  a contract your package requires, your package is installed but **waits**. Its tools don't run,
+  its background work doesn't start, and its screens don't open: opening one shows why it waits
+  instead (its routes still load, so the app can be opened to see that). Its own contracts aren't
+  served either, so a package that requires one of them waits too.
+- **People see why.** The Apps screen marks the app as waiting. Opening it shows a Peers screen
+  that names the contract it needs, says why it can't start, and lists the packages that
+  provide it: ones installed in the group but not running, and ones from the user's other groups,
+  which an admin can add from there. Adding a provider also adds what that provider requires,
+  when one of their groups has it. `peers packages` lists the package as `waiting for <contract>`,
+  and `peers packages get <packageId>` prints what provides it, with the command to install each.
+- **It starts by itself** as soon as a provider is running in the group: added on this device,
+  arriving from another device, or turned back on. No reload or restart is needed.
+- **If the provider goes away** (removed, turned off, or updated to a version that drops the
+  contract), your package stops and waits again, and starts when a provider is back.
+- **A new version that adds a requirement** doesn't replace the version that's running: the older
+  version keeps serving, with its own screens, until the new one can start. After a restart only
+  the selected version runs, so it waits.
+- **Data isn't affected.** Your tables keep syncing between devices while the package waits, and
+  its rows stay mentionable.
+- **Contracts Peers provides never make a package wait.** If a device doesn't serve one (System
+  Local Folders on the web app, for example), your package runs there and calls to it fail;
+  `peers packages get` lists it as `Not served here`.
+- **Don't require each other.** Two packages that require each other's contracts can never start.
+  The waiting screen says so; make one of the links optional.
+
 ### Declaring a remote contract
 
 Declare a contract with `pkg.consumes(...)` when calling another package's tools on another
-device. Use `{ optional: true }` if it need not have a provider on this device. Your own
+device. Mark it `{ optional: true }` unless your package also needs a provider on this device: a
+required contract keeps your package waiting until one runs in its group here. Your own
 provided contracts are available too. From a handler, call
 `ctx.callRemoteTool(contractId, version, deviceId, toolName, args)`; the target device
 selects its provider and authorizes the call. See
@@ -452,7 +493,9 @@ To check them manually in a test context:
    table and observable calls run through the package.
 7. Import `official-packages/isolation-consumer`; its worker consumes v4 and
    increments the same public values. Private names, guessed physical/system
-   names, and undeclared members fail closed.
+   names, and undeclared members fail closed. Imported into a context without
+   Isolation Smoke, it [waits](#required-contracts) instead: it requires Smoke's v4,
+   from Smoke only. It starts by itself once you import Smoke there.
 
 Isolated public tools are indexed in `Tools` while their workers remain dormant.
 The screen uses a contract consumer; local `peers tools run <toolId>` also invokes

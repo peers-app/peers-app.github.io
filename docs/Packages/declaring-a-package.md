@@ -933,7 +933,11 @@ export default definePackage((pkg) => {
 - `pkg.provides(contract)` provides it. A contract another package declares is provided the same
   way, once implemented: News's `NewsVoiceSkill` is Voice Hub's Voice Skill declaration with
   News's widget, exposing News ([below](#exposing-your-contracts-through-a-hubs-contract)).
-- `pkg.consumes(ref, { optional })` declares a dependency.
+- `pkg.consumes(ref, { optional })` declares a dependency. Without `optional` it's required: the
+  package installs but waits, with no tools, background work or screens running, until a
+  package that provides the contract runs in the same group, and then starts by itself
+  ([Required contracts](./contracts#required-contracts)). News requires System HTTP, a contract
+  Peers itself provides, and uses System Scheduler only when it's there.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
   names.
 - `pkg.onStart(fn)` runs background work when the worker starts ([below](#background-work)).

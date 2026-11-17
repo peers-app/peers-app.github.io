@@ -702,6 +702,14 @@ See [Packages](./Packages.md#requested-and-observed-state).
 `satisfied: false`). Calls to those fail on this device; not every host serves every system
 contract.
 
+A package that requires a contract no package in the context provides is installed but waits
+([Waiting packages](./Packages.md#waiting-packages)). The list shows its status as
+`waiting for <contract>` (`update waiting for <contract>` while an older version keeps running),
+and `install`, `activate` and `reload` succeed and say so. `get` prints each missing contract with
+the packages that provide it and the command that adds each one, for example
+`peers packages install <packageId> --from <contextId> -c <groupId>`; with `--json` that report is
+under `requirements`.
+
 `promote` says what the group runs, including when it already selected that version.
 If the selection stays unchanged, it explains why and gives the activation command.
 Add `--group` to select the release for the group and follow it here (Admin), preserving

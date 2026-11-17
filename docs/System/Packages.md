@@ -55,6 +55,26 @@ screen (a widget or a voice skill) says **No screen**, and one this device can't
 instead of offering Add. If an added package then fails to start here, its row says why; it stays
 installed for the group's other devices, and its menu on the Apps screen shows the same reason.
 
+### Apps that are waiting
+
+Some apps are built on another package and can't work without it. An app whose package needs
+one that the group doesn't have yet is installed but **waiting**:
+
+- Its tile shows an hourglass, and its menu says what it's waiting for.
+- Opening it shows what it needs, why it can't start, and the packages that provide it: ones
+  already in the group but not running (turned off, or waiting themselves), and ones your other
+  groups use. An admin can **Add** one from there; if that package needs another in turn, Add
+  brings both. **Turn on** turns one that was turned off back on.
+- It starts by itself as soon as a package it needs is running in the group, on this device or
+  any other, and its own screen replaces the waiting one. Nothing needs restarting.
+- The package it needs has to be in the same group: a copy in Personal or another group doesn't
+  count, though you can add it from there.
+- If that package is removed later, the app goes back to waiting.
+- Its data keeps syncing while it waits, and its items still show up in search and mentions.
+
+When the app's own package only has an update waiting (the new version needs a package the
+group doesn't have), the version you have keeps working, and the menu says the update waits.
+
 Choose **Edit** to change your pins: **−** unpins an app, **+** pins it at the end, and dragging
 a pinned app moves it. In edit mode, choosing an app opens its menu, where **Move earlier** and
 **Move later** reorder pins from the keyboard. **Done** or Escape leaves edit mode. A pinned app
@@ -79,6 +99,8 @@ A tile's corner shows when an app needs you:
 
 - a blue arrow: an update is ready;
 - a red **!** on a dimmed icon: the app failed to start on this device, and its menu says why;
+- an hourglass on a dimmed icon: the app is [waiting](#apps-that-are-waiting) for a package it
+  needs;
 - **DEV**: this device runs a dev build from a local folder.
 
 Each app's icon has a color: the one its package names
@@ -89,7 +111,8 @@ and name. Built-in apps are grey.
 
 ```bash
 peers packages                              # list packages and their status on this device
-peers packages get <packageId>              # versions, runtime state, last load error
+peers packages get <packageId>              # versions, runtime state, last load error, and
+                                            # for a waiting package what provides what it needs
 peers packages import ./my-package          # import a built package folder
 peers packages import https://github.com/org/pkg.git   # clone, build, import
 peers packages create "My Package"          # scaffold from the template
@@ -116,7 +139,8 @@ so stdout stays parseable even when the desktop app needs to be started first.
 Exit code `0` means the operation succeeded. `1` means it failed. That includes an enabled
 package that failed to load after import, create, clone, install, activation, or reload,
 including missing bundles and unsupported execution modes, and `reload --all` when any
-package failed. Errors go to stderr. A deliberately disabled package may be imported or
+package failed. A package that installs but [waits](#waiting-packages) for a contract it requires
+succeeds (exit `0`), and the command says what it waits for. Errors go to stderr. A deliberately disabled package may be imported or
 cloned successfully without running it. A `promote` whose automatic activation fails to
 load also exits `1`, but the promotion itself is kept and the error starts with
 `Promoted ...`; do not retry it. Check `peers packages get`.
@@ -151,6 +175,7 @@ Each package summary has two parts.
 |---|---|
 | `running` | The selected version loaded and is serving. |
 | `failed` | The last load failed. `runtime.running` still names the previous version when it kept serving. |
+| `waiting` | The selected version requires a contract that no package running in this context provides, so it hasn't started ([Waiting packages](#waiting-packages)). `runtime.running` names an older version that keeps serving until it can, when one was running. |
 | `unavailable` | The selected version's bundle has not reached this device yet (usually still syncing). |
 | `unsupported` | This host cannot run the package, for example an isolated package on a host without an isolated runtime. |
 | `disabled` | The package is disabled for the group. |
@@ -167,6 +192,11 @@ The other runtime fields:
   contract counts only when this host serves it.
 - `lastError`: the most recent load failure. Gives `phase`, `message`, `version`, and
   `at`, and is cleared by the next successful load.
+- `waiting`: set while the status is `waiting`. Gives the waiting version (`packageVersionId`,
+  `version`, `versionTag`), `missing` (each required contract no package here provides:
+  `contractId`, `version`, `name` when this device knows it, and `providerPackageIds` when the
+  package accepts only those), and `provides` (what it serves once it starts, so a package waiting
+  on one of those can show the chain).
 - `worker`: isolated worker health, `workerRunning` plus `lastWorkerError`. Isolated
   workers start on the first tool call, so a provider that throws while starting shows up
   only after a call has failed. A bundle that becomes unavailable or fails verification can
@@ -179,6 +209,28 @@ The other runtime fields:
 Runtime state is in memory. It describes the current process and starts again when Peers
 restarts, which reloads every package anyway. The Packages screen shows the status as a
 badge, and package details show the running version and the last error.
+
+### Waiting packages
+
+A package whose selected version requires a contract (consumes it without `optional`) that no
+package running in the same context provides doesn't start: its tools don't run, its background
+work doesn't start, and its screens show why it waits (its routes still load, so it can be opened
+to see that). Its own contracts aren't served, so what requires those waits too. Each context is
+checked on its own: a provider in Personal doesn't meet a requirement in a group. Contracts Peers
+itself provides never hold a package back. Installing is never refused for this.
+
+- The loader checks again whenever a package in the context starts or stops. A waiting package
+  whose requirements are now met starts, once. A running package whose required provider stopped
+  is stopped and waits again.
+- A new version that needs an unmet contract doesn't replace the one running; the older one keeps
+  serving, and the screens shown are its own, so they match the worker that answers them. When
+  the new version starts, open screens switch to its UI. After a restart only the selected
+  version runs, so it waits.
+- Its tables keep syncing and its rows stay mentionable: only its tools, background work and
+  screens are held back.
+- `peers packages get <packageId>` prints each missing contract and what could provide it, with
+  the command to add it, from the `getPackageRequirements` tool. With `--json`, the same report
+  is under `requirements`.
 
 ### Diagnosing a broken package
 
@@ -291,7 +343,8 @@ role in that context. In your personal context you are Self, so every tool is al
 | `createPackage` | Admin (60) | `{ name, location? }`. Returns `created` and an optional `warning`. |
 | `clonePackage` | Admin (60) | `{ url }` |
 | `listPackagesToAdd` | Reader (20) | `{ packages }`: each package in your other contexts that this one doesn't have, as `{ sourceDataContextId, sourceName, packageId, name, description?, appNavs, version?, unsupportedHere }`, listed once per context it's in. Pass `sourceDataContextId` to `installPackage` as `fromDataContextId`. |
-| `installPackage` | Admin (60) | `{ packageId, fromDataContextId? }` |
+| `getPackageRequirements` | Reader (20) | `{ packageId, fromDataContextId? }` returns `{ requirements: { packageId, name, missing } }`: each required contract no package serves here, with the packages that could provide it, `installed` here but not running (with `status`, and a waiting one's own `missing`) and `toAdd` from your other contexts (shaped like `listPackagesToAdd`'s entries, plus their own `missing`). `cycle: true` marks a provider that needs, further down, a package already in the chain. With `fromDataContextId`, it reports on that context's copy of the package, before adding it here. |
+| `installPackage` | Admin (60) | `{ packageId, fromDataContextId? }`. A package that waits for a contract it requires is still installed. |
 | `activatePackageVersion` | Reader (20) | `{ packageId, packageVersionId?, scope? }`. Group scope also needs Admin, enforced when the `Packages` row is signed. |
 | `reloadPackage` | Writer (40) | `{ packageId }`. Writers may update dev versions. |
 | `reloadAllPackages` | Writer (40) | Returns `{ skipped?, results: [{ packageId, name, ok, changed?, error? }] }`. |
