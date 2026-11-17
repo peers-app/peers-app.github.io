@@ -461,9 +461,10 @@ group.
 
 ### Mentionable rows
 
-Give a table `mentions` to make its rows mentionable: `@` in any Peers editor finds them by
+Give a table `mentions` to make its rows mentionable: `<` in any Peers editor finds them by
 title, in every group, and a link to one shows its live title and opens your screen. Peers reads
-the table itself for this; no package code runs. See [Mentions](./mentions).
+the table itself for this; no package code runs. Add `trigger: "#"` to have `#` find them alone,
+as a Labels package would. See [Mentions](./mentions).
 
 ```ts
 mentions: { kind: "note", label: "Note", titleField: "title", route: "app?noteId={id}" },

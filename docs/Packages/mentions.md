@@ -5,9 +5,10 @@ title: Mentions
 
 # Mentions
 
-A mention is a link from any text in Peers to one record: a person, a task, a note. Typing `@` or
-`<` in a Peers editor finds records by title in every group the user is in. The text then holds an
-ordinary markdown link, and Peers shows it as a chip with the record's live title:
+A mention is a link from any text in Peers to one record: a person, a task, a note. Typing `<` in a
+Peers editor finds any of them by title, in every group the user is in; `@` finds people, and a
+package can give its records a character of their own, such as `#` for labels. The text then
+holds an ordinary markdown link, and Peers shows it as a chip with the record's live title:
 
 ```markdown
 Blocked on [Notes package](peers://task/00mw55vifo1dnuvbiy52o2yb7), ask [Blair](peers://user/00m87fbwu96jzf8qnwllly0fd).
@@ -61,6 +62,7 @@ export const Notes = defineTable({
 | Setting | What it does |
 |---|---|
 | `kind` | The kind in your links. 2–24 lowercase letters, digits or dashes, starting with a letter. It's written into other records' text, so treat it like an API name. |
+| `trigger` | Optional. A character that opens the picker on your records alone, besides `<`: `#`. See [Choosing a trigger](#choosing-a-trigger). |
 | `label` | What one record is called, such as `Note`. The picker and chips show it. |
 | `iconClassName` | A [Bootstrap Icons](https://icons.getbootstrap.com/) class for chips and picker rows. |
 | `titleField` | The string field the picker searches (by word) and that chips show. |
@@ -79,10 +81,40 @@ What to expect:
   `device`, `mobile-settings`) can't be declared, and each kind may appear on only one of your
   tables.
 - **Peers checks it when your package loads**: a title, status or preview field that isn't a
-  string, or a route outside your package, refuses the package.
-- **Older devices.** A device whose Peers predates a mention setting you use (`previewField`, or
-  mention sources at all) won't load that version of your package; it keeps running the version
-  it had until it updates.
+  string, or a route outside your package, refuses the package. Your package's build also refuses
+  a setting Peers doesn't know (a typo, usually) and a `trigger` that isn't one of the choices.
+- **Older devices.** Peers 0.33.8 to 0.33.12 ignore `trigger`, and find your records after `@`
+  and `<` as they find every record there; 0.33.7 or older won't load that version, and keeps
+  running the version it had until it updates.
+
+### Choosing a trigger
+
+Your records are always found after `<`, with people and every other package's records. Set
+`trigger` to give them a character of their own as well, one that finds only them:
+
+```ts
+mentions: {
+  kind: "label",
+  label: "Label",
+  trigger: "#",
+  titleField: "name",
+  route: "app?labelId={id}",
+},
+```
+
+- **The choice is `#`, for now.** More characters may join it as packages need them. `@` is for
+  people, and `<` finds everything, so neither can be declared.
+- **A trigger adds to `<`.** With `trigger: "#"`, `#work` finds only your labels, and `<work`
+  finds them too, among everything else. A pasted id finds its record after any character.
+- **Packages may share a trigger.** The picker mixes the results of every source on it, and shows
+  each result's kind, and its package when two packages share a kind.
+- **A trigger nothing declares does nothing.** `#` opens the picker only once a package that
+  declares it is installed in one of the user's groups. Until then, `#work` is just text.
+- **Links don't change.** A mention is the same `[label](peers://<kind>/<id>)` whichever character
+  found it, so changing `trigger` later leaves everything already written alone.
+
+Declare one for records people reach for often and want on their own, such as labels. Most
+sources should leave it out: `<` finds them, and `<kind:` narrows to them.
 
 ## Opening a record
 
@@ -131,17 +163,28 @@ editor's picker.
 
 ## The picker
 
-- **`@` or `<`** followed by a search starts it at the beginning of a word; matching results
-  appear as you type. People come first, then records that aren't finished, then the closest
-  title matches, then the document's group.
-- **`@kind:`** (or `<kind:`) narrows it to one kind: `@task:garden` finds only tasks.
+- **`<`** followed by a search finds everything: people and every package's records. Type it at
+  the beginning of a word; matching results appear as you type. People come first, then records
+  that aren't finished, then the closest title matches, then the document's group. Each result
+  shows what it is, so `<` is the place to look when you don't know which character finds a
+  record.
+- **`@`** finds people only.
+- **A source's own trigger**, such as `#` for labels, finds only the records of the sources that
+  declare it ([Choosing a trigger](#choosing-a-trigger)). `#` and a space at the start of a line
+  still make a heading.
+- **A kind before a colon** narrows to that kind, among what the character finds:
+  `<task:garden` finds only tasks. The kind is matched loosely: `<tasks:`, `<Task:` and the
+  kind's label (`<event:` for a source labelled Event) work too, and `<people:` finds people. A
+  word that names no kind is searched as words, so `<re:dinner` still finds "Re: dinner".
+- **Not in code or a link's text.** There, `<`, `@` and `#` stay text.
 - **A card beside the list** shows the highlighted result: what it is, its status and group, and
   the start of its text when its source declares `previewField`.
-- **A pasted id** of 25 letters and digits (`<` and then paste, or `@`) becomes a chip at once
-  when exactly one record matches. If several kinds have that id, choose a result from the
-  menu. An id that matches nothing the user can see becomes a dotted `?` chip, linked as
-  `peers://ref/<id>` (or `peers://task/<id>` after `<task:`). Undo restores the typed text and
-  lets you choose from the menu.
+- **A pasted id** of 25 letters and digits (`<` and then paste, or after any other character)
+  finds its record whatever the character, and becomes a chip at once when exactly one record
+  has it. If several kinds have that id, choose a result from the menu. An id that matches
+  nothing the user can see becomes a dotted `?` chip, linked as `peers://ref/<id>`, which comes
+  alive if the record turns up later. Undo restores the typed text and lets you choose from the
+  menu.
 - Picking a result inserts a chip labeled with the record's title.
 
 ## Related topics
