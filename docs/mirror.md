@@ -30,15 +30,15 @@ device is overwritten.
 ## What you see
 
 The list shows each folder with how it's doing on this device: **Up to date**, **Syncing 12
-files**, **Looking it over…** (reading the folder, after you add it or Peers starts), or
-**Paused**.
+files**, **Looking it over…** (reading the folder, after you add it or Peers starts), **Paused**,
+or, with a yellow warning sign, **1 conflict to sort out**.
 
 Open a folder to see:
 
 - **This device:** where the folder is here, how many files it holds, and any file that can't
   sync, with the reason.
+- **Conflicts to sort out**, in a yellow box, when there are any.
 - **Devices:** every device that keeps the folder and its state, as it last reported it.
-- **Conflict copies**, when there are any.
 - **Recent changes:** the last files changed, who changed them and when, deletions included.
 
 The **⋯** menu pauses the folder on this device, asks Mirror to look it over again, removes it
@@ -55,7 +55,12 @@ report (conflict from Mark's Mac, 2026-11-17 14.05).docx
 ```
 
 The name says which device made that version, and when, in that device's clock. Open both, keep
-what you want, and delete the other. Both are ordinary files, synced like any other.
+what you want, and delete the copy. Both are ordinary files, synced like any other.
+
+Mirror makes it hard to miss: the folder shows a yellow warning until the conflict copies are
+gone, and the device whose version became the copy sends you a quiet notification (a popup
+without sound; your notification settings for Mirror decide in the end). Several conflicts found
+at once make one notification. Deleting the last copy withdraws it.
 
 An edit always beats a deletion: if one device deletes a file while another changes it, the
 changed file comes back everywhere.
