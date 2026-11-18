@@ -50,6 +50,11 @@ of a task's details show under its title.
 - **Now:** what's in progress, and the tasks above it, so you see where it sits.
 - **Upcoming:** tasks with a due date or a snooze, and the tasks above them.
 - **All:** everything, Backlog and done tasks too (the newest 50 done tasks in each list).
+- **Done:** what you finished in the last 7 days, newest first, under a heading for each day, in
+  place of the outline. Each task says which task it's under and when it was finished; a repeating
+  task shows each time you completed it. Zoomed into a task, it shows only what was finished below
+  it. **Show 7 more days** goes further back. Click a task for its details, or its bullet to reopen
+  it (for a repeating task, to undo that completion).
 
 ### Writing tasks
 
@@ -61,19 +66,20 @@ Click anywhere on a task's row to edit its title. Typing works like a document:
 | Tab / Shift+Tab | Nest the task under the one above it / move it out from under its parent |
 | ⌥↑ / ⌥↓ | Move the task up or down among the tasks with its status |
 | ⌘↑ / ⌘↓ | Collapse or expand the task's subtasks |
-| ⌘Enter | Complete or reopen the task |
-| Shift+Enter | Edit the task's details right under its title (Escape or Shift+Enter goes back) |
+| ⌘Enter or Shift+Enter | Edit the task's details right under its title (Escape or Shift+Enter goes back). On a new task, it saves the title first. |
 | ↑ / ↓ | The task above or below, keeping your place in the line |
 | ← at the start, → at the end | The end of the task above, or the start of the task below |
 | Backspace on an empty line | Remove it (an empty task with no subtasks, details or comments is deleted) |
-| ⌘I | Show or hide the task's details beside the page |
+| ⌘I | Show or hide the side panel with the task's details |
 | ⌘P | Search |
+
+No key completes a task: click its bullet, or pick Done in its details.
 
 A new task starts **Queued** (or Backlog, when you start it among the Backlog). It stays where you
 typed it while you keep writing, then moves into the Queued part of its list when you leave it. It
 isn't saved until it has a title. The **New task** box at the top of the page adds a Queued task to
-the top of the Queued part and stays ready for the next one; the **New task** line at the end of a
-list adds one after the last Queued task.
+the top of the Queued part and stays ready for the next one (⌘Enter adds it and goes on to its
+details); the **New task** line at the end of a list adds one after the last Queued task.
 
 Drag a task by its bullet to move it. Dropped above or below another task's middle, it goes right
 there; dropped to the right of a task's bullet, it goes inside as its first subtask. Dropped next
@@ -87,8 +93,19 @@ Queued, Backlog, Done or Canceled), its due date, snooze, repeat, parent and gro
 it), its details, its subtasks with a box to add one, and its comments and logged time. The group
 chip, and the group's name at the top of the panel, list the groups you can write in: pick one to
 move the task there with its comments (a task with subtasks asks whether they go too, or stay
-behind as top-level tasks). The arrows
-in its corner open the task as the page. Drag the panel's left edge to resize it.
+behind as top-level tasks). The tasks it's under are listed at the top; click one to see its
+details instead. The arrows in its corner open the task as the page. Drag the panel's left edge
+to resize it.
+
+When you've zoomed into a task, its own details are a click away: **Details** beside its progress,
+or click into its title or details on the page.
+
+To move a task under another, click its parent chip (**No parent**, or the parent's name) and type
+a few words of the new parent's title. Tasks whose titles match come first: the exact name, then
+titles that start with what you typed, then titles with every word. Open tasks come before closed
+ones, and tasks that already have subtasks come first. Each result shows its group and the tasks
+it's under. Tasks whose details match come after. You can also drag a task onto another in the
+outline.
 
 Your unlogged time and the **Details** button sit in the middle of the row above the page. Click
 the time to pause, resume or reset the timer (paused, you can type a new time), and to log the
