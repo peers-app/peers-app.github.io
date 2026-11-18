@@ -674,6 +674,7 @@ peers packages                                  # name, id, running version, sta
 peers packages get <packageId> --json           # versions, runtime state, last error
 peers packages import ./my-package              # relative paths resolve against this shell
 peers packages import https://github.com/org/pkg.git
+peers packages import ~/peers/packages/new-name --name "New Name"  # rename, or move its folder
 peers packages create "My Package" --location ~/code/my-package
 peers packages reload <packageId>               # exits 1 if the new version fails to load
 peers packages reload --all
@@ -696,6 +697,14 @@ logs failures to the developer console. Import and reload also warn when the fol
 newer than Peers, without failing the operation (exit `0`). Reload-all identifies each affected
 package. Pin `@peers-app/peers-sdk` to the Peers version your devices run, or update Peers.
 See [Packages](./Packages.md#requested-and-observed-state).
+
+**Renaming a package or moving its folder.** A package keeps the name it was imported with;
+`reload` doesn't change it, even when `package.json` does. Import the folder again, from its
+new place if you moved it, with the name you want in `--name`. The package keeps its id,
+versions, selected version and signing key, and Peers saves the new folder. Each context keeps its own name, so
+repeat it with `-c <groupId>` in each group that has the package. Importing in a group also
+makes this device run the folder's build there; `peers packages activate <packageId> -c
+<groupId>` goes back to the group's version.
 
 `get` also lists each contract the running package uses that nothing on this device serves, as
 `Not served here: <contractId> v<version>` (with `--json`, `runtime.running.consumes` entries with
