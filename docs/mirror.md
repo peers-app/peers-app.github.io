@@ -38,7 +38,9 @@ Open a folder to see:
 - **This device:** where the folder is here, how many files it holds, and any file that can't
   sync, with the reason.
 - **Conflicts to sort out**, in a yellow box, when there are any.
-- **Devices:** every device that keeps the folder and its state, as it last reported it.
+- **Devices:** every device that keeps the folder, named for its owner and itself (`Mark •
+  Macbook`, as in your device list, so renaming a device renames it here), and its state as it
+  last reported it.
 - **Recent changes:** the last files changed, who changed them and when, deletions included.
 
 The **⋯** menu pauses the folder on this device, asks Mirror to look it over again, removes it
@@ -51,14 +53,14 @@ name and the other is saved next to it as a conflict copy:
 
 ```
 report.docx
-report (conflict from Mark's Mac, 2026-11-17 14.05).docx
+report (conflict from Mark • Macbook, 2026-11-17 14.05).docx
 ```
 
-The name says which device made that version, and when, in that device's clock. Open both, keep
+The name says whose device made that version, and when, in that device's clock. Open both, keep
 what you want, and delete the copy. Both are ordinary files, synced like any other.
 
 Mirror makes it hard to miss: the folder shows a yellow warning until the conflict copies are
-gone, and the device whose version became the copy sends you a quiet notification (a popup
+gone (an edited copy, or one moved away and back, is still a conflict copy), and the device whose version became the copy sends you a quiet notification (a popup
 without sound; your notification settings for Mirror decide in the end). Several conflicts found
 at once make one notification. Deleting the last copy withdraws it.
 
