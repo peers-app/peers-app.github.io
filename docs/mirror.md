@@ -57,12 +57,14 @@ report (conflict from Mark • Macbook, 2026-11-17 14.05).docx
 ```
 
 The name says whose device made that version, and when, in that device's clock. Open both, keep
-what you want, and delete the copy. Both are ordinary files, synced like any other.
+what you want, and delete the copy, or rename it to keep both. Both are ordinary files, synced
+like any other.
 
-Mirror makes it hard to miss: the folder shows a yellow warning until the conflict copies are
-gone (an edited copy, or one moved away and back, is still a conflict copy), and the device whose version became the copy sends you a quiet notification (a popup
+Mirror makes it hard to miss: the folder shows a yellow warning until each conflict copy is
+deleted or renamed (an edited copy, or one moved away and back under its name, is still a conflict
+copy), and the device whose version became the copy sends you a quiet notification (a popup
 without sound; your notification settings for Mirror decide in the end). Several conflicts found
-at once make one notification. Deleting the last copy withdraws it.
+at once make one notification. Deleting or renaming the last copy withdraws it.
 
 An edit always beats a deletion: if one device deletes a file while another changes it, the
 changed file comes back everywhere.
