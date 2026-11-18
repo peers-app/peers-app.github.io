@@ -777,7 +777,8 @@ peers contracts add <contractId>@<version> -c <groupId>
 peers contracts add <contractId>@<version> --check --json
 ```
 
-The default context is personal. The command writes `src/contracts/<name>.v<version>.ts`.
+The default context is personal. The command writes `src/contracts/<name>.v<version>.ts`; for a
+[UI contract](../Packages/ui-contracts), a `declareUIContract(...)` declaration of its pieces.
 `--dir <folder>` selects the local package folder; `--out-dir <folder>` is relative to it;
 `--name <Name>` changes the export name. `--device <deviceId>` reads another device that
 trusts you as Self, while writing locally. `--json` prints `{ path, exportName, changed }`.

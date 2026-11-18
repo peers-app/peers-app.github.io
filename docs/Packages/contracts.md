@@ -5,7 +5,10 @@ title: Package contracts
 
 # Package contracts
 
-**Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; a group picks an **active provider**. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
+**Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; one of them is the group's **active provider** (for now, whichever loads first; a way to choose it is planned). Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
+
+This page is about API contracts. A package's UI that other packages' screens embed has a
+contract of its own, kept apart from its API: see [UI contracts](./ui-contracts).
 
 Declare packages with `definePackage` from `@peers-app/peers-sdk/define` and build them
 with `peers-package build`. Peers reads the generated declarations at install time, so

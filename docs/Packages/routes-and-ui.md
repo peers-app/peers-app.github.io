@@ -197,7 +197,12 @@ When `UIRouter` receives a navigation request, it selects a route through the fo
 
 ## Extensible rendering with `PeersUI`
 
-The `<PeersUI>` component (from `@peers-app/peers-sdk`) lets any package render a UI slot that other packages can fill. This is the core extensibility mechanism.
+To show another package's UI in your screen, use a [UI contract](./ui-contracts) instead: your
+screen depends on the contract rather than on a package's component id, gets the right version
+for each group, and gets a fallback when nothing provides it. `<PeersUI peersUIId=…>` still works
+today, and is being replaced by UI contracts.
+
+The `<PeersUI>` component (from `@peers-app/peers-sdk`) lets any package render a UI slot that other packages can fill.
 
 **Rendering a slot** — a package requests a UI for a given context:
 

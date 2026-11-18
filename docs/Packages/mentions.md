@@ -65,6 +65,7 @@ export const Notes = defineTable({
 | `trigger` | Optional. A character that opens the picker on your records alone, besides `<`: `#`. See [Choosing a trigger](#choosing-a-trigger). |
 | `label` | What one record is called, such as `Note`. The picker and chips show it. |
 | `iconClassName` | A [Bootstrap Icons](https://icons.getbootstrap.com/) class for chips and picker rows. |
+| `color` | Optional. A color its chips are marked with, from the app palette: `blue`, `teal`, `red`, `amber`, `purple`, `orange`, `green`, `pink`, `violet` or `slate`. A label package might set one per label table. Older versions of Peers ignore it. |
 | `titleField` | The string field the picker searches (by word) and that chips show. |
 | `statusField` | Optional. A string field shown beside the title, such as a task's status. |
 | `doneValues` | Optional, with `statusField`. Values that mean the record is finished; their chips are struck through. |

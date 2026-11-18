@@ -72,6 +72,10 @@ exportUIs({
 });
 ```
 
+A UI bundle can also export the pieces of [UI contracts](./ui-contracts) the package provides:
+`exportUIs({ uis, pieces: [implementPiece(...)] })`. A package that provides only UI contracts,
+with no tables, tools or worker hooks, has no worker either.
+
 Build with `peers-package build` and build the routes and UIs as usual. With no tables,
 provided contracts, or background hooks, this package runs no worker. Its screens can still consume
 other packages' contracts through `hostContract`; declare those dependencies with
@@ -1120,6 +1124,9 @@ Add `-c <groupId>` for a group, or `--device <deviceId>` to read another device'
 The file is written locally to `src/contracts/<name>.v<version>.ts`. Use `--dir <folder>` to
 choose the package folder, `--out-dir <folder>` to change the output directory, and
 `--name <Name>` to choose the export name.
+
+A [UI contract](./ui-contracts) works the same way: you get a `declareUIContract(...)` file
+whose pieces' props and emits are typed, for `pkg.consumes` and `hostUIContract`.
 
 If the contract isn't registered, or you're working offline, use
 `npx peers-package contract add <source>` with one of:
