@@ -6,9 +6,9 @@ sidebar_position: 10
 
 System Local Folders (`system.fs`) is the Runtime contract that lets an operator
 grant a package access to a directory on this device. The user's folder stays
-the storage. The host keeps a local index of content-defined blocks so a later
-sync phase can serve byte ranges without copying the tree into the app data
-directory.
+the storage. The host keeps a local index of content-defined blocks so it can
+serve byte ranges without copying the tree into the app data directory.
+[Mirror](../mirror.md), the folder-sync app, is built on it.
 
 The contract is **local-only**. Another device cannot call it, even on a
 verified connection. `assemble` is the host job that pulls blocks from other

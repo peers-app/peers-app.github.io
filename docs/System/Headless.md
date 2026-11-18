@@ -13,9 +13,11 @@ hosts; they do not import this package yet.
 
 A headless process can also hold a [System Local Folders](./Local-Folders.md)
 grant for a directory that should stay available while laptops sleep. Pass
-`--folder` (below) or `peers fs grant` after it is up. This phase records the
-grant and can index the folder on this machine. Sending those blocks to other
-devices is a later phase.
+`--folder` (below) or `peers fs grant` after it is up. With [Mirror](../mirror.md)
+installed, grant the folder to Mirror (`peers fs grant <dir> --group <groupId>
+--package 00mwltdt9ys2khmvifcrig43t`) and attach it with `mirror-attach`: the
+headless host then keeps every file and passes changes between devices that are
+rarely online together.
 
 ## Start
 

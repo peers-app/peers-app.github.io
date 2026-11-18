@@ -254,8 +254,8 @@ their removal is a bench correction, not a product latency improvement.
 
 - **Tier 0/1** after touching `peers-sdk` sync or connection code, `peers-device`,
   `peers-headless`, `peers-e2e`, or an official package. The scenarios in Tier 1
-  need `official-packages/isolation-smoke`, `isolation-consumer`, and `timers` built
-  (`npm run build` in each); a missing package build fails its scenario.
+  need `official-packages/isolation-smoke`, `isolation-consumer`, `timers`, and `mirror`
+  built (`npm run build` in each); a missing package build fails its scenario.
   The isolation fixtures use `src/package.ts` and `peers-package build` (guest API 3).
   `webrtc.e2e.test.ts` and `webtransport.e2e.test.ts` need a `peers-webrtc`
   binary (`cd peers-webrtc && make local`, requires Go); without one it prints
@@ -274,8 +274,8 @@ their removal is a bench correction, not a product latency improvement.
 `full-release.js` runs Tier 0 and Tier 1 (plus the `peers-headless` unit and
 smoke tests) as Step 2b before anything is versioned or published, and aborts
 the release on failure. It builds `peers-core` (Tasks, which headless hosts install from
-its `dist`), `isolation-smoke`, `isolation-consumer`, and `timers` first so the package and
-scheduler scenarios have bundles, without versioning or publishing those packages. It runs `make local` in `peers-webrtc` so the
+its `dist`), `isolation-smoke`, `isolation-consumer`, `timers`, and `mirror` first so the
+package, scheduler and Mirror scenarios have bundles, without versioning or publishing those packages. It runs `make local` in `peers-webrtc` so the
 WebRTC scenario cannot silently skip on the release machine, and sets
 `PEERS_E2E_REQUIRE_SERVICES=1` so the pairing and invites scenarios fail instead
 of skipping when `peers-services` or Mongo is unavailable. After `peers-services` is pushed it also waits for the
@@ -416,6 +416,12 @@ it("a row written on one device reaches the others", async () => {
   and the Reader's package reads it once the file's row syncs, downloading the contents
   from the owner. The Reader's save is refused (Writer needed), and the CLI saves and
   reads bytes directly, as a screen does.
+- `mirror.e2e.test.ts` installs [Mirror](../mirror.md) on two headless devices of one user
+  and keeps a folder the same on both: a 6 MB file and nested folders, edits and deletions
+  both ways (a deletion lands in `.peers/trash`), an edit on each side of a partition (one
+  keeps the name, the other becomes a conflict copy), and a restart with changes made while
+  the device was off. Mirror's own decision rules are unit-tested in the package against
+  simulated devices.
 - `scheduler.e2e.test.ts` installs `timers`, creates a timer, and restarts its
   persistent headless host; the timer expires without a widget or scheduler call.
   It covers both a personal context and a group Writer (40), with group membership asserted.
