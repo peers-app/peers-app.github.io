@@ -34,7 +34,8 @@ doesn't list it under a status, and can only change its status, not edit it.
 The page shows your top-level tasks, each group under its own heading when several groups are in
 view. Zoom into a task and it becomes the page: its status, title, group, progress and details at
 the top, then its subtasks. The path above the page goes back up. Click the arrow next to a task's
-**done/total** count to zoom into it, or press ⌘. (Ctrl+. elsewhere) on it; ⌘, zooms back out.
+**done/total** count to zoom into it, or press ⌘] (Ctrl+] elsewhere) on it; ⌘[ or ⌘, zooms back
+out.
 
 Each task's status is the shape of its bullet: a ring with a dot is in the Inbox, a half-filled
 ring is In Progress, a ring is Queued, a dashed ring is Backlog, a moon is snoozed, and a filled
