@@ -106,6 +106,11 @@ The list is grouped into sections:
 - **Recently Completed:** what you've finished since you last cleared it.
 - **Inbox**, **In Progress**, **Snoozed**, **Queued**, **Backlog**, and **Completed.**
 
+Tap a section's header to open or close it. Due Soon, the Inbox and In Progress start open, and the
+rest start closed, except that Queued starts open when In Progress is empty, and Backlog when
+Queued is empty too. A task's subtasks start with every status section open, Completed included,
+when there are 10 or fewer.
+
 A snoozed task waits in **Snoozed** and comes back to In Progress when its time is up. A snoozed
 task is always In Progress: snoozing a Queued or Backlog task moves it to In Progress, and moving a
 snoozed task out of In Progress (or closing it) clears its snooze. A task with
@@ -160,8 +165,9 @@ though completing one moves it to its next date.
 
 Right-click a task on desktop, or touch and hold it on a phone, for its menu. In the outline you
 can also drag a task by its bullet (see [Writing tasks](#writing-tasks)). Every action is one
-tap: move to the top or bottom, move down a status, snooze until tomorrow or another time, set the
-status, or set the due date. On a phone the menu opens as a sheet from the bottom of the screen.
+tap: move to the top or bottom, move down a status, snooze until tomorrow (3 AM, when Tasks' day
+starts) or another time, set the status, or set the due date. Each status shows the icon it has in
+the view you opened the menu from. On a phone the menu opens as a sheet from the bottom of the screen.
 
 ### Where moved tasks land
 
@@ -181,7 +187,7 @@ status, or set the due date. On a phone the menu opens as a sheet from the botto
 Swipe a task:
 
 - **Left:** move it down a status (In Progress to Queued, Queued to Backlog, Inbox to Backlog).
-- **Right:** snooze it until tomorrow morning.
+- **Right:** snooze it until 3 AM tomorrow.
 
 Touch and hold until the task lifts, then:
 
