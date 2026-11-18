@@ -13,9 +13,18 @@ Peers keeps a separate local copy for fetching and sharing with other devices.
 
 1. **Install Git** on each desktop or headless device that runs the package
    ([git-scm.com/downloads](https://git-scm.com/downloads); on Windows, Git for Windows).
-   Peers doesn't install it. Without it, the package says "Git isn't installed on this device
-   (or isn't on PATH)" and the Git screen shows the same warning. After installing Git, quit
-   and reopen Peers so it finds Git.
+   Peers doesn't bundle Git, but on a computer without it the Git screen says "Git isn't
+   detected on this computer" and helps:
+   - **macOS:** **Install Git** opens Apple's installer for the Command Line Tools, which
+     include Git. When it finishes, press **Check again**; there's no need to reopen Peers.
+   - **Windows:** **Download Git** opens the Git for Windows download. Install it with the
+     default options, then quit and reopen Peers: Windows apps only see a new program on
+     `PATH` when they start.
+   - **Linux:** install the `git` package with your package manager (for example
+     `sudo apt install git`), then press **Check again**.
+
+   If **Check again** still doesn't find Git, quit and reopen Peers. Commands and agents get
+   the message "Git isn't installed on this device (or isn't on PATH)" instead.
 2. **Install the Git package** in the group where you want to share, and select a released
    version so the other devices run it too ([Packages](./Packages.md)). It is not installed by
    default yet. It can also run in your personal context, to share between your own devices.
@@ -278,8 +287,10 @@ peers git status "My project" -c <groupId> --json
 It shows current branches, branches whose commits are still being copied (`pending-objects`),
 forks, branches below their approval threshold, name conflicts (`collision`), a copy in
 progress, and the last copy. Agents can call the package's tools directly:
-`listRepositories`, `getBranchState`, `getStatus` (whether Git runs on this device), and
-`replicateTick` (copy missing commits now). Shared branches
+`listRepositories`, `getBranchState`, `getStatus` (whether Git runs on this device, and if
+not, whether it's `missing` or `failed`; answers stand for 30 seconds unless you pass
+`recheck: true`), `openGitInstaller` (macOS only: open Apple's installer for the Command Line
+Tools, which include Git), and `replicateTick` (copy missing commits now). Shared branches
 take precedence over maintainer tips, which take precedence over personal branches.
 `getBranchState` also reports the last transfer's bytes, milliseconds, chunk size, source device (`holder`),
 whether a chunk failed, and whether the transfer completed. `milliseconds` runs from asking
