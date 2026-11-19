@@ -5,7 +5,7 @@ title: Package contracts
 
 # Package contracts
 
-**Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; one of them is the group's **active provider** (for now, whichever loads first; a way to choose it is planned). Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
+**Package contracts** define **stable, versioned interfaces** (tables, tools, observables, and events) that packages can depend on instead of hard-coded table or tool IDs. Multiple packages can **provide** the same contract; one of them is the group's **active provider**: the one installed in the group first, so installing another provider never takes a contract over (a way to choose it is planned). Each device decides from when it first saw each provider; a device that gets both at once, such as a new device, always picks the same one, though not necessarily the one older devices use. Consumers declare what they **consume**; the runtime resolves those declarations to the active implementation.
 
 This page is about API contracts. A package's UI that other packages' screens embed has a
 contract of its own, kept apart from its API: see [UI contracts](./ui-contracts).

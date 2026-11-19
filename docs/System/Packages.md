@@ -14,11 +14,13 @@ promotion updates the reported tag and isolated contract maturity without restar
 worker. Promoting to stable freezes those contract shapes, so later dev builds must use a
 new contract version to change them.
 
-At startup, Peers loads packages for your personal context and current group before opening
-the app. Packages in other groups load in the background, and each group starts syncing once
-its packages are ready. Calls into a group that is still loading wait until it is ready.
-Package workers start on first use, so the first call after a start may take longer while
-the package's code loads.
+At startup, Peers opens the app without waiting for packages to load, and every group starts
+syncing right away. Your personal context's and current group's packages load in the
+background. A package in any other group loads the first time something in that group uses
+it: opening the group, a call into it, a scheduled task, or a mention search. A call into a
+group that is still loading waits until it's ready, so the first use of a group after a start
+can take a moment longer. Package workers start on first use too, so the first call to a
+package may take longer while its code loads.
 
 You administer packages from the **Packages** screen, from `peers packages`, or from any
 local client of the **System Packages** contract. All three use the same contract, so they
