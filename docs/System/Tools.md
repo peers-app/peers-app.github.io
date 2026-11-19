@@ -252,12 +252,17 @@ An exact ID identifies that row, including when unavailable for metadata queries
 lookup fail on multiple distinct targets; equal aliases form one target. With
 `runnableOnly`, unavailable entries are excluded for IDs as well as name/text selection.
 
-The contract is local-only and rejects package callers for all three tools.
-Invocation also rejects device callers, missing identity, a mismatched data
-context, unresolved/quarantined identities, and targets on the catalog itself.
+The contract is local-only. A package may call it only with the person's
+[delegate grant](./Delegates.md) for that group, in work the person started on this device: its
+calls then run as the person, capped at the grant's level, and reach only the tools installed
+packages provide. Otherwise all three tools reject package callers. Invocation also rejects
+device callers, missing identity, a mismatched data context, unresolved/quarantined identities,
+and targets on the catalog itself.
 Only the four documented invocation keys are accepted; any other key, such as a payload
-`authority`, is rejected. The wrapper admits at None and preserves authority; it supplies
-neither a system-package caller nor its own frame to the selected target.
+`authority`, is rejected. The wrapper admits at None. For your own call it preserves authority
+and supplies neither a system-package caller nor its own frame to the selected target. A
+package's call under a delegate grant reaches the target as your call instead: no package
+caller, and your frame capped at the grant's level.
 
 Invocation accepts a plain argument object (omitted means `{}`), checks it against
 the requested version's public schema (required fields, types, and top-level
@@ -368,9 +373,9 @@ Both checks apply on the executing device: a remote group member must clear
 
 ## Step-up approval
 
-Step-up approval isn't available yet. It went with workflows, its only callers, and comes
-back with delegates. Until then a call that would need it, a delegated ceiling below the
-tool's level, is denied with a message that says approval isn't available.
+Step-up approval isn't available yet. Until it is, a call that would need it is denied with a
+message that says so. That's a call whose delegated ceiling is below the tool's level, such as a
+package acting for you under a [delegate grant](./Delegates.md) below what the tool needs.
 
 ## Shipped classifications
 

@@ -662,6 +662,30 @@ event still completes the command. `watch` lists the grant first, then prints
 `changed` events until Ctrl+C. `--json` prints JSON for any of these verbs.
 `--mode` is `read` or `readwrite` (the default).
 
+### `peers delegates`: Delegate grants {#peers-delegates}
+
+Let a package act for you in a group, through [System Delegates](./Delegates.md). A grant
+covers one group on one device, up to a level no higher than your own role there.
+
+```bash
+# Packages that act for you in Personal, on this device
+peers delegates
+
+# Read and write in a group; a package by name or id
+peers delegates grant Operator --level writer -c <groupId>
+
+# Admin for a while (30m, 2h, or today, meaning until midnight), then back to the grant's own level
+peers delegates grant Operator --level admin --for 1h
+
+peers delegates revoke Operator
+
+# Another of your devices (it must trust you as Self)
+peers delegates --device <deviceId>
+```
+
+`--level` is `reader`, `writer` or `admin`. A raise with `--for` goes over the grant's own
+level, which is writer for a new grant. `--json` prints JSON for any of these verbs.
+
 ### `peers packages`: Packages
 
 These commands list, inspect, import, reload, activate, and remove packages through the

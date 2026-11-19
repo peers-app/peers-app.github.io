@@ -944,6 +944,9 @@ export default definePackage((pkg) => {
   Peers itself provides, and uses System Scheduler only when it's there.
 - `pkg.network`, `pkg.appNavs`, and `pkg.executionMode` set the manifest fields of the same
   names.
+- `pkg.requestsDelegate({ level, why })` asks the person to let the package act for them
+  through the Tool Catalog, up to `level` ([System Delegates](../System/Delegates.md)). It
+  grants nothing by itself.
 - `pkg.onStart(fn)` runs background work when the worker starts ([below](#background-work)).
 
 ## Declaring a contract other packages implement
