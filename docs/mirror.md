@@ -128,6 +128,27 @@ sync again (if they changed on two devices meanwhile, one becomes a conflict cop
 patterns takes the Writer role in the folder's group, and each device needs Mirror 0.2.0 or later
 to follow them.
 
+## Moving or renaming the folder
+
+Move and rename files and folders inside it as you like: the other devices do the same.
+
+If you move, rename or delete the folder itself, or it's on a drive you unplug, Mirror can't find
+it on that device. The folder shows **Can't find the folder**, there and on your other devices,
+and nothing changes on them: a missing folder never counts as deleted files.
+
+- Put it back (rename it back, or plug the drive in again) and Mirror carries on, sending any
+  changes you made to it meanwhile.
+- Moved it for good? Choose **Find it** and pick where it is now. Mirror carries on from there;
+  nothing is copied again.
+- If you pick a different folder, or make a new one where it was, Mirror treats the files in it as
+  new: it fills in what's missing from your other devices, keeps files that differ as conflict
+  copies, and deletes nothing.
+- Don't want it on this device any more? Choose **Remove from this device**.
+
+The same goes for a folder whose files all disappear while Peers isn't running: Mirror brings them
+back from your other devices instead of deleting them everywhere. To delete everything in a folder,
+delete the files while Peers is running.
+
 ## Keep one device always on
 
 Two devices copy files only while both are online. If your laptops are rarely awake at the same
@@ -137,8 +158,9 @@ time, keep the folder on a device that stays on: a desktop, or a small computer 
 ## Removing a folder
 
 - **Remove from this device** stops keeping it here. The files stay where they are, and the other
-  devices keep theirs. Put it back in the same folder later and Mirror carries on where it left
-  off; in a different folder, files that differ become conflict copies.
+  devices keep theirs. Put it back in the same folder later, even if you've moved or renamed it
+  since, and Mirror carries on where it left off; in a different folder, files that differ become
+  conflict copies.
 - **Stop syncing for everyone** stops it on every device. The files stay on each device; they're
   just no longer kept the same.
 
@@ -169,7 +191,7 @@ peers tools run mirror-list-files '{"folderId": "<folderId>", "conflicts": true}
 | --- | --- |
 | `mirror-list-folders` | The group's folders, each device's state, and where this device keeps each one. |
 | `mirror-create-folder` | Start mirroring a granted folder in the group, kept on this device. |
-| `mirror-attach` | Keep one of the group's folders on this device, in a granted folder. |
+| `mirror-attach` | Keep one of the group's folders on this device, in a granted folder; or, for a folder this device can't find (`here.missing` in `mirror-list-folders`), keep it where it is now. |
 | `mirror-list-files` | A folder's files, newest change first; `conflicts: true` for conflict copies only. |
 | `mirror-pause` | Pause or resume a folder on this device. |
 | `mirror-sync-now` | Look a folder over again now. |
