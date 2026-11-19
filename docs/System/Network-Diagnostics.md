@@ -408,6 +408,15 @@ The phone app connects straight to a desktop on the same Wi-Fi over WebTransport
   ended: …`, with what was still waiting to be sent. `[WebTransport] A write has been stuck for
   5 s; closing the session` means a write did not complete in time. The phone closes that
   connection and reconnects on its own, over WebTransport or WebRTC.
+- **`[WebTransport] The desktop has read no more of our frames for … s, with … waiting; closing
+  the session`** on the phone means Chrome stopped sending the app's data on that connection,
+  while the connection kept working the other way. It has been seen with Chrome on Android,
+  usually just after the app starts, on one connection at a time. The phone closes the
+  connection about 5 s after the data stopped and reconnects on its own; there's nothing to do.
+  A busy desktop doesn't set it off. The check needs a desktop on 0.33.16 or later. With an
+  older desktop, the same stall ends in `A write has been stuck for 5 s` once Chrome's buffer
+  fills, half a minute or more later. In the ended line, `desktop read … frames, last ack … ago`
+  is how far the desktop got.
 
 If the permission is allowed but the phone still connects through Services:
 
