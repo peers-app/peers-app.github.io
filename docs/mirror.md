@@ -18,8 +18,9 @@ phone shows your folders and their devices but doesn't keep the files yet.
 
 ## Add a folder
 
-1. Open **Mirror** and press **Choose a folder** (or **Add folder** once you have one). With
-   Mirror in more than one group, pick the group first: everyone in it can see the folder.
+1. Open **Mirror** and press **Choose a folder** (or **Add folder** once you have one). If Mirror
+   is in one of your groups too, choose who sees the folder first: **Only your devices**, or a
+   group, whose members can then see the folder and its files and keep a copy.
 2. Pick the folder in the window that opens. Mirror reads it and lists its files.
 3. On each other device, open Mirror, select the folder under **Not on this device**, and press
    **Choose a folder on this device**. Pick an empty folder, or one that already holds a copy.
@@ -32,7 +33,11 @@ device is overwritten.
 
 The list shows each folder with how it's doing on this device: **Up to date**, **Syncing 12
 files**, **Looking it over…** (reading the folder, after you add it or Peers starts), **Paused**,
-or, with a yellow warning sign, **1 conflict to sort out**.
+**Not on this device**, or, with a yellow warning sign, **1 conflict to sort out**.
+
+With Mirror in a group too, the list is in sections by who sees each folder: **Only your
+devices**, then **Shared with Pow-wow · 7 people** for each group. It's the same whichever group
+is selected in Peers, and a folder is only ever seen by the people its section names.
 
 Open a folder to see:
 
