@@ -49,14 +49,19 @@ Every relative path is resolved inside the grant root:
 - The parent directory is `realpath`'d and must stay under the grant root, so a
   symlink cannot escape the folder. A symlink whose real path lands inside
   `.peers` is rejected too.
-- The directory `.peers` is reserved. `list`, `index`, and `changed` skip it.
-  Trash is stored at `.peers/trash/<YYYY-MM-DD>/`, keeping the original
-  relative path. `.peers` and `.peers/trash` must be real directories; a
-  symlink there makes `trash` fail and makes `purgeTrash` remove nothing.
+- The directory `.peers` is reserved, at any depth and in any capitals
+  (`.Peers` too, on every platform, since Mac and Windows drives treat it as the
+  same folder). `list`, `index`, and `changed` skip it, and the other tools
+  refuse a path through it. Trash is stored at `.peers/trash/<YYYY-MM-DD>/`, keeping the original
+  relative path; when that path is already taken that day, at
+  `.peers/trash/<YYYY-MM-DD>-<n>/`. Earlier versions that `assemble` kept are at
+  `.peers/versions/<relPath>/<epoch ms><extension>`. `.peers` and the
+  directories in it must be real directories; a symlink there makes `trash`
+  and `restore` fail and makes `purgeTrash` remove nothing.
   `assemble` writes `.peers/tmp/<manifest-key>.part` and a sibling state file.
 
-`move`, `trash`, `purgeTrash`, `index`, and `assemble` require `mode: "readwrite"`.
-`list`, `stat`, and `readRange` accept either mode.
+`move`, `trash`, `restore`, `purgeTrash`, `index`, and `assemble` require `mode: "readwrite"`.
+`list`, `stat`, `readRange`, `getFileBlocks`, and `listTrash` accept either mode.
 
 ## Tools and events
 
@@ -71,14 +76,16 @@ check is the authorization.
 | `list({ grantId, relPath?, recursive? })` | Directory entries (`kind`, `size`, `mtimeMs`, `inode`). Returns `{ entries }`. Skips `.peers`. |
 | `stat({ grantId, relPath })` | One entry. |
 | `readRange({ grantId, relPath, offset, length })` | Up to 256 KB, returned as base64. |
-| `index({ grantId, relPath? })` | Start a host index job. Returns `{ jobId }`. |
+| `index({ grantId, relPath?, relPaths? })` | Start a host index job for one file or directory (the whole grant when empty), or for up to 10,000 in `relPaths`. Returns `{ jobId }`. |
 | `getFileBlocks({ grantId, relPath })` | Indexed blocks for one file: `{ indexed, size?, mtimeMs?, blocks: [{ hash, size }] }`. Read mode is enough. `indexed` is false when the path has no row. |
-| `assemble({ grantId, relPath, blocks, mtimeMs?, mode?, sources? })` | Start a host job that writes those blocks to `relPath`. Returns `{ jobId }`. |
+| `assemble({ grantId, relPath, blocks, mtimeMs?, mode?, sources?, expect?, keepVersions? })` | Start a host job that writes those blocks to `relPath`. Returns `{ jobId }`. See [Replacing a file](#replacing-a-file). |
 | `getJob({ jobId })` | Job status, including after it finishes. `kind` is `index` or `assemble`. |
 | `cancelJob({ jobId })` | Cancel a running index or assemble. An assemble keeps its partial file. |
 | `move({ grantId, from, to })` | Rename inside the grant and retarget the local index. |
-| `trash({ grantId, relPath })` | Move into `.peers/trash/<date>/` and drop the index row. |
-| `purgeTrash({ grantId, olderThanDays })` | Delete dated trash directories older than that many UTC days, and `.peers/tmp` files (including resumable assemble partials) whose mtime is older than the same cutoff. `0` drops partials last written before today UTC. |
+| `trash({ grantId, relPath })` | Move into `.peers/trash/<date>/` and drop the index row. Returns `{ trashed, trashPath }`. |
+| `listTrash({ grantId, limit? })` | Deleted files and kept earlier versions, newest first: `{ entries: [{ trashPath, relPath, kind, at, size, mtimeMs }], truncated }`. `kind` is `deleted` or `version`; `relPath` is the path it had; `at` is about when it was deleted or replaced (epoch ms). At most 2,000 entries. |
+| `restore({ grantId, trashPath, to?, expect? })` | Move a trash entry or an earlier version back to `relPath`, or to `to`. The destination must not exist. `expect: { size, mtimeMs }` restores it only if it still has them (else the error `changed`). Returns `{ relPath }`. The restored file isn't indexed until you `index` it: until then `getFileBlocks` returns `indexed: false`. |
+| `purgeTrash({ grantId, olderThanDays })` | Delete dated trash directories and kept versions older than that many UTC days, and `.peers/tmp` files (including resumable assemble partials) whose mtime is older than the same cutoff. `0` drops partials last written before today UTC. |
 
 Events:
 
@@ -112,6 +119,30 @@ Two device-local tables back the index:
   and the block list.
 - `LocalFolderBlocks`, keyed by block hash, stores `grantId`, `relPath`,
   offset, length, and mtime.
+
+## Replacing a file
+
+`assemble` replaces whatever is at `relPath` when it finishes. Two inputs make
+that safe for a sync app:
+
+- `expect` is what the caller last saw there: `{ size, mtimeMs, inode? }` for a
+  file, or `{ absent: true }` for nothing. The job checks it when it starts and
+  again just before the finished file is renamed into place. If the file
+  changed (someone saved it while the copy ran), the job fails with
+  `error: "changed"` and leaves the file alone. The partial file stays, so a
+  later `assemble` of the same blocks, for example after you moved the edited
+  file aside, finishes without copying them again.
+- `keepVersions: n` moves the file being replaced to
+  `.peers/versions/<relPath>/` first and keeps the newest `n` versions of that
+  path (at most 100). `listTrash` lists them as `kind: "version"`, `restore`
+  puts one back, and `purgeTrash` deletes old ones. Keeping a version is best
+  effort: if it can't be kept, the file is still replaced and the host logs a
+  warning.
+
+A host older than these inputs ignores them, and `listTrash` and `restore` fail
+there with an error saying the contract does not provide that tool (`Contract
+<id> does not provide tool 'listTrash'`). Treat that as "not available on this
+device".
 
 ## Block exchange
 

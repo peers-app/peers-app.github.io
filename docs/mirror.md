@@ -10,7 +10,8 @@ small always-on server, and a file you add, change or delete on one shows up the
 others. Share the folder in a group and its members' devices can keep it too.
 
 Files go straight from device to device, never through a server, and only the parts of a file
-that changed are copied. Each device keeps the folder wherever you put it.
+that changed are copied. A file you move or rename is moved on the other devices too, not copied
+again. Each device keeps the folder wherever you put it.
 
 Mirror is new. It runs on the desktop app and on [headless](./System/Headless.md) hosts. The
 phone shows your folders and their devices but doesn't keep the files yet.
@@ -42,9 +43,11 @@ Open a folder to see:
   Macbook`, as in your device list, so renaming a device renames it here), and its state as it
   last reported it.
 - **Recent changes:** the last files changed, who changed them and when, deletions included.
+- **Not synced:** the patterns for files this folder leaves out, when it has any (below).
 
-The **⋯** menu pauses the folder on this device, asks Mirror to look it over again, removes it
-from this device, or stops syncing it for everyone.
+The **⋯** menu pauses the folder on this device, asks Mirror to look it over again, opens this
+device's **Trash**, chooses what not to sync, removes the folder from this device, or stops
+syncing it for everyone.
 
 ## When two devices change the same file
 
@@ -69,14 +72,56 @@ at once make one notification. Deleting or renaming the last copy withdraws it.
 An edit always beats a deletion: if one device deletes a file while another changes it, the
 changed file comes back everywhere.
 
-## Deleted files go to the trash
+A change you haven't synced is never overwritten, even one you save while Mirror is copying
+another device's version of that file in: one of the two becomes a conflict copy.
 
-When a file is deleted on another device, Mirror moves this device's copy into the folder's trash,
-`.peers/trash/<date>/`, inside the folder, keeping its path. Files stay there for 30 days. To get
-one back, move it out of the trash into the folder; Mirror syncs it again as a new file.
+## Trash and earlier versions
 
-Mirror doesn't keep old versions of a changed file yet. A change you haven't synced is never
-overwritten: if another device changed the file too, yours becomes a conflict copy.
+Mirror doesn't delete or overwrite your files outright. On each device:
+
+- **A file deleted on another device** goes into the folder's trash on this one.
+- **A file another device changed:** the version it replaces here is kept, the last 5 of each
+  file.
+
+Both stay 30 days. To see them, open the folder's **⋯** menu and choose **Trash on this device**.
+Each entry says whether it was deleted or is an earlier version, when, and its size. **Restore**
+puts it back where it was, or beside it when that name is taken (`report (restored 2026-11-18
+09.20).docx`), and it syncs to the other devices again.
+
+Each device's trash holds what Mirror removed or replaced there. A file you delete yourself isn't
+in it: it's wherever you deleted it to, such as your computer's trash. The trash and earlier
+versions live inside the folder, in `.peers/`, which Mirror never syncs.
+
+Earlier versions, the Trash page, and keeping an edit saved while a copy comes in need a Peers
+newer than 0.33.15 on that device. On an older one, the Trash page says so, deleted files still go
+to `.peers/trash/<date>/` inside the folder (move one out to restore it), and a moved file whose
+old copy is already in the trash is copied again.
+
+## Choose what not to sync
+
+Some files don't belong on every device: `node_modules`, build output, logs. Open the folder's
+**⋯** menu, choose **Choose what not to sync**, and write one pattern per line, as in a
+`.gitignore`:
+
+```
+node_modules/
+*.log
+build/
+/drafts
+```
+
+- A name (`node_modules`, `*.log`) matches at any depth.
+- A `/` at the end matches folders only; a `/` at the start or in the middle ties the pattern to
+  the folder's top (`/drafts` is only the top-level `drafts`).
+- `*` matches within a name, `**` any number of folders (`docs/**/*.pdf`), and `?` one character.
+- Capitals don't matter. Lines starting with `#` are comments. `!` to bring a file back isn't
+  supported.
+
+The patterns belong to the folder, so they apply on every device that keeps it. Matching files stay
+where they are on each device but stop syncing; nothing is deleted. Remove a pattern and those files
+sync again (if they changed on two devices meanwhile, one becomes a conflict copy). Editing the
+patterns takes the Writer role in the folder's group, and each device needs Mirror 0.2.0 or later
+to follow them.
 
 ## Keep one device always on
 
@@ -125,6 +170,9 @@ peers tools run mirror-list-files '{"folderId": "<folderId>", "conflicts": true}
 | `mirror-sync-now` | Look a folder over again now. |
 | `mirror-detach` | Stop keeping a folder on this device. |
 | `mirror-remove-folder` | Stop syncing a folder for everyone. |
+| `mirror-set-ignore` | Set a folder's not-synced patterns (`patterns`, one per entry). |
+| `mirror-list-trash` | This device's deleted files and earlier versions for a folder, newest first. |
+| `mirror-restore` | Put one back (pass the entry from `mirror-list-trash`). |
 
 Mirror keeps folders with [System Local Folders](./System/Local-Folders.md), which grants it the
 folder, indexes files into blocks, and copies blocks between devices.
