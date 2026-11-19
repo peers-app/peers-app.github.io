@@ -429,8 +429,10 @@ it("a row written on one device reaches the others", async () => {
 
 `startFleet({ maxConnections })` starts every device with
 `--max-connections <n>` and makes `MeshGraph.capViolations()` judge against the
-same cap, so at-capacity shedding can be reproduced with a handful of processes
-(`cap.e2e.test.ts`: seven devices, cap four).
+same cap, so at-capacity shedding can be reproduced with a handful of processes.
+`cap.e2e.test.ts` (cap four) has two scenarios. In the first, seven devices start as a star on
+one hub, which must shed some without stranding them. In the second, five devices fill every
+slot, then devices that know only the hub arrive, and the hub has to make room for them.
 
 Timeouts scale with fleet size: `scaledTimeoutMs(n)` is `base + perDevice × n`.
 
