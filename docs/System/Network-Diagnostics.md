@@ -385,6 +385,16 @@ The phone app connects straight to a desktop on the same Wi-Fi over WebTransport
   `WebTransport session closed (… reason=… framesIn=… framesOut=…)` bracket each session. A
   `[WebTransport] Server not running: …` line means the UDP port was taken or the key couldn't
   be read, and the desktop publishes no direct address.
+- **When a phone's connection stalls,** the desktop logs `WebTransport session quiet (…
+  waitingOn=peer …)`: it sent the phone something 5 s ago and has heard nothing back.
+  `waitingOn=host` means the desktop's own Peers process isn't taking the phone's data. Not every
+  message gets a reply, so `WebTransport session resumed` afterwards is only a pause. A real
+  stall ends in `WebTransport session closed` instead, and that line carries the same fields:
+  - `sinceInMs` is how long since anything arrived from the phone. `partialBytes` of a
+    `frameBytes`-sized message means the phone's data stopped partway through a message.
+  - `quicPacketsInSinceIn` and `quicBytesInSinceIn` are what reached the desktop from the phone
+    in the meantime. A few dozen bytes a packet are only acknowledgements, so the phone stopped
+    sending its data. Full packets mean the data reached the desktop and is held up there.
 - **In `getMeshStats`,** the `webtransport` path counts these dials and connections; a dial the
   published address won also counts in `dialHints.addressWins`. Devices older than this path
   leave it out. A dial that ran out of time fails with `socket-timeout`, and its detail says
