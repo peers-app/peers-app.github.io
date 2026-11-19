@@ -91,7 +91,7 @@ Events:
 
 | Event | Payload |
 | --- | --- |
-| `changed` | `{ grantId, changes: [{ relPath, kind }] }`. v1 hosts emit `created`, `modified`, and `deleted`. `renamed` is reserved. |
+| `changed` | `{ grantId, changes: [{ relPath, kind }] }`. v1 hosts emit `created`, `modified`, and `deleted`. `renamed` is reserved. An empty `relPath` (`modified`) means anything in the folder may have changed: look it all over. |
 | `jobProgress` | `{ jobId, done, total }` |
 | `jobFinished` | `{ jobId, status, error? }` |
 
@@ -99,6 +99,15 @@ Events:
 (`@parcel/watcher`) starts when the first `changed` subscriber attaches and
 stops when a grant is revoked. There is no replay: subscribe, then change the
 file. A subscriber that attaches after a write does not see that write.
+
+When the granted folder itself is moved away, renamed, deleted or unplugged,
+every call on the grant fails with `Granted folder is not available` until it's
+back; don't take its files for deleted. The watch stops meanwhile. On Peers
+newer than 0.33.16, within a few seconds of the folder coming back, or of a
+different folder appearing at its path, it's watched again and `changed` reports one change with an empty
+`relPath`: changes made while it was away weren't seen one by one, so look the
+whole folder over. `stat` with an empty `relPath` gives the folder's own
+`inode`, to tell a folder that's back from a different one at the same path.
 
 ## Jobs and the local index
 
