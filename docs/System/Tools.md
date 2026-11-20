@@ -183,7 +183,23 @@ System Host Tools (`00mvbrni9wjucq4q1jbfe9ep3`) and System Desktop Tools
 devices. Headless hosts expose desktop catalog rows but have no desktop resolver,
 so those rows stay unavailable. `query-database` remains Writer-level and distinct
 from Device Operations `queryDatabase`. `create-group` creates for the provider's
-owning user and still installs peers-core (Tasks) into the new group. `remove-group` and `restore-group` take one of
+owning user, gives the group a color (`color`, or the palette color the user uses least) and an
+icon (`iconClassName`: `bi:<name>`, one emoji, or a Bootstrap class), and still installs
+peers-core (Tasks) into the new group. It returns the new group's `groupId` and `name`.
+If it also returns a `warning`, the group exists. Use the returned id and show the warning
+to the person who created it. The look may have failed to save, or it may already be visible
+on current devices while older devices still show the previous icon. For example,
+`create-group` can return this result.
+
+```json
+{
+  "groupId": "<groupId>",
+  "name": "Book club",
+  "warning": "Saved, but older versions of Peers won't show the new icon: storage unavailable"
+}
+```
+
+`remove-group` and `restore-group` take one of
 that user's groups off, or back onto, their list on all of their devices, and refuse calls
 from packages. Tasks and Groceries reject a
 `groupId` outside the authorized context; `write-task` no longer searches other

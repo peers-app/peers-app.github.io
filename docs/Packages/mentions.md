@@ -64,7 +64,7 @@ export const Notes = defineTable({
 | `kind` | The kind in your links. 2–24 lowercase letters, digits or dashes, starting with a letter. It's written into other records' text, so treat it like an API name. |
 | `trigger` | Optional. A character that opens the picker on your records alone, besides `<`: `#`. See [Choosing a trigger](#choosing-a-trigger). |
 | `label` | What one record is called, such as `Note`. The picker and chips show it. |
-| `iconClassName` | A [Bootstrap Icons](https://icons.getbootstrap.com/) class for chips and picker rows. |
+| `iconClassName` | A [Bootstrap Icons](https://icons.getbootstrap.com/) class for chips and picker rows, such as `bi bi-journal-text`. Peers draws its first `bi-` class. Keep the class form for now: current Peers also accepts an icon reference (`bi:journal-text`, or one emoji), but older versions refuse a package whose mention source uses one. |
 | `color` | Optional. A color its chips are marked with, from the app palette: `blue`, `teal`, `red`, `amber`, `purple`, `orange`, `green`, `pink`, `violet` or `slate`. A label package might set one per label table. Older versions of Peers ignore it. |
 | `titleField` | The string field the picker searches (by word) and that chips show. |
 | `statusField` | Optional. A string field shown beside the title, such as a task's status. |

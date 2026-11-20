@@ -143,6 +143,10 @@ Avoid hard-coded white or black backgrounds, text, and borders. Your screen will
 then follow the user's light or dark mode automatically, with content surfaces
 distinct from the page in light mode. Keep Bootstrap button classes for actions.
 
+Show a group with its own color and icon (`useGroups`, `GroupIcon`), and draw icons that come
+from data with `Icon`: see [Groups, colors and icons](./declaring-a-package.md#groups-colors-and-icons).
+peers-ui also exports the pickers Peers uses, `ColorPicker` and `IconPicker`.
+
 ## Global overlays
 
 Screens render inside the active tab and unmount when you switch tabs. When a package needs UI that stays visible **across all tabs and apps** — a floating widget, a persistent indicator, a heads-up panel — it can register a **global overlay** instead.

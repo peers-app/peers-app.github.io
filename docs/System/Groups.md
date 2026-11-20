@@ -103,6 +103,75 @@ of yours with `--device <id>`), and `peers groups purge --all-removed` every rem
 orphan's. Both only list what they'd delete until you add `--yes`. This is permanent: a group
 restored after a purge can only sync its data again from another member's device.
 
+## Colors and icons
+
+Every group has a color and an icon. Peers shows them in **Identity → Groups**, on the group's
+page, and in the group switcher. Apps such as Tasks, Desk and Notes show them once they're
+updated to; until then an app keeps the colors and icons it shows today.
+
+- **For everyone.** A group's admins set its color and icon for all its members. Open the group
+  in **Identity → Groups**, then **Info → Change color and icon**.
+- **Just for me.** Anyone can choose their own color and icon for a group, in the same dialog.
+  Only you see them, on all your devices. Anything you leave unset uses the group's.
+- **Personal** has only your own. It's the first row of **Identity → Groups**; click it to change
+  its color and icon.
+
+A color is one of the ten Peers palette colors or any color you pick. An icon is any
+[Bootstrap icon](https://icons.getbootstrap.com/) or one emoji: search by name or keyword, or
+paste an emoji into the search box. A new group starts with the palette color you use least,
+and you can pick another as you create it. Creating it from the group switcher also lets you
+pick its icon; otherwise it starts with the people icon. You can change both later.
+
+What a group shows, field by field: your own choice, then the group's, then a palette color
+picked from the group's id (the same on every device) and the people icon. Personal is blue
+with the person icon until you change it.
+
+**Older versions of Peers** show a Bootstrap icon chosen for everyone, but not emoji, colors, or
+anyone's own choices. Update every device to see them.
+
+**Who can set the group's look.** Peers' screens and tools let only admins change the look for
+everyone. That isn't enforced when it syncs, so a member who can write to the group could still
+change it outside them; an admin can remove a member who misuses it. Every value is checked
+before it's shown, so a bad one only ever shows as the default.
+
+**From the CLI or an agent**, use the [System Groups](#system-groups) tools:
+
+```bash
+peers tools run listGroups '{}'
+peers tools run setGroupAppearance '{"groupId":"<groupId>","layer":"mine","look":{"color":"teal","icon":"🏠"}}'
+peers tools run setGroupAppearance '{"groupId":"<groupId>","layer":"everyone","look":{"color":"#3a7bd5","icon":"bi:house-fill"}}'
+peers tools run create-group '{"name":"Book club","color":"amber","iconClassName":"bi:book-fill"}'
+```
+
+`look` replaces the whole layer: a field you leave out is cleared, and `"look": null` resets it.
+Colors are `blue`, `teal`, `red`, `amber`, `purple`, `orange`, `green`, `pink`, `violet`,
+`slate`, or `#rrggbb`. Icons are `bi:<Bootstrap icon name>` or one emoji; a Bootstrap class
+such as `bi-book-fill` is read as `bi:book-fill`. Any other color or icon is refused with the
+reason, except an icon named for another icon set, such as `lucide:home`: it's saved, but this
+Peers doesn't draw it, so the group goes on showing the icon it would have without it.
+
+### System Groups
+
+System Groups (`00mwp7oetrqei28l7f4zz840n`, v1, dev) lists the user's groups with their names
+and looks, and saves a look. It answers only on the device itself.
+
+| Member | What it does |
+|---|---|
+| `listGroups` | Personal first, then the groups by name: `groupId`, `name`, `personal`, and the `icon`, `color` and `colorHex` each is shown with. |
+| `groups` (observable) | The same list, kept current as groups are joined, left or renamed and as looks change. |
+| `getGroupAppearance({ groupId })` | Both layers, for an editor: `everyone` (the group's), `mine` (yours), `shown`, and `canEditEveryone`. |
+| `setGroupAppearance({ groupId, layer, look })` | Replaces one layer: `mine` for your own, `everyone` for the group's (admins only; not for Personal). |
+
+- A caller in Personal sees every group you're in; a caller in a group sees only that group.
+- `listGroups`, `groups` and `shown` give only values this Peers can draw: `bi:<name>` or one
+  emoji, a palette name or lowercase `#rrggbb`, plus `colorHex`. `everyone` and `mine` are
+  checked the same way, but keep an icon from another set, so an editor sends it back unchanged.
+- Packages may read, but only for you: a call acting for someone else, or arriving from another
+  device, is refused. Saving is for you (the UI, the CLI, an agent). A package can't save a look,
+  even one acting for you under an [Acts for you grant](./Delegates.md); it opens the
+  color-and-icon dialog instead. For packages, see
+  [Groups, colors and icons](../Packages/declaring-a-package.md#groups-colors-and-icons).
+
 ## Who can change what
 
 Group roles and settings require a signature from someone allowed to change them:

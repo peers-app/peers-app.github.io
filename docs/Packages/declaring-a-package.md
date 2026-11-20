@@ -111,6 +111,11 @@ know, so the package doesn't load there. Add `color` once every device that runs
 a newer Peers. Newer versions leave out app-nav keys they don't know, so a package built with a
 later SDK still loads.
 
+Keep `iconClassName` a Bootstrap class, such as `bi-controller`. Peers draws only its first `bi-`
+class; other classes in it are ignored. Current Peers also reads an icon reference there
+(`bi:controller`, or one emoji), but older versions draw nothing for one, and a package can't yet
+say which Peers it needs.
+
 ## Layout
 
 News, for example:
@@ -673,8 +678,9 @@ refuse package callers. `SystemGroupMembers.getMembers()` returns current member
 calling package's own context, with no group-id argument. `SystemFiles` saves and reads files
 in that context ([System Files](../System/Files.md)). `SystemNotifications` notifies the
 signed-in user or members of the package's group ([Notifications](../System/Notifications.md)).
-All seven references are exported from `@peers-app/peers-sdk/define` and declared with
-`pkg.consumes(...)`.
+`SystemGroups` lists the package's groups with their names, colors and icons
+([below](#groups-colors-and-icons)). All eight references are exported from
+`@peers-app/peers-sdk/define` and declared with `pkg.consumes(...)`.
 
 ```ts
 import { SystemIdentity, SystemGroupMembers } from "@peers-app/peers-sdk/define";
@@ -694,6 +700,73 @@ Readers; removed members and roles below Reader are omitted. Names are optional,
 user profiles. In the personal context, the list contains only that user. Use `accessLevel`
 for permission comparisons and `role` for its display label. These are local-only contracts;
 packages call them within a tool invocation, like System Scheduler.
+
+### Groups, colors and icons
+
+Each group has a color and an icon, which its admins set and each person can change for
+themselves ([Groups → Colors and icons](../System/Groups.md#colors-and-icons)). Show a group with
+them, so it looks the same in every app, instead of a color or icon of your own.
+
+In a screen, pass your existing group row as `fallback`. It stays visible while the list loads
+and on a host that predates group looks.
+
+```tsx
+import * as PeersUI from "@peers-app/peers-ui";
+import type { ReactElement } from "react";
+
+type GroupRowProps = { groupId: string; fallback: ReactElement };
+
+export function GroupRow(props: GroupRowProps) {
+  return typeof PeersUI.useGroup === "function" ? <GroupWithLook {...props} /> : props.fallback;
+}
+
+function GroupWithLook({ groupId, fallback }: GroupRowProps) {
+  const group = PeersUI.useGroup(groupId);
+  if (!group) return fallback;
+  return (
+    <button type="button" onClick={() => PeersUI.openGroupAppearanceDialog(groupId)}>
+      <PeersUI.GroupIcon icon={group.icon} color={group.color} variant="tile" /> {group.name}
+    </button>
+  );
+}
+```
+
+- `useGroups()` lists every group the person is in, with Personal first. `useGroup(groupId)`
+  gives one. Outside React, `groupsObservable()` is the same list as an observable.
+- `GroupIcon` draws a group's icon in its color, or with `variant="tile"` on a square of the
+  color. An emoji keeps its own colors, so beside a name use the tile or add a `ColorDot`, or the
+  group's color won't show.
+- `ColorDot` draws a small dot in a color, ringed so it shows on any page. `useResolvedColor(color)`
+  gives a color's `fill`, `onFill` (for a glyph on it) and `accent` (for a dot or line on the
+  page) in the current theme. Don't fill behind small text with a group color: put a dot or a
+  stripe beside text in the normal text color.
+- `Icon` draws any icon reference (`bi:house-fill`, one emoji) or Bootstrap class.
+- Let people change a look with `openGroupAppearanceDialog`. Packages can read looks but not save
+  them.
+
+When your package sends an icon to another app through a package contract, keep writing a
+Bootstrap class so older versions of the receiving app can still draw it. For example,
+a Calendar Source can publish this value.
+
+```json
+{ "title": "Tasks", "iconClassName": "bi bi-check2-square" }
+```
+
+In a tool, consume `SystemGroups` (optionally, so the package still runs on an older Peers):
+
+```ts
+import { SystemGroups } from "@peers-app/peers-sdk/define";
+
+pkg.consumes(SystemGroups, { optional: true });
+
+const { groups } = await SystemGroups(ctx).tools.listGroups();
+```
+
+A package in Personal sees every group the person is in; a package in a group sees only that
+group. Every value is checked: `icon` is `bi:<name>` or one emoji, `color` is a palette name or
+`#rrggbb`, and `colorHex` is the color as `#rrggbb`.
+
+If the optional tool is unavailable, use the group's name and look your package already has.
 
 Type your own references with the contract from
 [`defineContract`](#the-declaration), imported with `import type` so none of the provider's code
@@ -1397,7 +1470,8 @@ export function newsIn(groupId: string) {
     that don't know the field.
 - **Mentions.** With `opensAnyGroup: true`, a mention of one of your records in another group
   opens in place too, with its `groupId` ([Mentions](./mentions#opening-a-record)).
-- **The user's groups.** No contract lists them to a screen yet.
+- **The user's groups.** A screen can read their names and looks with `useGroups()`.
+  See [Groups, colors and icons](#groups-colors-and-icons) for the older-host fallback.
 
 ### Opening a link
 

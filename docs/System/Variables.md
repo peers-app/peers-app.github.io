@@ -37,6 +37,15 @@ Earlier releases stored a pinned `groupDevice` / `groupUser` var in the pinned g
 
 Sync resolves that pair without asking: the deterministic id owns the name when either row has one, otherwise the lexicographically smaller id does. The value, scope, and secret flag come from the row with the newer `modifiedAt` (a missing timestamp counts as zero; a tie keeps the identity winner's value). The other id is tombstoned, so every device ends on the same row. The rule only uses the two records every device already has, which is why the devices agree.
 
+### Variables Peers itself uses
+
+Some pvars hold Peers' own state. Read and change them through the contract named, not directly:
+
+| Variable | Scope | What it holds |
+| --- | --- | --- |
+| `groupAppearance` | `group` | A group's color and icon for everyone, `{ color?, icon? }`, set by its admins. See [Groups → Colors and icons](./Groups.md#colors-and-icons) and System Groups. |
+| `groupAppearance_<groupId>` | `groupUser` | Your own color and icon for one group (or Personal), synced across your devices. |
+
 ## Observable shape
 
 A `PersistentVar<T>` is an `Observable<T>` with two extra members:
