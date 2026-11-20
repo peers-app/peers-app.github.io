@@ -280,8 +280,9 @@ coverage of device pairing and the invite mailbox. The first run on a new
 machine downloads the `mongod` binary (see
 [E2E testing](./E2E-Testing.md)).
 
-Typical Azure time is about seven minutes. The wait polls `gh run list` for
-the just-pushed commit (20 minute timeout) and treats any conclusion other
+Typical Azure time is about five to seven minutes, and occasionally over 20,
+when Azure copies the bundle file by file. The wait polls `gh run list` for
+the just-pushed commit (35 minute timeout) and treats any conclusion other
 than `success` as a failed release, with one exception. The deploy installs
 the just-published `@peers-app` packages from npm, and a runner can get a 404
 for a tarball for a few minutes after it's published. When the failed job's
@@ -295,6 +296,12 @@ the same release as the `@peers-app` packages it installs, so a push to
 `peers-device` `main` never changes what Services deploys, and a
 Services-only push between releases builds the last released `peers-device`.
 The Update Download Links workflow builds it the same way.
+
+The deployed bundle leaves out dev dependencies and the files under
+`node_modules` the server never loads (source maps, type declarations,
+TypeScript sources, docs, and the SQLite C sources), about 68 MB in under
+10,000 files. It adds a brotli copy of each PWA and site file, which Services
+sends to browsers that accept brotli. Other browsers get gzip.
 
 ## Server first when the verifier changes
 
