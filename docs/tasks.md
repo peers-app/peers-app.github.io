@@ -149,8 +149,13 @@ another package (a note, say), from any of your groups; `@` finds people only. `
 `<tasks:`) narrows the search to tasks, and the picker shows the start of the highlighted task's
 details. To link a task by its id, copy the id from the task, then type `<` and paste it. The link
 shows the record's current title, struck through once a task is Done or Canceled, and a click
-opens it, switching groups when it's in another one. Elsewhere in Peers, `<` finds tasks the same
-way. See [Mentions](./Packages/mentions).
+opens it. Elsewhere in Peers, `<` finds tasks the same way. See [Mentions](./Packages/mentions).
+
+A link to a task opens it in Tasks without switching groups, from a mention, a notification, or
+another app's **Open in Tasks**, since Tasks can show any of your groups (Tasks 0.33.24 and
+later). When the task's group isn't in view, Tasks adds it to the groups it shows, next to the
+ones already there, and the groups menu changes it back. A record from an app that
+shows one group at a time still switches groups to open it.
 
 ## Choosing groups
 
