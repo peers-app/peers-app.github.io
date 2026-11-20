@@ -225,6 +225,11 @@ as usual: start moving up or down without holding first.
 Tasks' tools work in the group the call is made in (`-c <groupId>` on the CLI; your personal
 space by default).
 
+- **`findTasks`** `{ words }` finds tasks by the words in their title or details, open or
+  closed (Task List v2, Tasks 0.33.25 and later). Every word must appear, in any case, and can be
+  part of a longer word. Tasks whose title has every word come first, then open before closed.
+  Optional: `status`, and `limit` (10 by default, up to 25). Each task's details are cut to 300
+  characters; `describe-task` has them whole. Use it to get a task's id from what it's called.
 - **`describe-task`** `{ taskId }` writes a task up as Markdown: its status, where it sits, its
   details and plan, its subtasks, its newest comments with who wrote them, the time logged (its
   own, and with its subtasks), and what keeps it from closing. Optional: `subtaskDepth` (1 by
@@ -242,6 +247,7 @@ space by default).
 - **`write-task-comment`** adds a comment to a task, or deletes one.
 
 ```bash
+peers tools run findTasks '{"words": "car insurance"}'
 peers tools run describe-task '{"taskId": "<taskId>"}'
 peers tools run write-task '{"operation": "update", "taskId": "<taskId>", "status": "Done", "openSubtasks": "Done"}'
 peers tools run write-task '{"operation": "update", "taskId": "<taskId>", "status": "Done", "logTime": false}'

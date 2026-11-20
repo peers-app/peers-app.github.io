@@ -527,7 +527,8 @@ export class TimersTable extends PackageTable<typeof timerSchema> {
 
 ## Tools
 
-A tool's definition and its handler sit together:
+A tool's definition and its handler sit together. Name it as
+[Naming tools and contracts](./contracts#naming) describes: camelCase, verb first.
 
 ```ts
 // tools/refresh.tool.ts

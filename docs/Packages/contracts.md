@@ -206,6 +206,52 @@ fields to the caller. Keep the schemas compatible with every contract version th
 serves. See [Tools](./declaring-a-package#tools) for authoring and
 [Tools and access](../System/Tools) for permissions.
 
+### Naming tools and contracts {#naming}
+
+Agents, the CLI and Voice Hub find a tool by its name and description, and code calls it as
+`consumer.tools.<name>(...)`. Name tools the way every package does, so they're easy to find and
+type:
+
+- **Tool names are camelCase, verb first:** `listTasks`, `getTask`, `createTask`. Use letters and
+  digits only, with no hyphens or underscores, and keep names to 64 characters, the most a model
+  accepts. A camelCase name is also a JavaScript identifier, and it matches the argument and field
+  names beside it: `consumer.tools.getTask({ taskId })`.
+- **Use the standard verbs** for the common operations. Other verbs are fine for other actions,
+  such as `completeTask`, `sendMessage` or `logTime`.
+
+  | Verb | For | Example |
+  | --- | --- | --- |
+  | `list` | rows that match a status or filter | `listTasks` |
+  | `find` | rows that match words a person would say | `findTasks` |
+  | `get` | one row, by its id | `getTask` |
+  | `create`, `update`, `delete` | changing rows | `createTask`, `updateTask`, `deleteTasks` |
+
+- **Name the thing the tool works on,** in the plural when it takes or returns several:
+  `deleteTasks`, `listEvents`. A bare verb is fine when the contract has only one kind of thing,
+  as with News' `refresh`.
+- **Don't prefix the app's name.** Callers see a tool together with its contract and app
+  ("Notes › findNotes"), so `notesFind` would say "notes" twice. Names must be unique within a
+  contract.
+- **Name a contract for what it gives a person,** as a short noun: "Task List", not "Tasks
+  Screen API". Agents see that name beside the contract's tools. It should still read as an
+  identifier with the spaces removed (`TaskList`).
+- **Start a description with what the tool does,** then what it matches on, what's required,
+  the defaults, and what it leaves alone: "Find tasks by words in their title or details… This
+  doesn't change them." The description is all an agent knows about the tool.
+- **Keep plumbing out of sight.** Mark a tool that only your package's own code calls
+  `private: true`. It's left out of the contract, so agents, the CLI and other packages never see
+  it, and it refuses every other caller, your screen included. A public tool that only
+  something else calls for you, such as a tick the scheduler wakes, still gets a plain name. Its
+  description says who calls it ("Mirror's scheduler calls this; it isn't for people or
+  agents.") so an agent doesn't pick it.
+
+A tool's name is part of its contract's shape and its catalog ID. A version that isn't frozen
+can rename a tool in place, but everything that calls it by the old name breaks: other packages,
+Voice Hub skills and scripts. Update those in the same release. A frozen version keeps its names,
+so rename in a new version that lists the old one in `alsoImplements`
+([Evolving stable contracts](#evolving-stable-contracts-with-alsoimplements)). Some of Peers' own
+packages still use hyphenated names (`list-tasks`), and they're being renamed to this convention.
+
 ### Context-bound tool providers
 
 A tool handler receives `(args, ctx)`. Use that `ctx` with the package's table and contract
