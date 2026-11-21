@@ -44,7 +44,7 @@ The **Tabs** and **Tabs + Console** layouts keep each open app in a tab. On a co
 ### Arranging tabs
 
 - **Reorder** tabs by dragging them along the strip. **Apps** always stays first.
-- **Close** a tab with the **×** that appears at its right edge when you point at it. On a touch screen the × is always shown.
+- **Close** a tab with the **×** that appears at its right edge when you point at it. On a touch screen the × is always shown. Closing the tab you're on takes you back to the tab you used before it.
 
 Your tab order is kept on each device.
 
@@ -55,8 +55,8 @@ Peers remembers the order you last used your tabs in, on each device. Switching 
 **On a computer**, <kbd>Ctrl</kbd>+<kbd>Tab</kbd> works like switching apps with <kbd>Cmd</kbd>+<kbd>Tab</kbd> on a Mac or <kbd>Alt</kbd>+<kbd>Tab</kbd> on Windows. It's <kbd>Ctrl</kbd> on a Mac too.
 
 - A quick <kbd>Ctrl</kbd>+<kbd>Tab</kbd> goes back to the tab you used before this one. Press it again to come back.
-- Keep holding <kbd>Ctrl</kbd> and a list of your tabs appears, the most recently used first. Press <kbd>Tab</kbd> again to move down the list (<kbd>Shift</kbd>+<kbd>Tab</kbd> moves up), or use the arrow keys or the mouse.
-- Let go of <kbd>Ctrl</kbd>, or press <kbd>Enter</kbd>, to switch to the highlighted tab. <kbd>Esc</kbd> closes the list without switching.
+- Keep holding <kbd>Ctrl</kbd> and a row of your tabs' app icons appears in the middle of the window, the most recently used first, with the highlighted tab's name under it. Press <kbd>Tab</kbd> again to move along the row (<kbd>Shift</kbd>+<kbd>Tab</kbd> moves back), or use the arrow keys or the mouse.
+- Let go of <kbd>Ctrl</kbd>, or press <kbd>Enter</kbd>, to switch to the highlighted tab. <kbd>Esc</kbd> closes the row without switching.
 
 To step through tabs in strip order instead, use **Next Tab** and **Previous Tab** in the command palette, or their keys: <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>→</kbd> and <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>←</kbd> on a Mac, or <kbd>Ctrl</kbd>+<kbd>Page Down</kbd> and <kbd>Ctrl</kbd>+<kbd>Page Up</kbd> elsewhere.
 
