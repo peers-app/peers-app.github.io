@@ -119,6 +119,13 @@ updated to; until then an app keeps the colors and icons it shows today.
 The group switcher's menu also opens the dialog for the group you're in: **Color and icon for**
 *that group* (Peers 0.33.20 and later).
 
+The dialog says which one you're changing. **For everyone** and **Just for me** sit at the top,
+the line under them says who sees it, and the preview beside the group's name shows the group as
+everyone sees it or as you see it. Every pick saves at once. From the switcher it opens on
+**Just for me**, so a quick change is only yours. Group details opens on **For everyone** for
+admins. On **For everyone**, if your own color or icon hides the group's, the dialog says so,
+with **Reset mine** to go back to the group's. The preview and that note arrive in Peers 0.33.20.
+
 A color is one of the ten Peers palette colors or any color you pick. An icon is any
 [Bootstrap icon](https://icons.getbootstrap.com/) or one emoji: search by name or keyword, or
 paste an emoji into the search box. A new group starts with the palette color you use least,

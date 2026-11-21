@@ -724,9 +724,9 @@ function GroupWithLook({ groupId, fallback }: GroupRowProps) {
   const group = PeersUI.useGroup(groupId);
   if (!group) return fallback;
   return (
-    <button type="button" onClick={() => PeersUI.openGroupAppearanceDialog(groupId)}>
+    <span>
       <PeersUI.GroupIcon icon={group.icon} color={group.color} variant="tile" /> {group.name}
-    </button>
+    </span>
   );
 }
 ```
@@ -741,8 +741,10 @@ function GroupWithLook({ groupId, fallback }: GroupRowProps) {
   page) in the current theme. Don't fill behind small text with a group color: put a dot or a
   stripe beside text in the normal text color.
 - `Icon` draws any icon reference (`bi:house-fill`, one emoji) or Bootstrap class.
-- Let people change a look with `openGroupAppearanceDialog`. Packages can read looks but not save
-  them.
+- People change a group's look in Peers: the group switcher's menu, and **Info → Change color
+  and icon** on the group's page. It's rare, so a package only shows looks and doesn't need a way
+  in of its own. If you do add one, `openGroupAppearanceDialog(groupId)` opens Peers' dialog on
+  **Just for me**. Packages can read looks but not save them.
 
 When your package sends an icon to another app through a package contract, keep writing a
 Bootstrap class so older versions of the receiving app can still draw it. For example,
