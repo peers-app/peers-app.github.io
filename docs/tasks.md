@@ -175,6 +175,16 @@ adds to the first group listed). On a phone, a new task goes
 into the current group if it's in view, otherwise the first group listed; start its title with
 `#groupname` to put it in a specific group. A subtask always goes in its parent's group.
 
+## Repeating tasks
+
+Completing a repeating task doesn't close it. Tasks records the completion, with the time logged,
+moves the due date to the next one in the schedule, and puts the task at the top of **Backlog**.
+Its due date brings it back when it's needed: in Due Soon, in Desk's **Plan the day**, and on
+Calendar. Queued stays for the tasks waiting to be picked up. A task set to repeat with **No
+Schedule** has no next date to bring it back, so it goes to the top of Queued instead.
+
+Before Tasks 0.33.27, a completed repeating task went to the top of Queued.
+
 ## Closing a task with subtasks
 
 A task closes (Done or Canceled) only with its subtasks. Closing one that still has open subtasks,
