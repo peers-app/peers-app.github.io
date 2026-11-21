@@ -167,8 +167,11 @@ of the path above the page; on a phone, the groups button in the list header (ne
 - **Choose groups:** check any set of them, for example Personal and one work group.
 
 With more than one group in view, each task shows its group, and the header shows which groups
-are in view. In the outline, a new task goes into the group of the list you add it to (the
-**New task** box at the top level adds to the first group listed). On a phone, a new task goes
+are in view. Each group has the color and icon it has everywhere else in Peers (Tasks 0.33.26
+and later, on Peers 0.33.19 and later; before that, Tasks picks its own colors). Change them in
+Peers ([Groups → Colors and icons](./System/Groups#colors-and-icons)). In the outline,
+a new task goes into the group of the list you add it to (the **New task** box at the top level
+adds to the first group listed). On a phone, a new task goes
 into the current group if it's in view, otherwise the first group listed; start its title with
 `#groupname` to put it in a specific group. A subtask always goes in its parent's group.
 

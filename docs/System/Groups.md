@@ -116,6 +116,9 @@ updated to; until then an app keeps the colors and icons it shows today.
 - **Personal** has only your own. It's the first row of **Identity → Groups**; click it to change
   its color and icon.
 
+The group switcher's menu also opens the dialog for the group you're in: **Color and icon for**
+*that group* (Peers 0.33.20 and later).
+
 A color is one of the ten Peers palette colors or any color you pick. An icon is any
 [Bootstrap icon](https://icons.getbootstrap.com/) or one emoji: search by name or keyword, or
 paste an emoji into the search box. A new group starts with the palette color you use least,
