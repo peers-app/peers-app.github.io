@@ -21,6 +21,11 @@ The icons at the top left switch views. Each device opens in the view it showed 
   `#tag`, with the open note beside it.
 - **Graph:** the open note in the middle, with what it links to and what links to it around it.
 
+A note's group shows as a dot in the group's color, in every view and in the Graph. It's the color
+the group has everywhere in Peers (Notes 0.1.7 and later, on Peers 0.33.19 and later; before that,
+Notes picks a color for each group). Change it in Peers
+([Groups → Colors and icons](./System/Groups#colors-and-icons)).
+
 The dock works in every view:
 
 - **Search** (⌘P, or Ctrl+P) finds notes in every group, by title first and then by text. When

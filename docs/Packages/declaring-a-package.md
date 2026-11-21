@@ -747,8 +747,10 @@ function GroupWithLook({ groupId, fallback }: GroupRowProps) {
   **Just for me**. Packages can read looks but not save them.
 
 When your package sends an icon to another app through a package contract, keep writing a
-Bootstrap class so older versions of the receiving app can still draw it. For example,
-a Calendar Source can publish this value.
+Bootstrap class so older versions of the receiving app can still draw it. Calendar 0.1.14 and
+later draws a Calendar Source's `iconClassName` with `Icon`, so it would also take `bi:<name>` or
+one emoji, but older Calendars draw the value as a class. For example, a Calendar Source can
+publish this value.
 
 ```json
 { "title": "Tasks", "iconClassName": "bi bi-check2-square" }

@@ -106,8 +106,10 @@ restored after a purge can only sync its data again from another member's device
 ## Colors and icons
 
 Every group has a color and an icon. Peers shows them in **Identity → Groups**, on the group's
-page, and in the group switcher. Apps such as Tasks, Desk and Notes show them once they're
-updated to; until then an app keeps the colors and icons it shows today.
+page, and in the group switcher. Tasks (0.33.26 and later) shows each group's color and icon,
+Desk (0.4.7) and Notes (0.1.7) its color, and Calendar (0.1.14) its icon beside its name and its
+color on its default calendar and its tasks. An older version of an app keeps the colors and
+icons it showed before. Apps only show a group's look; you change it in Peers.
 
 - **For everyone.** A group's admins set its color and icon for all its members. Open the group
   in **Identity → Groups**, then **Info → Change color and icon**.
