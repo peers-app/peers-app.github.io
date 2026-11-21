@@ -109,7 +109,8 @@ Every group has a color and an icon. Peers shows them in **Identity → Groups**
 page, and in the group switcher. Tasks (0.33.26 and later) shows each group's color and icon,
 Desk (0.4.7) and Notes (0.1.7) its color, Calendar (0.1.14) its icon beside its name and its
 color on its default calendar and its tasks, and Threads (0.4.11) its icon in its color beside
-its name and in the group menu. An older version of an app keeps the colors and icons it showed
+its name and in the group menu. In Desk (0.4.8), a desk on one group takes that group's color and
+icon until you give the desk its own. An older version of an app keeps the colors and icons it showed
 before. Apps only show a group's look; you change it in Peers.
 
 - **For everyone.** A group's admins set its color and icon for all its members. Open the group
