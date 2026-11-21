@@ -21,6 +21,8 @@ Switching takes effect immediately — no reload.
 
 The classic Peers shell: a tab strip across the top with one app per tab. This is the default and matches how Peers has always worked.
 
+See [Working with tabs](#working-with-tabs) for switching and arranging them.
+
 ### Tabs + Console
 
 The tab strip with the **Operator Console** docked alongside as a real, resizable panel (not an overlay). The console can be docked to the bottom, left, or right edge and resized by dragging the divider. Toggle the console with <kbd>Ctrl</kbd>+<kbd>`</kbd>.
@@ -34,3 +36,33 @@ Opening an app **replaces** the current screen instead of adding a tab, so you a
 :::tip
 The <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd> command palette is always available in every layout, so you can navigate anywhere even when there's no tab strip or visible chrome.
 :::
+
+## Working with tabs
+
+The **Tabs** and **Tabs + Console** layouts keep each open app in a tab. On a computer they sit in a strip across the top. On a phone they're in the menu behind the **☰** button at the top right.
+
+### Arranging tabs
+
+- **Reorder** tabs by dragging them along the strip. **Apps** always stays first.
+- **Close** a tab with the **×** that appears at its right edge when you point at it. On a touch screen the × is always shown.
+
+Your tab order is kept on each device.
+
+### Switching to a recent tab
+
+Peers remembers the order you last used your tabs in, on each device. Switching by recent use never changes the strip's order.
+
+**On a computer**, <kbd>Ctrl</kbd>+<kbd>Tab</kbd> works like switching apps with <kbd>Cmd</kbd>+<kbd>Tab</kbd> on a Mac or <kbd>Alt</kbd>+<kbd>Tab</kbd> on Windows. It's <kbd>Ctrl</kbd> on a Mac too.
+
+- A quick <kbd>Ctrl</kbd>+<kbd>Tab</kbd> goes back to the tab you used before this one. Press it again to come back.
+- Keep holding <kbd>Ctrl</kbd> and a list of your tabs appears, the most recently used first. Press <kbd>Tab</kbd> again to move down the list (<kbd>Shift</kbd>+<kbd>Tab</kbd> moves up), or use the arrow keys or the mouse.
+- Let go of <kbd>Ctrl</kbd>, or press <kbd>Enter</kbd>, to switch to the highlighted tab. <kbd>Esc</kbd> closes the list without switching.
+
+To step through tabs in strip order instead, use **Next Tab** and **Previous Tab** in the command palette, or their keys: <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>→</kbd> and <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>←</kbd> on a Mac, or <kbd>Ctrl</kbd>+<kbd>Page Down</kbd> and <kbd>Ctrl</kbd>+<kbd>Page Up</kbd> elsewhere.
+
+In a browser tab, <kbd>Ctrl</kbd>+<kbd>Tab</kbd> switches the browser's own tabs instead, so use the desktop app, or the command palette, there.
+
+**On a phone**, the ☰ menu lists your open apps with the one you used most recently at the top.
+
+- **Double-tap ☰** to jump straight back to the app you used before this one. Double-tap again to return.
+- A single tap opens the menu as usual.
