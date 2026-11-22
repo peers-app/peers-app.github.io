@@ -862,6 +862,22 @@ context.
 
 Configuration is stored at `~/peers/cli-config.json`.
 
+## Troubleshooting
+
+### Windows: `EPERM` in an agent's terminal
+
+In some sandboxed terminals on Windows, such as a Codex PowerShell session, even `peers --version` fails before the CLI starts, with an `EPERM` error from `lstat` on your user folder. Node checks every folder above the CLI script when it starts, and the sandbox refuses that check.
+
+Peers versions after 0.33.20 start the CLI with Node's `--preserve-symlinks-main` flag, which skips the check. Peers rewrites the `peers` launcher (`%USERPROFILE%\.local\bin\peers.cmd`) each time it starts, so updating Peers is all it takes.
+
+On an older version, set the flag yourself in the same PowerShell session:
+
+```powershell
+$env:NODE_OPTIONS = '--preserve-symlinks-main'
+peers app status
+peers devices
+```
+
 ## Related topics
 
 - **[System: Tools](./Tools)** — defining and using tools that the CLI can execute.
