@@ -114,7 +114,9 @@ time: to the current task (the one selected, or else the page's task), or to one
 you logged time to most recently. Completing a task logs the time to it, as before.
 
 Search (⌘P) finds open tasks by their title and details as you type, and closed ones by full text
-a moment later; pick one to go to it.
+a moment later; pick one to go to it. Paste a task's id (or a `peers://task/` link) to find just
+that task, open or closed, in any of your groups. Going to a task in a group that isn't in view
+adds that group to the view.
 
 ## On a phone: the list
 
@@ -137,7 +139,8 @@ check a subtask off right there.
 
 Typing in the search box searches the groups in view once you pause typing. Open matches come
 first; completed and canceled matches follow under **Completed**. Press Enter to create a task with
-that title instead.
+that title instead. A task's id (or a `peers://task/` link) finds just that task, in any of your
+groups.
 
 A task's details show its id at the top, next to its status. Click it to copy the id, a short way
 to point someone (or an agent) at that task that stays the same when the title changes.
