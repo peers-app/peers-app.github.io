@@ -105,16 +105,35 @@ status mark (and a connection count on desktop):
   has an update available, downloading, or ready to install, including one whose download
   failed. It appears in every network state, offline included. See [App updates](./App-Updates.md).
 
-Select the indicator to see connections, groups connected, and the last successful sync.
-When an update is available, the popover starts with its version, download progress, and
-**Update & restart**.
-Syncing contexts, groups offline, and sync errors appear only when their counts are above
-zero. Groups offline is shown in yellow. A simplified list of connected devices (user, device, and shared group count) is
-included for a quick check. **Open Network Viewer** opens the full diagnostics screen.
-**Sync recovery** appears in this popover only when records need attention or changes are
-missing (see [Missing change check](#missing-change-check)); the same pane is always
-available from Network Viewer. On mobile, the same indicator appears beside the
-tabs menu.
+Select the indicator to open its popover. **Use Invite** and **Identity** come first: they're
+where to start when connecting to other people or your other devices. When an update is
+available, the next part is its version, download progress, and **Update & restart**. Then:
+
+- **A headline** with how things are: **All synced**, **Syncing 2 groups** (with a red error
+  count beside it while any sync has failed), **1 sync error**, **1 group without a
+  connection**, or **Offline**. The time of the last successful sync is on the right. Under it,
+  how many devices are connected, and how many of your groups are (**6 devices · 7 groups**,
+  or **6 of 7 groups connected**).
+- **Groups:** one line per group, Personal first, then by name. The dot and the text on the
+  right show the group's state: green with its device count when it's synced, and
+  **syncing** while it syncs, with the same mark as the indicator (a green pulse, then the
+  blue spinner after 4 seconds, then a 1-second hold once it's synced again). It's red, with
+  the error under the name, when its last sync failed, and yellow **no connection** when
+  other devices could sync it but none are connected. A group that only has this device says
+  **only this device**.
+- **Devices:** each connected device as a chip, your own outlined and listed first, then other
+  people's, then the **peers.app** relay. Hover a chip for its owner, groups and latency.
+
+The popover holds still while the status changes. Groups keep their lines, and only the dot
+and text change. Something that goes away while the popover is open, such as a device that
+disconnects, a sync error that clears, or an alert, stays faded for three seconds and then
+folds out. Something new folds in. The lists refresh as the status changes, and at least
+every five seconds; what's shown stays up while they load.
+**Open Network Viewer** opens the full diagnostics screen.
+**Sync recovery** and a note about what needs attention appear only when records need
+attention or changes are missing (see [Missing change check](#missing-change-check)); the same
+pane is always available from Network Viewer. On mobile, the same indicator appears beside
+the tabs menu.
 
 ## Platform-specific diagnostics
 
