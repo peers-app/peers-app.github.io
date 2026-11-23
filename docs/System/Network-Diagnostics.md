@@ -5,9 +5,74 @@ title: Network diagnostics
 
 # Network diagnostics
 
-The Network Viewer works in both the Electron desktop app and the PWA. It shows active
-device connections, shared-group sync state, path type, latency, throughput, and remote
-network information. Open **Network** and select **View Details** beside a connection.
+The Network Viewer works in both the Electron desktop app and the PWA. Open **Network**.
+It opens on a graph of this device and the devices around it; **List** shows the same
+connections as tables, with shared-group sync state and the devices that aren't connected.
+
+## The graph
+
+This device is at the center. The first ring is every device it's connected to now. The
+second ring is the devices those are connected to and this one isn't. The view refreshes
+every two seconds while it's open.
+
+**Devices.** A filled accent circle is this device. An accent outline is another of your
+devices, a grey outline is someone else's, and a dashed outline is **peers.app**, the
+Peers Services relay that helps devices find each other. Someone else's device is named
+with its owner first, such as *Blair · Laptop*, unless its account is named after it, as a
+kiosk's often is.
+
+**Connections.** Each line is a live connection. This device's own connections are drawn
+brighter; lines between two other devices are fainter. A line between two other devices
+curves around any device it would otherwise pass over, so no line runs through a device it
+doesn't connect to.
+
+- An **arrow** points at the device that was chosen to sync with. In every group, each
+  device chooses a few of its connections to sync over. An arrowhead at both ends means the
+  two devices chose each other.
+- A **dotted line** is a connection no group chose. It's open, but nothing syncs over it,
+  and it's the first to be closed when a device has too many connections.
+- **Moving dots** show data moving, in the direction it's going. Small dots are under
+  10 KB/s, medium under 1 MB/s, and large above that. No dots means the connection is idle.
+  Dots appear only on this device's own connections.
+- A **dashed line in the warning color** with a **Slow** label is a connection that fails now and then,
+  has very high latency, or has at least twice its usual latency. A far-away device with a
+  steady 300 ms is normal; the same device at 700 ms is slow. A line in the danger color
+  labelled **Failing** loses a quarter of its calls or more.
+
+**Looking closer.** Point at a device or a connection to bring out its neighbors and see
+latency, route and traffic on the lines. Click to keep it selected; the card then shows:
+
+- for a device: its connection to this one, which groups chose it and which way, its own
+  connections with their latency, and **Details** and **Disconnect**;
+- for a device on the second ring: which devices reach it, and **Connect** to dial it
+  directly;
+- for a connection: latency, errors, and each group's choice. Route and traffic are known
+  only for this device's own connections.
+
+Click the empty stage, press Escape, or close the card to clear the selection.
+
+**Controls.**
+
+- **Groups** filters to one group or a few. Everything else is dimmed, not hidden, and
+  the arrows then show only those groups' choices. Each group in the list shows its sync
+  state and member count.
+- **Steps** chooses one ring or two.
+- **Offline** adds the known devices that aren't connected, on a ring of their own, most
+  recently seen first. The List has all of them. Old peers.app relays aren't drawn (the
+  List still has them): each Services restart brings a new one, and the old ones never come
+  back.
+- **peers.app** shows or hides the relay.
+- **Refresh** asks every connected device for fresh network information.
+
+On a phone, Offline, peers.app, Refresh, Troubleshoot and Sync recovery are under the
+**⋯** button, and the card sits at the bottom of the screen.
+
+The second ring needs a version of Peers that reports it. On an older one the graph
+shows only this device's own connections, and its card says so.
+
+From the CLI, `peers tools run getTopology '{}' --json` returns the same picture as data:
+this device's connections in each group, the devices each side chose, and each connected
+device's own connections.
 
 ## Network status indicator
 
