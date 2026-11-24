@@ -28,7 +28,9 @@ Priority stops ringing after 30 minutes even if it has not been dealt with. It s
 list and badge. Snoozing asks for attention again when the snooze ends.
 
 A notification more than a few minutes old when it reaches a device doesn't pop up or make a
-sound; it waits in the list. A level is a request: each device does the closest it can, never
+sound; it waits in the list. A fresh one pops up 3 seconds after it reaches the device, and not
+at all if it's been dealt with by then, so a message you read where it arrived doesn't flash
+up. The badge changes at once. A level is a request: each device does the closest it can, never
 louder.
 
 ## Sending notifications from a package
@@ -114,6 +116,8 @@ await SystemNotifications(ctx).tools.retractNotifications({
 - Notifications created more than a few minutes after the withdrawal aren't touched, so a key
   that names one occurrence (`timer:<id>:<when it went off>`) is safest.
 - It returns `{ retracted }`, how many of the signed-in user's own notifications it withdrew.
+- Withdraw a notification as soon as the user has seen what it's about on screen. Within 3
+  seconds of it arriving, it never pops up on that device.
 - Devices on Peers 0.33.3 or older don't receive withdrawals from other members. Give
   notifications that should end on their own an `expiresAt`.
 
