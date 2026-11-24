@@ -6,8 +6,9 @@ sidebar_position: 8
 # Voice Hub
 
 Voice Hub adds push-to-talk, optional local wake-word activation, speech recognition, spoken
-responses, and voice-triggered Peers actions. Each device can use the **Standard** interface (one
-request at a time) or the **Live** interface (a back-and-forth OpenAI GPT-Live conversation). It is
+responses, and voice-triggered Peers actions. Two buttons sit side by side on its bottom bar:
+**Command** (one request at a time) and **Interactive** (a back-and-forth OpenAI GPT-Live
+conversation). It is
 an official Peers package, so it can be installed, updated, disabled, or removed independently of
 the desktop and PWA applications.
 
@@ -83,42 +84,46 @@ rolling room-noise estimate and neural recurrent state are never persisted. Thre
 attempts are personal setup evidence, not a release-quality false-activation benchmark, and cannot
 lower the model's benchmark safety threshold.
 
-## Choose a voice interface
+## Command and Interactive
 
-Open **Settings → Voice interface**. The choice applies to this device only, so a kitchen hub can
-use Live while a laptop keeps Standard.
+Tap **Command** (the blue mic) for one request, or **Interactive** (the purple sound wave) for a
+conversation. Each waits while the other runs. The wake phrase starts whichever one **Settings →
+General → When the wake word is heard, start** picks; that choice applies to this device only, so
+a kitchen hub can wake into Interactive while a laptop wakes into Command. Interactive shows only
+where Live works (it needs WebRTC).
 
-| | Standard | Live |
+| | Command | Interactive |
 |---|---|---|
 | How a turn works | You speak, Voice Hub detects the end, transcribes, acts, then replies | One open conversation; GPT-Live listens and speaks at the same time |
-| Interrupting | Tap the mic or Cancel | Talk over it |
-| Speech output | Browser speech (free) or OpenAI speech | GPT-Live's voice (choose it under **Live voice**) |
+| Interrupting | Tap Command or Cancel | Talk over it |
+| Speech output | Browser speech (free) or OpenAI speech | GPT-Live's voice (choose it on Settings' **Interactive** page) |
 | Cost | Per request: transcription, the voice turn, optional OpenAI speech | GPT-Live per second ($0.05 a minute, at least 15 seconds per conversation), plus the voice-turn requests |
 
-With **Live**, the wake phrase or a mic tap opens a conversation, and it stays open until about 15
-seconds of quiet, or until you tap the mic or **Cancel**. It also ends when the conversation
+**Interactive** opens a conversation that stays open until about 15 seconds of quiet, or until you
+tap Interactive again or **Cancel**. It also ends when the conversation
 sounds finished: the assistant decides when you're done (“Thanks, that's all”, “Perfect, thank
 you”) and says a short goodbye, and the conversation closes once that goodbye finishes. A goodbye
 on its own, such as **“goodbye”**, **“that's all”**, or a cancel phrase, always ends it, even with
 fillers around it (“Okay, uh, goodbye for now”). Requests that need an app are handed back to
-Voice Hub and run through the same voice skills and access checks as Standard, one at a time and
+Voice Hub and run through the same voice skills and access checks as Command, one at a time and
 in order. After handing a request over, GPT-Live says a short acknowledgement (“On it.”, “One
 sec.”), and the choices change from one conversation to the next. A finished request with nothing
 to report gets a word or two from GPT-Live, or Voice Hub's confirmation tone instead if you turn on
-**Confirm finished requests with a tone** while Live is selected.
+**Confirm finished requests with a tone** on Settings' **Interactive** page.
 Cancel stops in-flight requests but cannot undo actions that already ran. Timer and other alerts
 are spoken inside the open conversation. Both sides of the conversation appear in history.
 
 Live needs the desktop app or an open PWA, plus an OpenAI account with GPT-Live access.
-Free-tier accounts are refused. If a conversation cannot start, Voice Hub shows the reason and offers **Use the standard
-voice interface**. It never switches interface or repeats a request by itself.
+Free-tier accounts are refused. If a conversation cannot start, Voice Hub shows the reason, and
+where the wake phrase starts Interactive it offers **Have the wake word start Command**. It never
+switches or repeats a request by itself.
 
 ## Use voice input
 
-Tap the microphone, speak, and either tap stop or pause for automatic endpoint detection. On the
-desktop, you can instead say the selected wake phrase while Voice Hub is open. With Standard, each
-tap or wake phrase takes one request, then Voice Hub stops listening; for a back-and-forth
-conversation, choose Live.
+Tap **Command**, speak, and either tap it again or pause for automatic endpoint detection. On the
+desktop, you can instead say the selected wake phrase while Voice Hub is open. Each Command takes
+one request, then Voice Hub stops listening; for a back-and-forth conversation, tap
+**Interactive**.
 
 Voice Hub handles three kinds of turns:
 
@@ -157,10 +162,18 @@ tool paths, not general table or observable writes.
 
 ## Adaptive workspace
 
-Voice Hub opens on **Overview**, where populated skills show summary cards with a header and
-content body: several grocery items, current weather conditions, or several news headlines.
+Voice Hub opens on **Overview**: one row of tall columns, a skill's summary card each (several
+grocery items, current weather conditions, or several news headlines), filling the screen and
+scrolling sideways. Swipe, use a trackpad or Shift with the wheel, or tap the arrows; it snaps to a
+column. Three columns fill a wide screen with the next peeking in, two on a tablet, one on a phone.
 Only empty skills use a single row with an icon, name, and quiet status; skills needing attention
-keep their card layout. Cards pack beneath shorter neighbors without forcing equal heights.
+keep their card layout.
+
+The skills stay in the order you choose on that device: open **Settings → Widgets** and move them
+with ↑ ↓ (or **Default order**), then **Save**, or select **Arrange on screen** and drag the columns
+on the Overview itself, then **Done**. The chips along the top follow the same order, and a skill
+installed later goes at the end. Nothing moves by itself: a skill that needs you opens with a red
+**Now** on its chip, and Timers stays up while a timer is due, so it can sit last.
 Opening Weather refreshes a stale forecast; after that, Weather refreshes about once an hour in
 the background on devices whose user is a Writer, and a Reader's device picks up those forecasts
 within a few minutes. Weather shows the last good forecast with its age, **Stale** after an hour,
@@ -201,8 +214,8 @@ Settings**.
 Successful changes that do not need an answer are a tone and an emoji, not a spoken confirmation,
 even when the assistant words one (“The pizza timer is set for fifteen minutes.”): unless you asked
 a question, a request that only changed things ends with the tone. To hear “Done.” instead, turn
-off **Settings → Voice interface → Confirm finished requests with a tone**. Standard and Live each
-keep their own choice; it starts on for Standard and off for Live.
+off **Confirm finished requests with a tone** on Settings' **Command** page. Command and
+Interactive each keep their own choice; it starts on for Command and off for Interactive.
 The screen aims to minimize listening and searching: speech answers questions and announces
 time-sensitive events, while completed actions use the done tone. A failed action uses the failed
 tone and keeps its explanation in recent conversation context; ask “what happened?” for an answer.
@@ -224,14 +237,29 @@ Failed creates keep the entered title. Focus shows action errors for the current
 later refresh can clear them; these are not persistent notifications.
 The main Tasks app retains its existing section ordering and All Groups preference.
 
+The widgets take the whole Voice Hub tab. The conversation is a drawer that slides in from the
+right, over them:
+
+- It opens when you talk (turn that off with **Settings → General → Open it while you talk**) or
+  from the conversation button at the right of the bar. That button shows a dot when something
+  new was said while the drawer was closed.
+- It hides itself after a quiet while: 15 seconds by default, or 10, 30, 60, or never, under
+  **Hide it after**. A bar under its header runs down until then. A new message, a touch or a
+  scroll starts the wait over, and it waits while your pointer is over it.
+- **Pin** keeps it open on this device; × closes it.
+
 The layout follows the space available to the Voice Hub tab:
 
-- On phones, the context picker scrolls horizontally, one widget fills the workspace, and
-  **Conversation** and **Settings** open as full-height panels.
-- On tablets, including the primary 10-inch layout, the workspace and conversation remain visible
-  together and Overview uses compact summary cards.
-- On wide displays, contexts move to a side rail, the workspace width is capped for readable
-  controls, and conversation remains beside it.
+- On phones, the context picker scrolls horizontally, one widget fills the workspace, and the
+  conversation drawer and **Settings** take the full width.
+- On tablets, including the primary 10-inch layout, two columns show at a time.
+- On wide displays, three columns show at a time; the chips stay along the top.
+
+**Settings** has a page per topic: **General** (what the wake word starts, wake listening and
+diagnostics, the conversation drawer), **Widgets** (their order on this device), **Command** (speak answers, its tone, transcription, and
+voice), **Interactive** (its voice and tone), **Wake word** (model, threshold, speech gate, and
+re-arm delay), **Tuning this device**, and **OpenAI** (the key). One **Save** keeps the changes on
+every page.
 
 The microphone dock stays at the bottom in every layout. Its microphone, the cancel button beside
 it, the wake/manual toggle, context buttons, and focused widget actions are designed for touch use
@@ -309,7 +337,8 @@ path is unsuitable.
 ### Live voice is unavailable
 
 Confirm that the OpenAI key is saved and that the account has GPT-Live access (Free tier accounts
-cannot use it), then try again, or select **Use the standard voice interface**. Live works in the
+cannot use it), then try again, or use **Command**. If the wake phrase starts Interactive, select
+**Have the wake word start Command** to have it start Command instead. Live works in the
 desktop app and in the PWA while it is open. On the PWA, a rejected key can show a browser read
 error, as described above.
 
@@ -350,12 +379,12 @@ request fails after a skill succeeds, Voice Hub reports that the whole request w
 Cancel stops further discovery, model requests, and skill calls, and aborts active Voice Hub HTTP.
 An already-running skill may finish; cancellation does not undo changes it has made.
 
-The conversation panel scrolls within its available height and snaps to the newest entry on its
+The conversation drawer scrolls within its available height and snaps to the newest entry on its
 first visible layout and whenever it reopens. While you are within 48px of the bottom, it follows
 history loading, new entries, in-place edits, replacements at the 200-entry retention cap, text
 reflow, and resizing. Scrolling upward keeps your reading position through those updates until
 you return near the bottom or reopen the panel. Hidden or zero-height panels defer scrolling
-until layout is available. Long messages wrap inside the bounded panel so the microphone dock
+until layout is available. Long messages wrap inside the bounded drawer so the bottom bar
 remains reachable; reopening does not reset stored history.
 
 Installing Voice Hub and a skill into a group is the trust decision; there is no separate approval
