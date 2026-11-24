@@ -147,6 +147,22 @@ Show a group with its own color and icon (`useGroups`, `GroupIcon`), and draw ic
 from data with `Icon`: see [Groups, colors and icons](./declaring-a-package.md#groups-colors-and-icons).
 peers-ui also exports the pickers Peers uses, `ColorPicker` and `IconPicker`.
 
+## Your CSS reaches every app
+
+A stylesheet your UI bundle imports applies to the whole Peers window once the bundle loads, not
+just to your screens. A rule in one app can restyle another, so:
+
+- Give your classes a prefix for your app, such as `cal-` or `desk-`, and make every selector name
+  one of them.
+- Scope a state class to your own elements: `.desk-row.is-done` or
+  `.is-done:where(.desk-row, .desk-link)`, never `.is-done` alone, or another app's element with
+  the same class picks up your style.
+- Don't style bare elements or Bootstrap's classes either (`h2`, `.btn`, `.card`); add your own
+  class beside them.
+
+A unit test that reads your stylesheets and fails on any selector without your prefix keeps it
+that way.
+
 ## Global overlays
 
 Screens render inside the active tab and unmount when you switch tabs. When a package needs UI that stays visible **across all tabs and apps** — a floating widget, a persistent indicator, a heads-up panel — it can register a **global overlay** instead.

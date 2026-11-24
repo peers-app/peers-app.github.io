@@ -150,6 +150,13 @@ the package owns all domain UI and writes.
 
 After one of your tools succeeds, Voice Hub focuses your widget.
 
+Voice Hub returns a focused widget to Overview after about a minute with no voice turn or touch.
+To keep yours in front for a while, set `data-widget-hold="true"` on an element in it: Timers does
+while a timer is ringing or has 15 minutes or less to go. Voice Hub looks for the mark when the
+minute is up, and returns to Overview within a few seconds of it going away. An empty summary can
+set `data-widget-empty="true"` on its root, and Voice Hub draws that card on one line beside its
+name.
+
 ## Alert
 
 Emit `alert` when a skill needs the user's attention now. Its payload is `kind`, `title`, and an

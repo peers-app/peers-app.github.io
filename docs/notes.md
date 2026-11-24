@@ -23,6 +23,8 @@ The icons at the top left switch views. Each device opens in the view it showed 
 - **Library:** your notes in a list, filtered by **All notes**, **Pinned**, a group, or a
   `#tag`, with the open note beside it.
 - **Graph:** the open note in the middle, with what it links to and what links to it around it.
+  Clicking the middle note, a card's **Open** or a link to a note opens that note in a side panel
+  beside the graph, where you can read and edit it; a link also moves the graph to it.
 
 A note's group shows as a dot in the group's color, in every view and in the Graph. It's the color
 the group has everywhere in Peers (Notes 0.1.7 and later, on Peers 0.33.19 and later; before that,
@@ -45,10 +47,21 @@ The dock works in every view:
 Notes saves as you type, a moment after you pause. Type `#tags` anywhere in the text. Type `<` and
 a few letters to link a person, a task or a note from any of your groups (`@` finds people only).
 The picker shows the highlighted task or note's group and the start of its text. The link shows the record's current title, and clicking it opens it (a note opens beside the
-page). Select some text for **Make note** or **Make task**: the selection becomes a new note, or a
+page, the days or the graph). Select some text for **Make note** or **Make task**: the selection becomes a new note, or a
 task waiting in Tasks' Inbox, and a link to it takes its place. Changes from your other devices,
 other people in the group, or an agent show in the open note, unless you have typing there that
 hasn't saved yet.
+
+**Formatting.** Type markdown as you write: `# ` for a heading, `- ` for a list, `[ ] ` for a checklist, `> ` for a quote, three backticks for code, `---` and a space for a
+divider, and `==text==` to highlight. For a callout box, type `[!NOTE] ` at the start of a line,
+or TIP, IMPORTANT, WARNING or CAUTION. Code is colored by its language: type the language after
+the backticks (` ```js `), or pick it at the top right of the code block while the caret is in it.
+
+**Web links.** Select some text, press ⌘⇧K (Ctrl+Shift+K on Windows and Linux), and type or
+paste the address. Pasting an address over selected text links it too (the way to do it on a
+phone), and an address you type becomes a link by itself. Clicking a link opens it in your browser. With
+the caret in a link, a box under it shows the address, with ✎ to change it and × to remove the
+link. ⌘K stays the command palette.
 
 ## Journals
 

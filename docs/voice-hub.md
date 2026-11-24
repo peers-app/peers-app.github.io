@@ -171,12 +171,19 @@ to open its complete touch
 controls. After a successful voice skill action, Voice Hub opens the widget owned by the skill that
 handled the request. About 60 seconds after the last voice turn or touch, that skill returns to
 Overview. A voice turn, an open conversation, or an alert sound such as a timer chime keeps the
-skill in front until it finishes. A skill alert, such as an expired timer, can also bring its widget forward and
+skill in front until it finishes. Timers also stays in front while a timer has 15 minutes or less
+to go. A skill alert, such as an expired timer, can also bring its widget forward and
 mark it as needing attention. If the alert includes a detail sentence and voice output is enabled,
 Voice Hub speaks it once. Alerts wait for an active voice turn and queue in order. Timer finish
 speech plays before a short rising three-note pluck that repeats about every 3 seconds.
-Say “stop” to dismiss all alarming timers, or use the widget's Dismiss control. Other running timers
+Say “stop” to dismiss all alarming timers, or tap the timer's **Stop**. Other running timers
 continue. With voice output off, no spoken line delays the chime.
+
+The Timers card on Overview lists your timers, each with a pause, resume or stop button. With none
+running, it offers 5, 10 and 15 minute timers in one tap. Open it for the full view: a card for each
+timer with **+1:00** (on a ringing timer, it starts again with a minute) and a keypad to set one by
+touch. Type the time as on a phone's clock, so 1 5 0 0 is 15 minutes, add a label if you like, and
+tap ▶. **Again** starts one of your last two timers once more. The Timers app looks the same.
 
 A timer still ringing 30 seconds after it finished also notifies the person who set it, on their
 phone and computers, through [notifications](System/Notifications.md). On a shared screen, choose

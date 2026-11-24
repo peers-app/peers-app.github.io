@@ -149,6 +149,10 @@ import { MarkdownEditor, MarkdownWithMentions } from "@peers-app/peers-ui";
   uses the active group.
 - **`mentions={false}`** turns off the picker in an editor. Mentions already in the text still
   show as chips.
+- **`headings={false}`** is for short text such as messages: a line starting with `#`, a `---`
+  line and `[!NOTE]` stay text. With headings on (the default, for documents), the editor also
+  makes dividers and callouts (`> [!NOTE]`). Either way it has web links (⌘⇧K, and a popup to
+  edit or remove one) and code blocks colored by language, and its value stays plain markdown.
 - **Making a link from selected text.** Pass `effects` to the editor: once it's mounted,
   `effects.getSelectedText()` returns the selection as plain text, and
   `effects.replaceSelectionWithMention({ kind, id, label })` replaces it with a chip. For example,
