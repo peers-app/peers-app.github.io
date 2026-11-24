@@ -162,16 +162,16 @@ tool paths, not general table or observable writes.
 
 ## Adaptive workspace
 
-Voice Hub opens on **Overview**: one row of tall columns, a skill's summary card each (several
-grocery items, current weather conditions, or several news headlines), filling the screen and
-scrolling sideways. Swipe, use a trackpad or Shift with the wheel, or tap the arrows; it snaps to a
-column. Three columns fill a wide screen with the next peeking in, two on a tablet, one on a phone.
-Only empty skills use a single row with an icon, name, and quiet status; skills needing attention
-keep their card layout.
+Voice Hub opens on **Overview**: each skill's summary card (several grocery items, current weather
+conditions, or several news headlines) at its own size, in order, flowing down and then right to
+fill the screen. Past the screen it scrolls sideways: swipe, use a trackpad or Shift with the
+wheel, or tap the arrows. A skill set to **Full** shows its main view instead, a whole column tall,
+so you can use it right there: Groceries' list with its add box, for example. Only empty skills use
+a single row with an icon, name, and quiet status; skills needing attention keep their card layout.
 
-The skills stay in the order you choose on that device: open **Settings → Widgets** and move them
-with ↑ ↓ (or **Default order**), then **Save**, or select **Arrange on screen** and drag the columns
-on the Overview itself, then **Done**. The chips along the top follow the same order, and a skill
+The skills stay in the order and size you choose on that device: open **Settings → Widgets**, move
+them with ↑ ↓ (or **Default order**) and pick **Card** or **Full** for each, then **Save**; or
+select **Arrange on screen** and drag the cards on the Overview itself, then **Done**. The chips along the top follow the same order, and a skill
 installed later goes at the end. Nothing moves by itself: a skill that needs you opens with a red
 **Now** on its chip, and Timers stays up while a timer is due, so it can sit last.
 Opening Weather refreshes a stale forecast; after that, Weather refreshes about once an hour in
@@ -252,8 +252,8 @@ The layout follows the space available to the Voice Hub tab:
 
 - On phones, the context picker scrolls horizontally, one widget fills the workspace, and the
   conversation drawer and **Settings** take the full width.
-- On tablets, including the primary 10-inch layout, two columns show at a time.
-- On wide displays, three columns show at a time; the chips stay along the top.
+- On tablets, including the primary 10-inch layout, the cards flow into two columns a screen.
+- On wide displays, three columns a screen; the chips stay along the top.
 
 **Settings** has a page per topic: **General** (what the wake word starts, wake listening and
 diagnostics, the conversation drawer), **Widgets** (their order on this device), **Command** (speak answers, its tone, transcription, and

@@ -19,7 +19,8 @@ The icons at the top left switch views. Each device opens in the view it showed 
   day's plan from Desk, when those are installed. The month beside the days takes you to any day,
   even one with nothing written yet. It marks the day you're on and turns with the days as you
   scroll. On a phone it's a strip of seven days, ending today when you open it: **‹** and **›**
-  step it a week (Notes 0.1.8 and later).
+  step it a week (Notes 0.1.8 and later), and picking a day closes the note open over the days
+  (Notes 0.1.10 and later).
 - **Library:** your notes in a list, filtered by **All notes**, **Pinned**, a group, or a
   `#tag`, with the open note beside it.
 - **Graph:** the open note in the middle, with what it links to and what links to it around it.
