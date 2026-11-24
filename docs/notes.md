@@ -56,6 +56,8 @@ hasn't saved yet.
 divider, and `==text==` to highlight. For a callout box, type `[!NOTE] ` at the start of a line,
 or TIP, IMPORTANT, WARNING or CAUTION. Code is colored by its language: type the language after
 the backticks (` ```js `), or pick it at the top right of the code block while the caret is in it.
+To leave a code block, press Enter three times at its end: the two empty lines go, and a new
+paragraph starts under it. In Threads, where Enter sends, it's Shift+Enter three times.
 
 **Web links.** Select some text, press ⌘⇧K (Ctrl+Shift+K on Windows and Linux), and type or
 paste the address. Pasting an address over selected text links it too (the way to do it on a

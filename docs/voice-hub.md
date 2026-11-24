@@ -102,7 +102,10 @@ you”) and says a short goodbye, and the conversation closes once that goodbye 
 on its own, such as **“goodbye”**, **“that's all”**, or a cancel phrase, always ends it, even with
 fillers around it (“Okay, uh, goodbye for now”). Requests that need an app are handed back to
 Voice Hub and run through the same voice skills and access checks as Standard, one at a time and
-in order. Quiet successes still play Voice Hub's confirmation tone instead of a spoken reply.
+in order. After handing a request over, GPT-Live says a short acknowledgement (“On it.”, “One
+sec.”), and the choices change from one conversation to the next. A finished request with nothing
+to report gets a word or two from GPT-Live, or Voice Hub's confirmation tone instead if you turn on
+**Confirm finished requests with a tone** while Live is selected.
 Cancel stops in-flight requests but cannot undo actions that already ran. Timer and other alerts
 are spoken inside the open conversation. Both sides of the conversation appear in history.
 
@@ -113,7 +116,9 @@ voice interface**. It never switches interface or repeats a request by itself.
 ## Use voice input
 
 Tap the microphone, speak, and either tap stop or pause for automatic endpoint detection. On the
-desktop, you can instead say the selected wake phrase while Voice Hub is open.
+desktop, you can instead say the selected wake phrase while Voice Hub is open. With Standard, each
+tap or wake phrase takes one request, then Voice Hub stops listening; for a back-and-forth
+conversation, choose Live.
 
 Voice Hub handles three kinds of turns:
 
@@ -130,8 +135,8 @@ While recording, you can also say **“never mind”**, **“nevermind”**, **�
 **“stop listening”** as the whole utterance. Add “please” at either end, or address the configured
 wake phrase at either end, including “please Sterling, never mind” and “Sterling, please stop
 listening”. Matching ignores case, punctuation, and extra whitespace; underscores in the wake
-model name are treated as spaces. These end listening and any manual conversation
-session without assistant dispatch or a history entry. Spoken cancellation is recognized after
+model name are treated as spaces. These end listening without assistant dispatch or a history
+entry. Spoken cancellation is recognized after
 endpointing and transcription, so the recorded audio still goes through STT. It does not listen for
 interruption during assistant processing or playback, or undo dispatched skills. Bare “stop” and
 “cancel”, “go back to sleep”, timer commands, and requests such as “add never mind to my list” or
@@ -173,7 +178,8 @@ handled the request. About 60 seconds after the last voice turn or touch, that s
 Overview. A voice turn, an open conversation, or an alert sound such as a timer chime keeps the
 skill in front until it finishes. Timers also stays in front while a timer has 15 minutes or less
 to go. A skill alert, such as an expired timer, can also bring its widget forward and
-mark it as needing attention. If the alert includes a detail sentence and voice output is enabled,
+mark it as needing attention, with a red **Now**. Tapping the context, or anything in its widget
+(such as the timer's **Dismiss**), clears the mark. If the alert includes a detail sentence and voice output is enabled,
 Voice Hub speaks it once. Alerts wait for an active voice turn and queue in order. Timer finish
 speech plays before a short rising three-note pluck that repeats about every 3 seconds.
 Say “stop” to dismiss all alarming timers, or tap the timer's **Stop**. Other running timers
@@ -192,7 +198,11 @@ Dismissing the timer anywhere clears the alarm on everyone's devices. A timer se
 person's account arrives as loud until you allow that person priority under **Notifications →
 Settings**.
 
-Successful changes that do not need an answer are a tone and an emoji, not a spoken confirmation.
+Successful changes that do not need an answer are a tone and an emoji, not a spoken confirmation,
+even when the assistant words one (“The pizza timer is set for fifteen minutes.”): unless you asked
+a question, a request that only changed things ends with the tone. To hear “Done.” instead, turn
+off **Settings → Voice interface → Confirm finished requests with a tone**. Standard and Live each
+keep their own choice; it starts on for Standard and off for Live.
 The screen aims to minimize listening and searching: speech answers questions and announces
 time-sensitive events, while completed actions use the done tone. A failed action uses the failed
 tone and keeps its explanation in recent conversation context; ask “what happened?” for an answer.
