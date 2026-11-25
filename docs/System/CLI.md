@@ -33,6 +33,9 @@ peers db tables
 # List available tools
 peers tools list
 
+# Every contract as a JavaScript global: read tables, run tools
+peers repl
+
 # Check app status
 peers app status
 
@@ -373,6 +376,68 @@ Local-only targets cannot run remotely.
 | `--device <id>` | Query or run tools on a directly connected device |
 | `--provider <packageId>` | Prefer this contract provider; fail if absent |
 | `--fallback-to-default` | Allow the active provider if the preferred provider is absent |
+
+### `peers repl` and `peers eval` — Contracts at a prompt {#repl}
+
+`peers repl` is JavaScript with every [contract](../Packages/contracts.md) in a data context as
+a global, named for the contract: `Tasks`, `TaskList`, `SystemPackages`. Through it you read
+and write a contract's tables, run its tools, and read its vars (observables) and events, as
+yourself, at your own level in the group. `peers eval` runs one piece of code and prints the
+value of its last expression as JSON, for scripts. What the code prints with `console.log` or
+`print` goes to stderr, so stdout holds only that JSON.
+
+```bash
+peers repl                 # Personal
+peers repl -c Home         # a group, by name or id
+peers eval 'Tasks.tables.Tasks.count()'
+peers eval 'var open = Tasks.tables.Tasks.list({ status: "Queued" }); open.length'
+```
+
+At the prompt:
+
+```js
+contracts("task")                                  // the contracts with "task" in them
+Tasks                                              // what Tasks has: tables, tools, vars, events
+Tasks.tables.Tasks                                 // a table's fields, and its methods with the level each needs
+var t = Tasks.tables.Tasks.list({ status: "Queued" }, { pageSize: 5 })
+t[0].title
+TaskList.tools.findTasks({ words: "car insurance" })
+Tasks.tools.describeTask({ taskId: t[0].taskId }).text
+Tasks.tools.describeTask(t[0].taskId)              // the same: values fill the arguments in order
+Tasks.tables.Tasks.get(id); Tasks.tools.describeTask($)   // $ is the last result
+Tasks.tables.Tasks.dataChanged.subscribe()         // print each change; .unsubscribe() stops it
+use("Home")                                        // move to a group; use() goes back to Personal
+help()                                             // everything else
+```
+
+- **Every call you type is awaited for you,** so `t` above holds the rows, not a promise.
+  Inside a function you write, use `await` yourself:
+  `const titles = async () => (await Tasks.tables.Tasks.list()).map((row) => row.title)`.
+  Calls inside `Promise.all([...])` run one after the other.
+- **Names.** A contract's global is its name with the spaces taken out. Its newest version is
+  the global, and older ones are `Tasks.v3`. When two contracts share a name, neither gets it:
+  reach each through its package (`peersCore.Tasks`), or by id with
+  `contract("<contractId>@<version>")`. A tool whose name has hyphens (`list-tasks`) is also
+  under its camelCase spelling (`listTasks`).
+- **Printing.** A contract, a table or a tool prints as what it is: its members, its fields
+  and methods, or how to call it. An array of rows prints as a table; `json(_)` shows the last
+  result in full.
+- **A tool takes one object, or its arguments' values in order.** Printing a tool shows the
+  order: `describeTask({ taskId, subtaskDepth?, includeComments?, commentLimit? })`, so
+  `describeTask(id, 0)` is `describeTask({ taskId: id, subtaskDepth: 0 })`. One object is the
+  whole input, so passing a row gives the tool the row's fields by name. More values than the
+  tool has arguments fail with the call it expects.
+- **`$` is the last result:** the value of the last statement that had one, on the same line or
+  an earlier one. A declaration (`var t = …`) or a statement whose value is `undefined` leaves
+  it as it was.
+- **A name that isn't there** says where it is: `findTasks` points you to
+  `TaskList.tools.findTasks`, and `tasks` to `Tasks`.
+- **Writes are real.** `save` and `delete` change your data, and the providing package's rules
+  apply as they do in its screens. Try writes in a throwaway group.
+- Typed lines are kept in `~/peers/cli/repl-history`. Leave with Ctrl+D or `.exit`.
+
+The code runs in the CLI with your own authority, as any `peers` command does. On a Peers
+app older than the CLI, a contract that has no tools isn't listed.
 
 ### `peers logs` — Logs
 
