@@ -21,6 +21,8 @@ Switching takes effect immediately — no reload.
 
 The classic Peers shell: a tab strip across the top with one app per tab. This is the default and matches how Peers has always worked.
 
+On a computer the strip shows your group at its left end, then your tabs, and at its right end search (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>), notifications and the network status. On a Mac, Peers has no title bar: the window's buttons sit at the strip's left end, at any zoom, and dragging the strip's empty space moves the window.
+
 See [Working with tabs](#working-with-tabs) for switching and arranging them.
 
 ### Tabs + Console
