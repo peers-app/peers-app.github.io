@@ -200,6 +200,13 @@ declare [indexes](#indexes) for the fields you query by, declare the fields that
 [`signedBy`](#signed-tables), and raise `versionNumber` when its fields
 or indexes change.
 
+**When devices run different versions.** Add new fields as optional. Once a newer version of
+a table syncs to a device, an earlier version of your package there can't use that table: its
+table calls fail until the device updates your package. The device still keeps the values
+other devices save in the new fields, and its rows get them when it updates. One exception: a
+row saved whole on a device that hasn't updated (with `saveAsSnapshot`, or any save to a
+[signed table](#signed-tables)) replaces that row on every device, without the new fields.
+
 Every call on a table goes through the package, its own handlers' and its consumers' alike: a
 UI's or another package's `save` reaches the package's table and is parsed with its schema, so
 defaults apply to them too
