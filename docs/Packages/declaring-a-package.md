@@ -207,6 +207,25 @@ other devices save in the new fields, and its rows get them when it updates. One
 row saved whole on a device that hasn't updated (with `saveAsSnapshot`, or any save to a
 [signed table](#signed-tables)) replaces that row on every device, without the new fields.
 
+**Changing fields copies the table.** When a version adds, removes, reorders or changes a field,
+each device copies the whole table the first time your package uses it after updating. A new
+index alone doesn't copy it. While the copy runs, the device's other data calls wait for it, your
+package's and other apps' alike, and it needs about the table's size in free storage. Rough copy
+times, for rows of about 500 bytes:
+
+| Table | Desktop app | Web app on a laptop | Web app on an older Android phone |
+|---|---|---|---|
+| 10,000 rows (5 MB) | 0.1 s | 0.2 s | 1 s |
+| 100,000 rows (50 MB) | 1.2 s | 2 s | 8 s |
+| 1,000,000 rows (500 MB) | 12 s | 17 s | 1.5 minutes |
+
+Keep a table whose fields you'll change under about 100,000 rows (50 MB), so phones don't wait
+many seconds after an update that changes them. The web app's screen can freeze for part of the
+copy; on iPhone and iPad, and in Safari on a Mac, it freezes for all of it. A copy that runs past
+10 minutes on a phone (several million rows) can stop, and it starts over the next time Peers
+opens, so a table that large can't change its fields there. If Peers closes during a copy,
+nothing is lost: it starts over.
+
 Every call on a table goes through the package, its own handlers' and its consumers' alike: a
 UI's or another package's `save` reaches the package's table and is parsed with its schema, so
 defaults apply to them too
