@@ -172,7 +172,6 @@ On the other side:
 
 What to expect:
 
-- **Any size.** A send isn't limited to the 4 GB of a mirrored folder's files.
 - **Both devices need to be on at the same time,** since only your device has the file. If the
   connection drops, or either device restarts, the copy picks up where it left off.
 - **Only the two of you see it.** The send never goes to the rest of the group: not its name,
@@ -206,12 +205,15 @@ time, keep the folder on a device that stays on: a desktop, or a small computer 
 ## What isn't synced yet
 
 - Symbolic links, empty folders, and file permissions.
-- Files over about 4 GB (a [send](#send-a-file-once) has no such limit).
+- Files of about 180 GB or more, in a mirrored folder or a send. Leave them out of a mirrored
+  folder ([Choose what not to sync](#choose-what-not-to-sync)), and split one into parts to send
+  it.
 - Clutter that systems and apps make on their own: `.DS_Store`, `Thumbs.db`, `desktop.ini`,
   Office's `~$` and LibreOffice's `.~lock` files, editors' swap files, and unfinished downloads
   (`.crdownload`, `.part`, `.download`).
-- A file whose name differs from another only in capitals (`Readme.txt` and `README.txt`) can't
-  live on a Mac or Windows PC; it's listed under the files that can't sync.
+- Two names that differ only in capitals, such as `Readme.txt` and `README.txt`. On most Macs and
+  Windows PCs they're one name, so the other devices take only one of them and list the other as
+  a file that can't sync. Rename one to sync both.
 
 ## From the command line or an agent
 
