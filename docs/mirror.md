@@ -13,6 +13,9 @@ Files go straight from device to device, never through a server, and only the pa
 that changed are copied. A file you move or rename is moved on the other devices too, not copied
 again. Each device keeps the folder wherever you put it.
 
+Mirror also **sends a file once**: a big file to one of your other devices, or to someone in a
+group you share, like an email attachment that's too big for email ([below](#send-a-file-once)).
+
 Mirror is new. It runs on the desktop app and on [headless](./System/Headless.md) hosts. The
 phone shows your folders and their devices but doesn't keep the files yet.
 
@@ -149,6 +152,42 @@ The same goes for a folder whose files all disappear while Peers isn't running: 
 back from your other devices instead of deleting them everywhere. To delete everything in a folder,
 delete the files while Peers is running.
 
+## Send a file once
+
+1. Press **Send a file** and choose who gets it: one of **Your devices**, or a person, listed
+   under a group you share with them that has Mirror.
+2. Pick the file (or several, from one folder) in the window that opens.
+3. The send shows under **Sent once**: waiting, then sending (how much of it), then delivered.
+   **Cancel** stops it.
+
+On the other side:
+
+- **From someone else,** their devices get a notification ("Mark wants to send you
+  video.mp4") and the send shows with **Accept** and **Decline**. Nothing is copied until they
+  accept.
+- **From you, to your own device,** it goes straight in, with no Accept.
+- Files go to the device's **Received folder**. Mirror asks for one the first time, and you can
+  change it under **Sent once**. A name already taken there gets a number
+  (`report (2).pdf`); several files go in a folder named for the send.
+
+What to expect:
+
+- **Any size.** A send isn't limited to the 4 GB of a mirrored folder's files.
+- **Both devices need to be on at the same time,** since only your device has the file. If the
+  connection drops, or either device restarts, the copy picks up where it left off.
+- **Only the two of you see it.** The send never goes to the rest of the group: not its name,
+  and not the file.
+- **It tidies itself away.** Once delivered, declined or canceled, Mirror lets go of the file and
+  the send leaves the list after a day (or press **×**). An offer nobody accepts within a week
+  ends on its own.
+- **Don't change the file while it's being sent.** A file edited after you sent it fails with
+  "changed after it was sent": send it again.
+- The other person needs Mirror in the group you share, on a computer. A phone can't receive
+  files yet.
+
+On a Peers older than the file picker, **Send a file** opens the folder picker instead: pick the
+folder the file is in, then tick the file.
+
 ## Keep one device always on
 
 Two devices copy files only while both are online. If your laptops are rarely awake at the same
@@ -167,7 +206,7 @@ time, keep the folder on a device that stays on: a desktop, or a small computer 
 ## What isn't synced yet
 
 - Symbolic links, empty folders, and file permissions.
-- Files over about 4 GB.
+- Files over about 4 GB (a [send](#send-a-file-once) has no such limit).
 - Clutter that systems and apps make on their own: `.DS_Store`, `Thumbs.db`, `desktop.ini`,
   Office's `~$` and LibreOffice's `.~lock` files, editors' swap files, and unfinished downloads
   (`.crdownload`, `.part`, `.download`).
@@ -200,6 +239,21 @@ peers tools run mirror-list-files '{"folderId": "<folderId>", "conflicts": true}
 | `mirror-set-ignore` | Set a folder's not-synced patterns (`patterns`, one per entry). |
 | `mirror-list-trash` | This device's deleted files and earlier versions for a folder, newest first. |
 | `mirror-restore` | Put one back (pass the entry from `mirror-list-trash`). |
+| `mirror-send` | Send files once to one person's device: a grant holding them, their paths, and who gets it (`toUserId`, `toDeviceIds`). |
+| `mirror-list-sends` | This device's sends, the ones sent to it, and its Received folder. |
+| `mirror-accept`, `mirror-decline` | Answer a send offered to this device. Accept needs a Received folder. |
+| `mirror-cancel-send` | Cancel a send this device is making. |
+| `mirror-set-receive-folder` | Choose where received files go (a read-write grant). |
+| `mirror-dismiss-send` | Take an ended send off the list. |
+
+To send from the command line, grant the folder the file is in to Mirror, then send the file
+(Mirror lets the grant go when the send ends):
+
+```bash
+peers fs grant ~/Downloads --group <groupId> --package 00mwltdt9ys2khmvifcrig43t --json
+peers tools run mirror-send '{"grantId": "<grantId>", "paths": ["video.mp4"], "toUserId": "<userId>", "toDeviceIds": ["<deviceId>"]}' -c <groupId>
+peers tools run mirror-list-sends '{}' -c <groupId>
+```
 
 Mirror keeps folders with [System Local Folders](./System/Local-Folders.md), which grants it the
 folder, indexes files into blocks, and copies blocks between devices.

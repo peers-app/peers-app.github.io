@@ -25,7 +25,7 @@ Grants live in the personal database and never sync.
 
 | Caller | What they can do |
 | --- | --- |
-| Operator (Packages UI, `peers fs`, headless `--folder`) | Create, list, and revoke every grant on this device. Pass `absolutePath` or, on the desktop, omit it and use the folder picker. |
+| Operator (Packages UI, `peers fs`, headless `--folder`) | Create, list, and revoke every grant on this device. Pass `absolutePath` or, on the desktop, omit it and use the folder or file picker. |
 | Isolated package | Use and revoke only grants whose `packageId` is that package. Cannot create a grant, and cannot pass `absolutePath`. |
 
 An operator grant has no `packageId`. It is for the UI, the CLI, and startup
@@ -63,6 +63,28 @@ Every relative path is resolved inside the grant root:
 `move`, `trash`, `restore`, `purgeTrash`, `index`, and `assemble` require `mode: "readwrite"`.
 `list`, `stat`, `readRange`, `getFileBlocks`, and `listTrash` accept either mode.
 
+## Grants of picked files
+
+A grant can cover a few files instead of a whole folder: what you'd want when someone picks a
+file to send, not a folder to keep. Ask for one with `pick: "files"` (on the desktop, the OS
+file picker opens, allowing several files in one folder), or, as the operator, with
+`absolutePath` and `files: ["video.mp4", ...]` (plain file names in that folder).
+
+- **It's read-only**, whatever `mode` says, and covers nothing but those files. Every path a
+  call names must be one of them; `list` of the root returns only them (recursive or not);
+  `stat` of the root works; `changed` names only them.
+- **It can be indexed,** so its blocks can be served to other devices: `index` of the root
+  indexes just the files, and a path given must be one of them. A read-only folder grant still
+  can't be indexed.
+- **Nothing that writes,** and no `listTrash`: the trash belongs to the folder.
+- **Never reused.** Each request makes a new grant, and a folder request never returns one.
+  `listGrants` and `requestGrant` report its `files`.
+- Picked files from two folders at once are refused. At most 1000 files.
+
+A Peers that predates this ignores `pick` and opens the folder picker, and its grant has no
+`files`. Since `mode` doesn't matter to a grant of picked files, a caller that needs to index
+can ask for `mode: "readwrite"` and get a folder it can index on an older Peers.
+
 ## Tools and events
 
 Contract version 1. Tools do not use an access level of their own; the grant
@@ -70,7 +92,7 @@ check is the authorization.
 
 | Tool | Purpose |
 | --- | --- |
-| `requestGrant({ groupId, mode, packageId?, absolutePath? })` | Create or reuse a grant. Omit `absolutePath` on the desktop to open the folder picker. Isolated packages cannot call this. |
+| `requestGrant({ groupId, mode, packageId?, absolutePath?, pick?, files? })` | Create or reuse a grant. Omit `absolutePath` on the desktop to open the folder picker, or with `pick: "files"` the file picker. `files` (with `absolutePath`) grants only those files ([grants of picked files](#grants-of-picked-files)). Isolated packages cannot call this. |
 | `listGrants()` | Active grants visible to the caller. Returns `{ grants }`. |
 | `revokeGrant({ grantId })` | Revoke one grant. Returns `{ revoked }`. |
 | `list({ grantId, relPath?, recursive? })` | Directory entries (`kind`, `size`, `mtimeMs`, `inode`). Returns `{ entries }`. Skips `.peers`. |
