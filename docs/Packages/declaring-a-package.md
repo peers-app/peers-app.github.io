@@ -533,13 +533,17 @@ export const Feeds = defineTable({
 - `dataChanged(event)` sees each change on its way to one subscriber, with `this.ctx` carrying
   that subscriber. Return it, return a changed copy, or return `undefined` to drop it. By
   default it passes the change through.
-- Consumers can call the six standard methods. Other methods on the class stay private to the
-  package.
+- Consumers can call the six standard methods, each at a level
+  ([Who can call a table's methods](#table-method-access)). Other methods on the class stay
+  private to the package unless you add them with `@tableMethod`.
 - The class runs in the package's worker, like the rest of its code, never in the host.
 
-A table can also be read-only to its consumers, when its rows must change through a tool. Timers
-does this: a timer's row and its device schedule change together, in `write-timer`. Its class
-refuses `save` and `delete`, and the package stores the rows it plans through a method of its own:
+A table can also be read-only to its consumers, when its rows must change through a tool. Hide
+`save` and `delete` with `@tableMethod({ private: true })`
+([Who can call a table's methods](#table-method-access)); your own tools still call them. Timers
+does it the older way: a timer's row and its device schedule change together, in `write-timer`,
+so its class refuses `save` and `delete` for every caller, its own code included, and the
+package stores the rows it plans through a method of its own:
 
 ```ts
 export class TimersTable extends PackageTable<typeof timerSchema> {
@@ -555,6 +559,91 @@ export class TimersTable extends PackageTable<typeof timerSchema> {
   }
 }
 ```
+
+### Who can call a table's methods {#table-method-access}
+
+A table on a contract is the contract's basic API for its data: other packages, screens, the CLI
+and agents read and write it without a tool for each. It serves six methods, each at a level:
+
+| Method | Level |
+|---|---|
+| `get`, `list`, `count`, `findOne`, and `dataChanged` subscriptions | Reader |
+| `save` (inserts or updates) and `delete` | Writer |
+
+Peers checks the caller's level before the call reaches your package, as it does for a tool, so
+a group's Reader can read the table but not change it. Your package's own code (`Feeds(ctx)` in a
+handler) reaches its tables directly and isn't held to these levels. Your screens are callers
+like any other: they call through `hostContract` as the signed-in user, so a screen needs that
+user to have the method's level and can't call a method you hide. Give the screen a tool for
+that.
+
+To change a level, hide a method, or add one, pass your class as `tableClass` to `defineTable`
+and put `@tableMethod` on the method. If another decorator wraps that method, put `@tableMethod`
+above it so the declaration applies to the wrapper. Below it, Peers doesn't see the declaration:
+a standard method serves as if it weren't decorated, and a method you add isn't callable.
+
+```ts
+import { AccessLevel, PackageTable, tableMethod, z, zodPeerId } from "@peers-app/peers-sdk/define";
+
+class FeedsTable extends PackageTable<typeof feedSchema> {
+  @tableMethod({ accessLevel: AccessLevel.Admin })      // only admins delete a feed
+  async delete(feedId: string) {
+    return super.delete(feedId);
+  }
+
+  @tableMethod({ private: true })                        // callers can't call count
+  async count(filter = {}) {
+    return super.count(filter);
+  }
+
+  @tableMethod({                                         // a method of your own
+    accessLevel: AccessLevel.Writer,
+    description: "Give a feed a new title.",
+    input: z.object({ feedId: zodPeerId, title: z.string().min(1) }),
+    output: z.object({ title: z.string() }),
+  })
+  async rename({ feedId, title }: { feedId: string; title: string }) {
+    const feed = await this.get(feedId);
+    if (!feed) throw new Error("No such feed");
+    const saved = await this.save({ ...feed, title });
+    return { title: saved.title };
+  }
+}
+```
+
+- **A level** can be lower or higher than the default. A table of records might keep `delete` for
+  Admins. A table other apps log to might take `save` at Reader, so a call held to Reader, such
+  as one made under a Read only [delegate grant](../System/Delegates.md), can still add a row.
+  A lower level doesn't change what a group shares: a group's Reader can then save, but those
+  rows stay on that person's own devices, because other members' devices keep nothing a Reader
+  writes ([Groups](../System/Groups.md)).
+- **`private: true`** hides a standard method from callers; your own code still calls it. Hide
+  `save` and `delete` to make a table read-only, so its rows change only through your tools.
+  A table's `dataChanged` follows `list`: it needs the same level, and hiding `list` hides it too.
+  Hiding one read doesn't hide what the others return: while `list` is open, a caller can still
+  count rows or find one, so hide or raise those together.
+- **A method of your own** takes one object argument, like a tool. Give it a `description`, an
+  `accessLevel`, and a Zod object for `input`; your method runs only once the argument passes
+  that schema. An optional `output` describes the result. Use one for an operation on this
+  table's rows, and a tool for a workflow across tables or anything outside the table.
+- **Callers call a method you add by name**, with its one argument: another package with
+  `News(ctx).tables.Feeds.rename({ feedId, title })`, a screen through `hostContract`, and the
+  REPL and agents the same way. `peers contracts add` doesn't generate its type yet, so
+  TypeScript callers need a cast for now.
+- The class's other methods, the ones `@tableMethod` doesn't add, stay private to your package.
+- A subclass keeps its parent class's declarations: an override without `@tableMethod` serves
+  at the level the parent declared, and one with it replaces the parent's.
+
+**Levels and hiding are your package's policy**, as a tool's level is: changing them doesn't change
+the contract, even a stable one. **A method you add is part of the contract**, as a tool is: adding
+one to a stable contract needs a new version ([Evolving stable contracts](./contracts#evolving-stable-contracts-with-alsoimplements)).
+Callers of the older version, which the new one also implements, don't see the new method, and
+their calls to a method both versions have are checked against the older version's input.
+
+A package whose table class uses `@tableMethod` needs a Peers host from the same release or later:
+an older host refuses its manifest. A table without it runs on any host. `@tableMethod` is a
+standard decorator, as TypeScript 5 compiles by default: leave `experimentalDecorators` off in
+your `tsconfig.json`, or `@tableMethod` throws as soon as your table class loads.
 
 ## Tools
 
@@ -1543,7 +1632,10 @@ host.dispose();
   (`{ feedId }`) and `$in` (`{ status: { $in: ["running", "paused"] } }`); a filter with other
   operators (`$or`, `$matchWords`) fails rather than guess. Equality to `null` or `undefined` matches
   omitted optional fields, as in host storage. Paging and `sortBy` work; other query options,
-  including text search, fail explicitly.
+  including text search, fail explicitly. A method your class hides with
+  `@tableMethod({ private: true })` refuses UI calls, as the host does, and hiding `list` stops
+  `dataChanged`. Method levels aren't checked, and methods you add aren't served yet: test those
+  through the table's class directly.
 - **Tools** answer with the fakes you pass, given the input as the tool's schema parses it. A
   tool without a fake fails when called, and a private tool refuses UI calls, as the host does.
   Access levels aren't checked.

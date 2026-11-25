@@ -381,10 +381,15 @@ an operation with side effects.
 
 ### Table-call boundary
 
-Package contracts expose `get`, `list`, `count`, `findOne`, `save`, and `delete`, plus
-`dataChanged` subscriptions. Each call runs through the providing package's table class.
-Custom methods and private tables aren't exposed. Use a contract tool for operations that
-don't fit the standard table methods. See
+A table on a contract is the contract's basic API for its data. It exposes `get`, `list`,
+`count`, `findOne`, `save`, and `delete`, plus `dataChanged` subscriptions: reads and
+`dataChanged` at Reader, `save` and `delete` at Writer, checked before the call reaches the
+package. Each call runs through the providing package's table class. With `@tableMethod` on that
+class, a package changes a method's level, hides one, or adds one of its own
+([Who can call a table's methods](./declaring-a-package#table-method-access)). A method the
+package adds is part of the contract; levels and hidden methods are its policy, as a tool's level
+is. Private tables and the class's other methods aren't exposed. Use a contract tool for an
+operation that spans tables or reaches outside the table. See
 [Overriding table methods](./declaring-a-package#overriding-table-methods).
 
 ### Observables and events
