@@ -187,7 +187,7 @@ Key points:
 - **`id` is stable and de-duplicated.** Re-registering with the same `id` replaces the prior entry; `unregisterGlobalOverlay(id)` removes it.
 - **Loading is lazy.** Because overlays register from the UI bundle, they become available the first time the package's UI is loaded (i.e. the first time one of its screens is opened).
 - **Position above content, below modals.** Overlays typically use `position: fixed`. Keep their `z-index` below the command palette (`1050`) so modal navigation stays on top.
-- **Over the tab strip, add `peers-window-no-drag`.** On a Mac, Peers has no title bar: the window's buttons sit at the left end of the tab strip, and the strip's empty space moves the window. That holds even under something drawn on top of the strip, so clicks there would move the window instead of reaching your element. Put the `peers-window-no-drag` class on an element of yours that can cover the strip, such as a full-screen view. Bootstrap's `position-fixed` class, modals and offcanvas panels already opt out.
+- **Over the tab strip, add `peers-window-no-drag`.** In the desktop app Peers has no title bar: the window's buttons sit on the tab strip (at its left end on a Mac, its right end on Windows and Linux), and the strip's empty space moves the window. That holds even under something drawn on top of the strip, so clicks there would move the window instead of reaching your element. Put the `peers-window-no-drag` class on an element of yours that can cover the strip, such as a full-screen view. Bootstrap's `position-fixed` class, modals and offcanvas panels already opt out.
 
 ## Route matching
 
