@@ -162,8 +162,8 @@ tool paths, not general table or observable writes.
 
 ## Adaptive workspace
 
-Voice Hub opens on **Overview**: each skill's summary card (several grocery items, current weather
-conditions, or several news headlines) at its own size, in order, flowing down and then right to
+Voice Hub opens on **Overview**: each skill's summary card (several grocery items, today's and tomorrow's
+weather, or several news headlines) at its own size, in order, flowing down and then right to
 fill the screen. Past the screen it scrolls sideways: swipe, use a trackpad or Shift with the
 wheel, or tap the arrows. A skill set to **Full** shows its main view instead, a whole column tall,
 so you can use it right there: Groceries' list with its add box, for example. Only empty skills use
