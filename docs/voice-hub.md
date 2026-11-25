@@ -255,6 +255,16 @@ The layout follows the space available to the Voice Hub tab:
 - On tablets, including the primary 10-inch layout, the cards flow into two columns a screen.
 - On wide displays, three columns a screen; the chips stay along the top.
 
+### Full screen
+
+On a screen that shows only Voice Hub, such as a kitchen hub, tap the full screen button at the
+right end of the row of chips. Voice Hub then fills the whole display, over Peers' tab bar. The
+command palette (Cmd+K or Ctrl+K) and Peers' dialogs still open over it. Each device remembers
+the choice, so after Peers restarts Voice Hub covers the window again at once, and the window
+goes full screen at your first tap. To leave full screen, tap the button again or press Esc.
+Opening another app also leaves it, such as with a card's open button, so that app shows
+normally with its tab.
+
 **Settings** has a page per topic: **General** (what the wake word starts, wake listening and
 diagnostics, the conversation drawer), **Widgets** (their order on this device), **Command** (speak answers, its tone, transcription, and
 voice), **Interactive** (its voice and tone), **Wake word** (model, threshold, speech gate, and
