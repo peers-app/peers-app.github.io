@@ -94,8 +94,8 @@ contract's tools work for the assistant and the CLI too.
 ```
 
 Everything but `peersUIId` is optional. `title` defaults to your package's name, the icon to a
-generic one, and `order` to `100`. The card's description, shown when it's focused, comes from the
-first exposed contract with a description, so write that description for the person using Voice
+generic one, and `order` to `100`. The card's description, shown on a widget set to Full on the Overview, comes
+from the first exposed contract with a description, so write that description for the person using Voice
 Hub as well as for developers. Lower `order` values appear first when attention and recency are
 equal.
 Omit `appNavs` when the package should appear only as a widget. Voice Hub subscribes to `widget`
@@ -125,6 +125,9 @@ Voice Hub renders the widget through `PeersUI` with these props:
 ```
 
 `view` is `summary` on Overview and `focus` when the user or a voice action selects the context.
+A selected context's `focus` view fills the area under Voice Hub's chips, with no card, header or
+padding around it, so give it its own margins and let it use the width (a kiosk's is about 1200
+pixels). A widget set to Full on the Overview gets `focus` too, inside its card, a column wide.
 `active` is true for the focused widget. `host` lets a reusable UI make small host-specific choices
 without importing Voice Hub.
 
@@ -145,7 +148,7 @@ which the provider skips while the forecast is fresh. Don't start an uncondition
 on every summary mount.
 
 A focus view should provide the package's common touch actions with targets of at least 44 pixels,
-and no keyboard-only or hover-only behavior. Voice Hub owns the card header and context selection;
+and no keyboard-only or hover-only behavior. Voice Hub owns the cards, the chips and context selection;
 the package owns all domain UI and writes.
 
 After one of your tools succeeds, Voice Hub focuses your widget.
@@ -153,7 +156,10 @@ After one of your tools succeeds, Voice Hub focuses your widget.
 Voice Hub returns a focused widget to Overview after about a minute with no voice turn or touch.
 To keep yours in front for a while, set `data-widget-hold="true"` on an element in it: Timers does
 while a timer is ringing or has 15 minutes or less to go. Voice Hub looks for the mark when the
-minute is up, and returns to Overview within a few seconds of it going away. An empty summary can
+minute is up, and returns to Overview within a few seconds of it going away. While your summary
+card carries the mark, Voice Hub rests on your widget instead of Overview: another widget's quiet
+minute returns to yours, and a quiet Overview opens it. Use it only for what someone in the room
+needs to see soon. An empty summary can
 set `data-widget-empty="true"` on its root, and Voice Hub draws that card on one line beside its
 name.
 

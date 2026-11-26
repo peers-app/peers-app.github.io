@@ -179,7 +179,8 @@ a single row with an icon, name, and quiet status; skills needing attention keep
 The skills stay in the order and size you choose on that device: open **Settings → Widgets**, move
 them with ↑ ↓ (or **Default order**) and pick **Card** or **Full** for each, then **Save**; or
 select **Arrange on screen** and drag the cards on the Overview itself, then **Done**. The chips along the top follow the same order, and a skill
-installed later goes at the end. Nothing moves by itself: a skill that needs you opens with a red
+installed later goes at the end. Tap a chip to open that skill: it fills the screen under the
+chips, with no card around it. Nothing moves by itself: a skill that needs you opens with a red
 **Now** on its chip, and Timers stays up while a timer is due, so it can sit last.
 Opening Weather refreshes a stale forecast; after that, Weather refreshes about once an hour in
 the background on devices whose user is a Writer, and a Reader's device picks up those forecasts
@@ -196,8 +197,10 @@ to open its complete touch
 controls. After a successful voice skill action, Voice Hub opens the widget owned by the skill that
 handled the request. About 60 seconds after the last voice turn or touch, that skill returns to
 Overview. A voice turn, an open conversation, or an alert sound such as a timer chime keeps the
-skill in front until it finishes. Timers also stays in front while a timer has 15 minutes or less
-to go. A skill alert, such as an expired timer, can also bring its widget forward and
+skill in front until it finishes. While a timer is ringing or has 15 minutes or less to go,
+Timers is where Voice Hub rests instead of Overview: it stays in front, another skill returns to
+it after its quiet minute, and Overview opens it after a quiet minute, or as soon as a timer
+reaches 15 minutes. A skill alert, such as an expired timer, can also bring its widget forward and
 mark it as needing attention, with a red **Now**. Tapping the context, or anything in its widget
 (such as the timer's **Dismiss**), clears the mark, and so does dismissing the last ringing timer
 anywhere else: by voice, on another screen, or on a phone. If the alert includes a detail sentence and voice output is enabled,
@@ -212,8 +215,10 @@ continue. With voice output off, no spoken line delays the chime.
 The Timers card on Overview lists your timers, each with a pause, resume or stop button. With none
 running, it offers 5, 10 and 15 minute timers in one tap. Open it for the full view: a card for each
 timer with **+1:00** (on a ringing timer, it starts again with a minute) and a keypad to set one by
-touch. Type the time as on a phone's clock, so 1 5 0 0 is 15 minutes, add a label if you like, and
-tap ▶. **Again** starts one of your last two timers once more. The Timers app looks the same.
+touch. Type the time as on a phone's clock, so 1 5 0 0 is 15 minutes, and tap ▶. Beside the keys
+are 5, 10 and 15 minutes and **Again**, which starts one of your last two timers once more. To name
+a timer, say it ("set a 10 minute pizza timer"), or tap **Label** and type one. The Timers app looks
+the same.
 
 A timer still ringing a minute after it finished also notifies the person who set it, on their
 phone and computers, through [notifications](System/Notifications.md). On a shared screen, choose
