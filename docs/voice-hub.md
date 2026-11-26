@@ -43,6 +43,13 @@ and select **Save**. The preference persists across reopening and works in narro
 changing wake inference or device tuning. Active/error status and cancellation remain available
 with diagnostics off. Idle guidance is also hidden during a manual session's re-arm gap.
 The ear/hand dock toggle switches wake listening on or off.
+
+A short, high **listening tone** tells you when to start talking. Command plays it as soon as the
+microphone is open, and Interactive once its conversation has connected, which can take a few
+seconds. When the wake phrase starts Interactive, you also hear a two-note acknowledgement right
+away, so you know it heard you while the conversation connects. During an Interactive
+conversation there's no tone after each reply: you can talk at any time.
+
 Recording ends after about three-quarters of a second of silence. The
 **Wake re-arm delay** starts after a turn and its completion tone finish. Its two-second default
 prevents the assistant's own tones, spoken response, or room echo from immediately starting another
@@ -192,9 +199,13 @@ Overview. A voice turn, an open conversation, or an alert sound such as a timer 
 skill in front until it finishes. Timers also stays in front while a timer has 15 minutes or less
 to go. A skill alert, such as an expired timer, can also bring its widget forward and
 mark it as needing attention, with a red **Now**. Tapping the context, or anything in its widget
-(such as the timer's **Dismiss**), clears the mark. If the alert includes a detail sentence and voice output is enabled,
-Voice Hub speaks it once. Alerts wait for an active voice turn and queue in order. Timer finish
-speech plays before a short rising three-note pluck that repeats about every 3 seconds.
+(such as the timer's **Dismiss**), clears the mark, and so does dismissing the last ringing timer
+anywhere else: by voice, on another screen, or on a phone. If the alert includes a detail sentence and voice output is enabled,
+Voice Hub speaks it once. Alerts wait for an active voice turn and queue in order. A finished
+timer is different: Voice Hub says "Your Pizza timer is done" (every ringing timer, in one
+sentence), then listens for a few seconds, so you can just answer: "stop", "dismiss the pizza", or
+"add two minutes". It repeats that for a minute while the timer still rings, then a short rising
+three-note pluck takes over, about every 3 seconds, until it's dismissed.
 Say “stop” to dismiss all alarming timers, or tap the timer's **Stop**. Other running timers
 continue. With voice output off, no spoken line delays the chime.
 
@@ -204,7 +215,7 @@ timer with **+1:00** (on a ringing timer, it starts again with a minute) and a k
 touch. Type the time as on a phone's clock, so 1 5 0 0 is 15 minutes, add a label if you like, and
 tap ▶. **Again** starts one of your last two timers once more. The Timers app looks the same.
 
-A timer still ringing 30 seconds after it finished also notifies the person who set it, on their
+A timer still ringing a minute after it finished also notifies the person who set it, on their
 phone and computers, through [notifications](System/Notifications.md). On a shared screen, choose
 who hears its timers: open the Timers app there, tap the bell, and tick the people who use it.
 Dismissing the timer anywhere clears the alarm on everyone's devices. A timer set from another

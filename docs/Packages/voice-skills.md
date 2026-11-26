@@ -162,8 +162,16 @@ name.
 Emit `alert` when a skill needs the user's attention now. Its payload is `kind`, `title`, and an
 optional `detail`. Alerts work even when `widget` is `null`. When a widget is present, Voice Hub
 focuses it, marks its context, and ranks it first on
-Overview until the user opens it. When `detail` is set and voice output is on, Voice Hub speaks it
-once, with no tone before it; without a `detail`, it plays the done tone. Alerts wait for an active
+Overview until the user opens it. To clear the mark once the matter is settled elsewhere (a timer
+dismissed on another device, say), set `data-widget-attention` on an element in your widget:
+`"true"` while it still needs attention, `"false"` once it doesn't. Voice Hub drops the mark when
+it goes from `"true"` to `"false"`. Without it, the mark stays until the user touches the widget. When `detail` is set and voice output is on, Voice Hub speaks it
+once, with no tone before it; without a `detail`, it plays the done tone. If your widget says
+`data-widget-attention="true"` after that, Voice Hub listens for a few seconds so the user can just
+answer (the Command agent gets what they say, with your `detail` as the conversation's last line),
+then says it again while the widget still says `"true"`, for up to a minute. Put the line to
+repeat in `data-widget-attention-detail` on the same element; it can change as things do (Timers
+names every ringing timer). Your own alert sound waits until the repeating ends. Alerts wait for an active
 voice turn and for each other. Voice Hub doesn't branch on `kind`: keep package-specific wording in
 `detail`.
 
