@@ -146,6 +146,31 @@ desktop or headless. Packages that use the internet fetch from the browser, so t
 sites that allow it. Weather can refresh and Voice Hub can call OpenAI with your configured key.
 News's default feeds fail with a browser read error; see [System HTTP in a browser](./HTTP#in-a-browser).
 
+## Devices and people from code
+
+Two read-only system contracts list the devices and people a data context knows of, for the
+[CLI's prompt](CLI.md#repl), the [Console](Console.md) and agents:
+
+- **System Devices** has one table, `Devices`: each device's `deviceId`, its owner's `userId`,
+  the `name` you gave it, the `reportedName` it gives itself, its `trustLevel`, and when it was
+  `firstSeen` and `lastSeen`. Your Personal one has every device you know of. A group's has its
+  members' devices.
+- **System Users** has one table, `Users`: each person's `userId` and `name`.
+
+You can read them with `get`, `list`, `count` and `findOne`, or follow them with `dataChanged`,
+at Reader. You can't write them: pairing, sync and each person's signed profile keep them. A
+filter, sort or text search reads only these fields. How to dial a device, keys and signatures
+aren't shown.
+
+At the prompt they're `peers.Devices.devices` and `peers.Users.users`, and `Devices` and `Users`
+name what's in them:
+
+```js
+peers.Devices.devices.list({ userId: "<userId>" }, { sortBy: ["-lastSeen"] })
+Devices.pc                     // your PC: its fields, and the tools it has
+Users.blair.devices.phone      // Blair's phone
+```
+
 ## Pending device invites
 
 Device admission uses the same `Invites` table as [contacts](./Contacts.md) and

@@ -380,8 +380,11 @@ Local-only targets cannot run remotely.
 ### `peers repl` and `peers eval` — Contracts at a prompt {#repl}
 
 `peers repl` is JavaScript with every [contract](../Packages/contracts.md) in a data context as
-a global, named for the contract: `Tasks`, `TaskList`, `SystemPackages`. Its tables, tools,
+a global, named for the contract: `Tasks`, `TaskList`. Peers' own contracts are under `peers`,
+without "System": `peers.Packages`, `peers.Logs`. Its tables, tools,
 vars (observables) and events are on it by camelCase name: `Tasks.tasks`, `Tasks.describeTask`.
+`Devices`, `Users` and `Groups` name your devices, the people here and your groups, so you can
+start from one: `Devices.pc.Tasks.describeTask(id)`.
 Through them you read and write tables, run tools, and read vars and events, as yourself, at
 your own level in the group. `peers eval` runs one piece of code and prints the
 value of its last expression as JSON, for scripts. What the code prints with `console.log` or
@@ -408,6 +411,11 @@ Tasks.describeTask({ taskId: t[0].taskId }).text
 Tasks.describeTask(t[0].taskId)                    // the same: values fill the arguments in order
 Tasks.tasks.get(id); Tasks.describeTask($)         // $ is the last result
 Tasks.tasks.dataChanged.subscribe()                // print each change; .unsubscribe() stops it
+Devices                                            // your devices by name, others' by owner
+Devices.pc.Tasks.describeTask(id)                  // a tool on your PC
+Users.blair.devices                                // the people here, and their devices
+Groups.home.members                                // your groups, and who's in each
+peers.Devices.devices.list({ trustLevel: 100 })    // the table behind Devices
 use("Home")                                        // move to a group; use() goes back to Personal
 help()                                             // everything else
 ```
@@ -417,9 +425,35 @@ help()                                             // everything else
   `const titles = async () => (await Tasks.tasks.list()).map((row) => row.title)`.
   Calls inside `Promise.all([...])` run one after the other.
 - **Names.** A contract's global is its name with the spaces taken out, each word capitalized:
-  `TaskList`. Its newest version is the global, and older ones are `Tasks.v3`. When two
+  `TaskList`. Peers' own are under `peers` without their "System": System Group Members is
+  `peers.GroupMembers`. Its newest version is the global, and older ones are `Tasks.v3`. When two
   contracts share a name, neither gets it: reach each through its package (`peersCore.Tasks`),
   or by id with `contract("<contractId>@<version>")`.
+- **Devices, users and groups by name.** `Devices` has your devices by name (`Devices.pc`), and
+  other people's by their name (`Devices.blair.phone`); `Users` has the people in this data
+  context, each with their devices (`Users.blair.devices.laptop`); `Groups` has every group
+  you're in, with its members (`Groups.home.members`). A name is the one given in Peers, in
+  camelCase, with apostrophes left out and accents taken off: "José's Phone" is `josesPhone`.
+  Latin ligatures and full-width letters fold to plain letters, so "Ærø" is `aero` and "ＰＣ" is
+  `pc`. A name written only in another script, such as "東京", is reached by id. Contract,
+  package and member names use the same Latin folds. For a contract with no ASCII word, use
+  its declared name if unique (`contract("東京")`) or its id. For a member with no ASCII word,
+  use its declared spelling in brackets (`Notes.tools["履歴"]`).
+  Print `Devices.pc` for a summary or use `json(Devices.pc)` for all its fields.
+  `Devices.pc.peers` lists Peers' own contracts with tools on the PC.
+  `Devices.pc.Tasks` is `Tasks.on(<the PC's id>)`, its tools on that device. On
+  someone else's device, only the tools it lets others call are there, and only in a group you
+  share. Enter that group first with, for example, `use("Home")`. Devices and users update as
+  they change. The prompt loads groups and their members at startup and again each time you call
+  `use`. A device or person can be renamed, so keep ids in scripts.
+- **A name two of them share is left off,** such as two of your devices called Laptop, or two
+  people called Eli. Reading it says what each is and gives its id: `Devices["<deviceId>"]`,
+  `Users["<userId>"]` and `Groups["<groupId>"]` reach any of them, named or not.
+  Print `Devices` or `Users` to see up to ten id paths for entries without a usable name path.
+  If the summary says “and N more”, use `peers.Devices.devices.list()` or `peers.Users.users.list()`
+  to find the remaining ids. `Groups` prints every group's id.
+  `Devices["<userId>"]` lists that owner's devices. A contract named `Devices`, `Users` or
+  `Groups` is reached through its package.
 - **Members.** A contract's tables, tools, vars and events go by camelCase names (the table
   "Tasks" is `tasks`, the tool `list-tasks` is `listTasks`), on the contract itself and in
   `Tasks.tables`, `Tasks.tools`, `Tasks.vars` and `Tasks.events`. A member named like one of the

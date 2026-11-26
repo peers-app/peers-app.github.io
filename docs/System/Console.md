@@ -5,10 +5,12 @@ sidebar_position: 1
 # Console
 
 The Console is a JavaScript prompt inside Peers. Every [contract](../Packages/contracts.md) in
-a group is a global there, named for the contract: `Tasks`, `TaskList`, `SystemPackages`. Its
+a group is a global there, named for the contract: `Tasks`, `TaskList`. Peers' own contracts are
+under `peers`: `peers.Packages`, `peers.Logs`. Its
 tables, tools, vars (observables) and events are on it by camelCase name: `Tasks.tasks`,
 `Tasks.describeTask`. Through them you read and write tables, run tools, and read vars and
-events. Your calls run as you, at your own level in the group, the same as
+events. `Devices`, `Users` and `Groups` name your devices, the people in the group and your
+groups. Your calls run as you, at your own level in the group, the same as
 your screens' calls.
 
 It's the same prompt as [`peers repl`](CLI.md#repl): the same names, helpers and hints, with
@@ -41,6 +43,9 @@ Tasks.describeTask(open[0].taskId)                 // values fill a tool's argum
 Tasks.tasks.get(open[0].taskId); Tasks.describeTask($)   // $ is the last result
 const changes = Tasks.tasks.dataChanged.subscribe()      // show each change
 changes.unsubscribe()                              // stop showing them
+Devices.pc.Tasks.describeTask(id)                  // a tool on your PC, by its name
+Users.blair.devices                                // the people here, and their devices
+Groups.home.members                                // your groups, and who's in each
 use("Home")                                        // move to a group; use() goes back to Personal
 help()                                             // everything else
 ```
@@ -58,6 +63,12 @@ help()                                             // everything else
 - **A name that isn't there** says where it is: `tasks` points you to `Tasks` and `Tasks.tasks`,
   and `findTasks` to `TaskList.findTasks`. The [`peers repl` section](CLI.md#repl) says which
   member names are only in `Tasks.tables`, `Tasks.tools`, `Tasks.vars` or `Tasks.events`.
+- **Devices, people and groups by name:** `Devices.pc`, `Devices.blair.phone`,
+  `Users.blair.devices.laptop`, `Groups.home.members`. A name two of them share is left off, and
+  reading it gives each one's id: `Devices["<deviceId>"]` reaches any device. On someone else's
+  device, only the tools it lets others call are there, and only in a group you share. Devices
+  and users update as they change. To refresh the member list while working in Home, reload
+  the Console or run `use("Home")` again. The [`peers repl` section](CLI.md#repl) says more.
 - **A refused write** lists what's wrong, one issue per line: `status: Invalid enum value. …`.
 - **A call the table or tool would misread is refused,** as at `peers repl`: an option `list`
   doesn't take (`skip`), a `sortBy` that isn't a list of fields, or a misspelled field.
