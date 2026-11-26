@@ -200,12 +200,29 @@ declare [indexes](#indexes) for the fields you query by, declare the fields that
 [`signedBy`](#signed-tables), and raise `versionNumber` when its fields
 or indexes change.
 
-**When devices run different versions.** Add new fields as optional. Once a newer version of
-a table syncs to a device, an earlier version of your package there can't use that table: its
-table calls fail until the device updates your package. The device still keeps the values
-other devices save in the new fields, and its rows get them when it updates. One exception: a
-row saved whole on a device that hasn't updated (with `saveAsSnapshot`, or any save to a
-[signed table](#signed-tables)) replaces that row on every device, without the new fields.
+**When devices run different versions.** Add fields to synced tables as optional. On an
+unsigned table, you can also add a required field with a fixed default such as `.default(false)`.
+Peers uses it for existing rows and new rows from devices on an earlier version. Choose a JSON
+value the field's type accepts. For a computed value, a date, or an id with no valid default,
+add an optional field and fill it in your package's code. New fields on [signed tables](#signed-tables)
+and tables on a contract version that [also implements](./contracts#evolving-stable-contracts-with-alsoimplements)
+an earlier version must be optional.
+
+On a synced table, Peers refuses a version that adds a required field without such a default,
+makes an optional field required, or removes the fixed default of a field that stays required.
+It also refuses changing that default, since devices on different versions would fill the same
+row with different values. The error names the field. Local-only tables can add required fields without a fixed default.
+
+Peers also refuses a version that changes a field's type or array shape, on any table. Add a
+field with a new name instead. Devices can skip releases, so reserve a removed field's name for
+its original type.
+
+Once a newer version of a table syncs to a device, an earlier version of your package there
+can't use that table until the device updates your package. The device fills in values it has
+received for the new fields when it updates, even if Peers closes partway through. A whole-row
+save (`saveAsSnapshot`, or any save to a signed table) from the earlier version omits the new
+fields. This can erase an optional field's value or leave devices with different values for a
+required field.
 
 **Changing fields copies the table.** When a version adds, removes, reorders or changes a field,
 each device copies the whole table the first time your package uses it after updating. A new
@@ -706,6 +723,7 @@ more about the value:
 | `isArray` | `z.array(...)` | The value is an array; `type`, `fields`, and `enumValues` describe each element. `optional` applies to the whole array. |
 | `fields` | `z.object(...)` | The object's own fields, nested up to 16 levels. |
 | `enumValues` | `z.enum`, `z.nativeEnum`, a literal, or a union of literals | The only values allowed. |
+| `defaultValue` | A top-level field on an unsigned table ending in `.default(value)` or `.default(value).describe(...)`. Use a fixed, non-null value that survives a JSON round trip unchanged. | The value Peers fills in for a row that lacks the field. |
 
 ```json
 {
