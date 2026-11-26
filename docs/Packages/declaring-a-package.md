@@ -218,11 +218,13 @@ field with a new name instead. Devices can skip releases, so reserve a removed f
 its original type.
 
 Once a newer version of a table syncs to a device, an earlier version of your package there
-can't use that table until the device updates your package. The device fills in values it has
-received for the new fields when it updates, even if Peers closes partway through. A whole-row
-save (`saveAsSnapshot`, or any save to a signed table) from the earlier version omits the new
-fields. This can erase an optional field's value or leave devices with different values for a
-required field.
+can't use that table until the device updates your package. Screens that use the table directly
+can still save rows. A whole-row save there (`saveAsSnapshot`, or any save to a signed table)
+keeps the values the device has received for the new fields. Like any whole-row save, it can
+overwrite a newer edit that hasn't reached the device yet. When your package updates, the device
+fills in the new fields from the values it has received. A device running an older release of
+Peers leaves the new fields out of a whole-row save, which can erase their values on every device,
+so keep Peers up to date on all of them.
 
 **Changing fields copies the table.** When a version adds, removes, reorders or changes a field,
 each device copies the whole table the first time your package uses it after updating. A new
