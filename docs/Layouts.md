@@ -27,7 +27,7 @@ See [Working with tabs](#working-with-tabs) for switching and arranging them.
 
 ### Tabs + Console
 
-The tab strip with the **Operator Console** docked alongside as a real, resizable panel (not an overlay). The console can be docked to the bottom, left, or right edge and resized by dragging the divider. Toggle the console with <kbd>Ctrl</kbd>+<kbd>`</kbd>.
+The tab strip with the **Operator Console** docked alongside as a real, resizable panel (not an overlay). The console can be docked to the bottom, left, or right edge and resized by dragging the divider. Toggle the console with <kbd>Ctrl</kbd>+<kbd>`</kbd>. The console is a JavaScript prompt where every contract is a global: see [Console](System/Console.md). In any layout, the same Console opens as an app from **System apps**.
 
 ### Full-screen
 

@@ -439,6 +439,9 @@ help()                                             // everything else
 The code runs in the CLI with your own authority, as any `peers` command does. On a Peers
 app older than the CLI, a contract that has no tools isn't listed.
 
+The [Console](Console.md) in the app is the same prompt, with completion and argument hints as
+you type.
+
 ### `peers logs` — Logs
 
 Query and tail console logs from the app.

@@ -34,6 +34,8 @@ The classic Peers shell: a tab strip across the top and one app per tab. This is
 
 Same tab strip, with the **Operator Console** as a docked, resizable panel instead of an overlay. The console and your apps sit side by side (or stacked); neither covers the other.
 
+The console is a JavaScript prompt where every contract is a global: see [Console](Console.md). You don't need this layout for it: in any layout, the same Console opens as an app from **System apps**.
+
 - **Toggle** the console with **Ctrl+\`** (backtick), or the **Toggle Console** command in the palette.
 - **Dock** it to the bottom, left, or right from the console header.
 - **Drag** the divider to resize; maximize from the header to fill the layout body.
