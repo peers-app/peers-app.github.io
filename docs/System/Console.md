@@ -5,9 +5,10 @@ sidebar_position: 1
 # Console
 
 The Console is a JavaScript prompt inside Peers. Every [contract](../Packages/contracts.md) in
-a group is a global there, named for the contract: `Tasks`, `TaskList`, `SystemPackages`.
-Through it you read and write a contract's tables, run its tools, and read its vars
-(observables) and events. Your calls run as you, at your own level in the group, the same as
+a group is a global there, named for the contract: `Tasks`, `TaskList`, `SystemPackages`. Its
+tables, tools, vars (observables) and events are on it by camelCase name: `Tasks.tasks`,
+`Tasks.describeTask`. Through them you read and write tables, run tools, and read vars and
+events. Your calls run as you, at your own level in the group, the same as
 your screens' calls.
 
 It's the same prompt as [`peers repl`](CLI.md#repl): the same names, helpers and hints, with
@@ -31,13 +32,14 @@ header also has buttons to dock, maximize and collapse the panel.
 ```js
 contracts("task")                                  // the contracts with "task" in them
 Tasks                                              // what Tasks has: tables, tools, vars, events
-Tasks.tables.Tasks                                 // a table's fields, and its methods with the level each needs
-const open = Tasks.tables.Tasks.list({ status: "Queued" }, { pageSize: 5 })
+Tasks.tasks                                        // a table's fields, and its methods with the level each needs
+const open = Tasks.tasks.list({ status: "Queued" }, { pageSize: 5 })
 open[0].title
-TaskList.tools.findTasks({ words: "car insurance" })
-Tasks.tools.describeTask(open[0].taskId)           // values fill a tool's arguments in order
-Tasks.tables.Tasks.get(open[0].taskId); Tasks.tools.describeTask($)   // $ is the last result
-const changes = Tasks.tables.Tasks.dataChanged.subscribe()   // show each change
+Tasks.tasks.list(null, { sortBy: ["-createdAt"], pageSize: 10 })   // newest first
+TaskList.findTasks({ words: "car insurance" })
+Tasks.describeTask(open[0].taskId)                 // values fill a tool's arguments in order
+Tasks.tasks.get(open[0].taskId); Tasks.describeTask($)   // $ is the last result
+const changes = Tasks.tasks.dataChanged.subscribe()      // show each change
 changes.unsubscribe()                              // stop showing them
 use("Home")                                        // move to a group; use() goes back to Personal
 help()                                             // everything else
@@ -49,9 +51,16 @@ help()                                             // everything else
   one again gives it the new value.
 - **Results:** rows show as a table (switch to **tree** to open each row), other objects and
   arrays as a tree you open a level at a time, and a contract, table or tool as what it has.
+  In the tree, multiline text keeps its line breaks under its key. An entry shows its result as
+  it was when it ran, so changing `t` on a later line doesn't change what an earlier entry shows;
+  a contract, a tool or another object that isn't only data shows as it is now.
   What `print(…)` or `console.log(…)` shows sits with the entry that printed it.
-- **A name that isn't there** says where it is: `tasks` points you to `Tasks`, and `findTasks`
-  to `TaskList.tools.findTasks`.
+- **A name that isn't there** says where it is: `tasks` points you to `Tasks` and `Tasks.tasks`,
+  and `findTasks` to `TaskList.findTasks`. The [`peers repl` section](CLI.md#repl) says which
+  member names are only in `Tasks.tables`, `Tasks.tools`, `Tasks.vars` or `Tasks.events`.
+- **A refused write** lists what's wrong, one issue per line: `status: Invalid enum value. …`.
+- **A call the table or tool would misread is refused,** as at `peers repl`: an option `list`
+  doesn't take (`skip`), a `sortBy` that isn't a list of fields, or a misspelled field.
 - **When a package starts, stops or changes version and the group serves a different set of
   contracts,** the Console reloads them and shows "The packages here changed." The reload ends
   the subscriptions you started: subscribe again. If you saved a table or tool in a variable
@@ -67,7 +76,8 @@ its arguments.
 - **Enter** runs what you typed. While a bracket is still open, Enter starts a new line instead;
   **Shift+Enter** always does.
 - **Completion** shows as you type: after a dot, the members of what's before it
-  (`Tasks.tools.` lists the tools, each with how it's called); inside a tool's object argument,
+  (`Tasks.` lists its tables, tools, vars and events, each with what it is or how it's called);
+  inside a tool's object argument,
   the arguments you haven't written yet. **Tab** takes the highlighted one, **↑** and **↓**
   move through the list, and **Escape** closes it.
 - **The grey line above the input** shows the call your cursor is in, with the argument your
