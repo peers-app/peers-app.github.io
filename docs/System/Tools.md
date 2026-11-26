@@ -182,10 +182,12 @@ System Host Tools (`00mvbrni9wjucq4q1jbfe9ep3`) and System Desktop Tools
 (`00mvbrni9w4z58hwoxfe406ru`) are local-only, including for Self-trusted remote
 devices. Headless hosts expose desktop catalog rows but have no desktop resolver,
 so those rows stay unavailable. `query-database` remains Writer-level and distinct
-from Device Operations `queryDatabase`. `create-group` creates for the provider's
-owning user, gives the group a color (`color`, or the palette color the user uses least) and an
-icon (`iconClassName`: `bi:<name>`, one emoji, or a Bootstrap class), and still installs
-peers-core (Tasks) into the new group. It returns the new group's `groupId` and `name`.
+from Device Operations `queryDatabase`. Neither runs for an installed package, or for a
+package acting for you: raw SQL reads every table in the data context. `create-group`
+creates for the provider's owning user, gives the group a color (`color`, or the palette
+color the user uses least) and an icon (`iconClassName`: `bi:<name>`, one emoji, or a
+Bootstrap class), and still installs peers-core (Tasks) into the new group. It returns the
+new group's `groupId` and `name`.
 If it also returns a `warning`, the group exists. Use the returned id and show the warning
 to the person who created it. The look may have failed to save, or it may already be visible
 on current devices while older devices still show the previous icon. For example,

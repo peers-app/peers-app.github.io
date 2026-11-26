@@ -64,7 +64,7 @@ await SystemNotifications(ctx).tools.notify({
 - **`kind`**: your name for this sort of notification, such as `reply` or `assigned`. Users can
   set a level for one kind.
 - **`key`**: your id for what the notification is about, so you can withdraw it later (see
-  [Withdrawing notifications](#withdrawing-notifications)).
+  [Withdrawing notifications](#withdrawing-notifications)). It can't start with `$`.
 - **`once`**: with a `key`, send it once per recipient. Each recipient's copy gets the same id
   wherever it's sent from, so the same notification sent from several of the sender's devices
   (or sent again) is one notification, and arrives once. Later calls with that key do nothing for

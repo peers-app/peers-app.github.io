@@ -162,7 +162,17 @@ export const Headlines = defineTable({
 In a handler, `Headlines(ctx)` has `get(id)`, `list(filter?, options?)`, `count(filter?)`,
 `findOne(filter?)`, `save(row, options?)`, and `delete(id)`. `list` takes the same filters and paging
 options as any Peers table (`Headlines(ctx).list({ feedId }, { page: 1, pageSize: 20 })`);
-page numbers start at 1. `save` parses
+page numbers start at 1.
+
+A filter is an object of field values. `{ feedId }` matches rows whose field equals the value, and
+an operator object compares: `{ publishedAt: { $gte: since } }`. The operators are `$eq`, `$ne`,
+`$gt`, `$gte`, `$lt`, `$lte`, `$in` and `$nin` (with a list), `$exists`, and `$matchWords`
+(every word appears in the field); `$and` and `$or` take lists of filters. A string is always the
+text itself, even one starting with `$`, so a value a user or another member typed can't change
+what a filter reads. To compare with another field of the same row, name it with `$col`:
+`{ readAt: { $lt: { $col: "updatedAt" } } }`. Any other object or a list as a value is refused.
+
+`save` parses
 the row with the schema first, so defaults apply and an invalid row is rejected in the package.
 An optional field saved as `null` or `undefined` is stored unset, a field with a default gets
 the default, and reads leave unset fields out ([Empty values](#empty-values)). `save` resolves
