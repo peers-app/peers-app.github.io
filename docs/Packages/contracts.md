@@ -367,8 +367,9 @@ a connection, and reattaches
 subscriptions after reconnecting. `useRows` and `useTool` from `@peers-app/peers-ui` keep
 React views current. Tests can use `mockHostContract` from `@peers-app/peers-sdk/testing`.
 
-UI calls act as the signed-in user. Provider-side `pkg.consumes(...)` declarations do not
-yet restrict UI calls; keep the UI's dependencies declared anyway. See
+A screen's calls act as its package, at the signed-in user's role: they reach the contracts
+the package provides and the ones it declares with `pkg.consumes(...)`, and nothing else. See
+[Isolated screens](./isolated-screens) and
 [Using the contract from a UI](./declaring-a-package#using-the-contract-from-a-ui).
 
 ### Device connections

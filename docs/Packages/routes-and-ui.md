@@ -39,10 +39,10 @@ sequenceDiagram
   UIR->>User: Render component
 ```
 
-1. At startup, every installed package's **routes bundle** is evaluated. Each bundle calls `exportRoutes()` to register its `IPeersUIRoute` entries in a global in-memory registry.
+1. At startup, every installed package's **routes bundle** is evaluated in a sandbox, apart from the Peers window. Each bundle calls `exportRoutes()`, and only its routes come back, as data: `peersUIId`, `path`, `uiCategory`, `priority` and `opensAnyGroup`. Functions on a route (`isMatch`) and props schemas don't, and a package's screen routes match only its own paths (`package-nav/<packageId>/…`).
 2. When the user navigates, `UIRouter` matches the current path and context against registered routes.
-3. The first matching route identifies a `peersUIId`. If that component isn't in memory yet, the owning package's **UI bundle** is fetched and evaluated, registering its React components.
-4. The component renders. Subsequent navigations to the same component are instant (already loaded).
+3. The first matching route identifies a `peersUIId`. The owning package's **UI bundle** is read and run in a sandboxed frame of the package's own, which registers its React components there ([Isolated screens](./isolated-screens)).
+4. The component renders in that frame. Navigating within the app keeps the same frame.
 
 ## appNavs, routes, and UI bundles
 
@@ -147,10 +147,11 @@ Show a group with its own color and icon (`useGroups`, `GroupIcon`), and draw ic
 from data with `Icon`: see [Groups, colors and icons](./declaring-a-package.md#groups-colors-and-icons).
 peers-ui also exports the pickers Peers uses, `ColorPicker` and `IconPicker`.
 
-## Your CSS reaches every app
+## Keep your CSS to your own classes
 
-A stylesheet your UI bundle imports applies to the whole Peers window once the bundle loads, not
-just to your screens. A rule in one app can restyle another, so:
+Your screens run in a frame of their own, so a stylesheet your UI bundle imports applies only
+there ([Isolated screens](./isolated-screens#styles)). A few packages, and Peers' own screens,
+still run in the Peers window, where styles are shared, so keep to these rules anyway:
 
 - Give your classes a prefix for your app, such as `cal-` or `desk-`, and make every selector name
   one of them.
@@ -199,6 +200,7 @@ Key points:
 - **The overlay owns its own visibility.** The host always mounts a registered overlay; the component decides when to render (return `null` to hide). This is how it can appear only under certain conditions — for example, the Tasks app's timer overlay appears only on desktop, while a timer is running, and when you are not on the Tasks tab.
 - **`id` is stable and de-duplicated.** Re-registering with the same `id` replaces the prior entry; `unregisterGlobalOverlay(id)` removes it.
 - **Loading is lazy.** Because overlays register from the UI bundle, they become available the first time the package's UI is loaded (i.e. the first time one of its screens is opened).
+- **From an isolated screen, an overlay draws only inside that screen.** Overlays over every app are for the few packages that still run in the Peers window ([Isolated screens](./isolated-screens#packages-that-still-run-in-the-peers-window)) until packages can declare global widgets.
 - **Position above content, below modals.** Overlays typically use `position: fixed`. Keep their `z-index` below the command palette (`1050`) so modal navigation stays on top.
 - **Over the tab strip, add `peers-window-no-drag`.** In the desktop app Peers has no title bar: the window's buttons sit on the tab strip (at its left end on a Mac, its right end on Windows and Linux), and the strip's empty space moves the window. That holds even under something drawn on top of the strip, so clicks there would move the window instead of reaching your element. Put the `peers-window-no-drag` class on an element of yours that can cover the strip, such as a full-screen view. Bootstrap's `position-fixed` class, modals and offcanvas panels already opt out.
 

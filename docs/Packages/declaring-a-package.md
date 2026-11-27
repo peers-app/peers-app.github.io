@@ -81,8 +81,8 @@ provided contracts, or background hooks, this package runs no worker. Its screen
 other packages' contracts through `hostContract`; declare those dependencies with
 `pkg.consumes(...)`. See [Routes and UI](./routes-and-ui) for the complete screen setup.
 
-UI calls currently act as the signed-in user. Peers checks `pkg.consumes(...)` for calls
-from provider code; it does not yet enforce those declarations on UI `hostContract` calls.
+A screen's `hostContract` calls act as its package and reach only what it declares, so declare
+every contract the screens call with `pkg.consumes(...)` ([Isolated screens](./isolated-screens)).
 
 Older versions of Peers refuse packages that provide no contracts. Update all of a group's
 devices to the current Peers before promoting one to beta or stable. A contract you do declare
@@ -1567,8 +1567,8 @@ function Feeds() {
   subscriptions, and refuses new calls and observable writes; cached observable reads remain.
 - The renderer provides `@peers-app/peers-ui`, like `@peers-app/peers-sdk`; list it as a peer
   dependency and a webpack external.
-- **Access.** A UI's calls act as the signed-in user today, as every UI call does
-  ([Local UI-to-host contracts](./contracts#local-ui-to-host-contracts)).
+- **Access.** A UI's calls act as its package, at the signed-in user's role, and reach the
+  contracts the package provides and consumes ([Isolated screens](./isolated-screens)).
 - **Files.** `hostContract(SystemFiles)` saves a file from a screen, and `useFileUrl(fileId)`
   from `@peers-app/peers-ui` gives a URL to show it, such as an `<img src>`
   ([System Files](../System/Files.md#from-a-screen)).

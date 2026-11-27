@@ -234,18 +234,23 @@ comments panel can be nothing at all.
   height with `height="content"`.
 - A piece adapts to its box, not the window: `usePieceSize()` gives the box's size.
 - Light and dark themes, Bootstrap variables and icons come from Peers. An embedding screen can't
-  restyle a piece; a piece's options, such as a compact layout, are props. Keep a piece's CSS under
-  its own class names, since styles are shared until screens are isolated.
-- A popover takes focus when it opens and keeps Tab inside it. Escape or a click outside closes
-  it, and focus goes back to its anchor.
+  restyle a piece; a piece's options, such as a compact layout, are props. A piece runs in its own
+  frame, so its CSS applies only there; keep it under its own class names anyway, for screens that
+  still run in the Peers window.
+- A popover is as wide as its piece's content, up to 640 px (less on a narrow screen). Give the
+  piece's root element a width when it should be wider, or steady while its content changes.
+  Inside a popover, the piece's frame is as wide as that limit, so `vw` units and media queries
+  read the limit, not the width of the Peers window.
+- A popover takes focus when it opens and keeps Tab inside it. Escape closes it and puts focus
+  back on its anchor; a click outside closes it and leaves focus where the user clicked.
 
 ## What a piece can reach
 
 A piece acts as its provider's UI, never as the screen that embeds it: it reads and writes through
 the contracts its own package provides and consumes. The embedding screen passes data in and gets
-the declared emits back; neither reads the other's state, DOM or package variables. Write pieces
-this way now: once screens are isolated, each piece runs in its own frame, and pieces written to
-these rules keep working unchanged.
+the declared emits back; neither reads the other's state, DOM or package variables. Each piece
+runs in a frame of its own, acting as its provider; inside an isolated screen, Peers draws that
+frame over the piece's box ([Isolated screens](./isolated-screens#pieces)).
 
 ## Versions
 

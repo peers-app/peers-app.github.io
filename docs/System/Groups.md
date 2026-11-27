@@ -177,6 +177,9 @@ and looks, and saves a look. It answers only on the device itself.
 | `setGroupAppearance({ groupId, layer, look })` | Replaces one layer: `mine` for your own, `everyone` for the group's (admins only; not for Personal). |
 
 - A caller in Personal sees every group you're in; a caller in a group sees only that group.
+- The reads need Reader; `setGroupAppearance` needs Writer in the context it's called in
+  (Personal, where you have every right, for Peers and the CLI). Packages can't set a look, and a
+  package's screen can't either.
 - `listGroups`, `groups` and `shown` give only values this Peers can draw: `bi:<name>` or one
   emoji, a palette name or lowercase `#rrggbb`, plus `colorHex`. `everyone` and `mine` are
   checked the same way, but keep an icon from another set, so an editor sends it back unchanged.

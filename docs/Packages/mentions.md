@@ -162,9 +162,9 @@ import { MarkdownEditor, MarkdownWithMentions } from "@peers-app/peers-ui";
 - **`MentionChip`** shows one mention anywhere in your screen, and **`openMention({ kind, id })`**
   opens one, as a click on a chip does.
 
-Search belongs to Peers' editor: System Mentions refuses package callers, and once screens are
-isolated a screen won't reach it. Don't build on calling its tools from your screen; use the
-editor's picker.
+Search belongs to Peers' editor: System Mentions refuses package callers. Peers' own components
+in your screen (the editor's picker, chips) still reach it, but don't build on calling its tools
+from your screen's code; use the editor's picker.
 
 ## The picker
 
