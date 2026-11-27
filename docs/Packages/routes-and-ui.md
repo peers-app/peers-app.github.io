@@ -163,6 +163,19 @@ just to your screens. A rule in one app can restyle another, so:
 A unit test that reads your stylesheets and fails on any selector without your prefix keeps it
 that way.
 
+## The status bar and home indicator
+
+On a phone, Peers keeps your screen clear of the status bar, the notch or Dynamic Island, and the
+home indicator: the room they take is outside your tab. So:
+
+- Don't pad a bar or a message box in your screen by `env(safe-area-inset-bottom)` (or `-top`).
+  The room is already there, and yours doubles it: a gap opens under the bar.
+- Do pad by it something you fix to the screen (`position: fixed`), such as a full-screen photo
+  viewer or a sheet that slides up from the bottom edge. That's drawn over Peers' own margins.
+- Fill your tab (`height: 100%`) rather than sizing from the viewport (`100vh`, `100dvh`): the
+  tab already excludes the header, and an app installed from an iPhone's Home Screen reports the
+  viewport's height wrong.
+
 ## Global overlays
 
 Screens render inside the active tab and unmount when you switch tabs. When a package needs UI that stays visible **across all tabs and apps** — a floating widget, a persistent indicator, a heads-up panel — it can register a **global overlay** instead.
