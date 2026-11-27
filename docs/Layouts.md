@@ -21,7 +21,7 @@ Switching takes effect immediately — no reload.
 
 The classic Peers shell: a tab strip across the top with one app per tab. This is the default and matches how Peers has always worked.
 
-On a computer the strip shows your group at its left end, then your tabs, and at its right end search (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>), notifications and the network status. In the desktop app Peers has no title bar: the strip is the window's top row, and dragging its empty space moves the window. On a Mac the window's buttons sit at the strip's left end. On Windows and Linux, minimize, maximize and close sit at its right end, and there's no menu bar: the ☰ at the strip's left end opens Peers' menu (File, Edit, View, Window and Help), and the menu's keyboard shortcuts work as before. The window's buttons stay in the strip at any zoom.
+On a computer the strip shows your group at its left end, then your tabs, and at its right end search (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd>), notifications and the network status. In the desktop app Peers has no title bar: the strip is the window's top row, and dragging its empty space moves the window. On a Mac the window's buttons sit at the strip's left end. On Windows and Linux, minimize, maximize and close sit at its right end, and there's no menu bar: the ☰ at the strip's left end opens Peers' menu (File, Edit, View, Window and Help), and the menu's keyboard shortcuts work as before. The window's buttons stay in the strip at any zoom, and hide while the window is full screen.
 
 See [Working with tabs](#working-with-tabs) for switching and arranging them.
 
