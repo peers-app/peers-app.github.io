@@ -81,17 +81,32 @@ current. The 2026-10-02 freeze is recorded in
 Install [Gitleaks](https://github.com/gitleaks/gitleaks) 8.25.0 or newer on the
 release machine (`brew install gitleaks` on macOS). `npm run scan:secrets`
 scans tracked files and non-ignored untracked files in the root and every
-initialized submodule. `npm run scan:secrets:history` scans every repository's
-available Git history. CI checks out full submodule histories and runs both.
+initialized submodule. `npm run scan:secrets:history` scans each repository's
+commits, on every ref, that weren't on a ref at its last clean history scan on
+this machine. The ref tips each clean scan covered are kept in that repository's
+Git directory (`peers-secret-scan.json`). A repository with no clean scan yet,
+or whose last one ran with another `.gitleaks.toml` or Gitleaks version, is
+scanned in full; add `--full` to scan every history in full anyway. CI checks
+out full submodule histories and runs both scans, so it scans all history on
+every push.
 
 The committed `.gitleaksignore` is an incident baseline, not a declaration that
 the listed historical credentials are safe. A new entry requires incident
 review and a documented reason; never baseline a new current-tree secret merely
-to unblock a release. Generated PWA bundles at `public/assets/index-*.js` are
-allowlisted in `.gitleaks.toml`: they are build output, and `generic-api-key`
-matches minified expressions such as `anchor.key`. The PWA source is still
-scanned. The Electron release workflow independently scans its
-archived source tree before any platform build can publish.
+to unblock a release. `.gitleaks.toml` allowlists two kinds of false positive:
+
+- **What the PWA release copies into `peers-services/public`:** everything in
+  `assets/`, plus `frame-runtime.js`, `sw.js` and `registerSW.js`. They're
+  build output, and `generic-api-key` matches minified expressions such as
+  `anchor.key`. Their sources are scanned in their own repositories. Each
+  release commits new copies after its own scan, so without this rule the next
+  release would stop on them.
+- **Peers ids:** a `generic-api-key` match that is exactly 25 lowercase letters
+  and digits, such as a tool id after `getKeyInfo:`. Ids are public, not
+  credentials.
+
+The Electron release workflow independently scans its archived source tree
+before any platform build can publish.
 
 Cross-repository Actions access is split by operation. `PEERS_REPOS_READ_TOKEN`
 has only **Contents: read** on explicitly selected private dependency
