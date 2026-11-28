@@ -402,6 +402,12 @@ tool's result and can continue with the required action before answering.
 A turn permits four rounds of skill calls, followed by a response-only summary. If a later model
 request fails after a skill succeeds, Voice Hub reports that the whole request was not completed.
 
+Each request acts only on what you just said. The conversation so far is there so that "add two
+more minutes to that", or "stop" after an alert, makes sense, but nothing an earlier request did
+is done again. Within one request, the same change (the same item added, or the same timer set) is
+made once, even if the assistant tries it again in a later step. Alike changes asked for together,
+such as "set two ten minute timers", are all made.
+
 Cancel stops further discovery, model requests, and skill calls, and aborts active Voice Hub HTTP.
 An already-running skill may finish; cancellation does not undo changes it has made.
 

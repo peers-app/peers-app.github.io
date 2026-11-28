@@ -233,6 +233,8 @@ comments panel can be nothing at all.
 - A view fills its box (`height="fill"`, the default) and scrolls inside it, or takes its own
   height with `height="content"`.
 - A piece adapts to its box, not the window: `usePieceSize()` gives the box's size.
+- A view sits on the embedding screen's surface: Peers paints nothing under it, so give a
+  background only to the parts of your piece that need one. A popover has the page's background.
 - Light and dark themes, Bootstrap variables and icons come from Peers. An embedding screen can't
   restyle a piece; a piece's options, such as a compact layout, are props. A piece runs in its own
   frame, so its CSS applies only there; keep it under its own class names anyway, for screens that

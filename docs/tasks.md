@@ -287,3 +287,26 @@ Since Tasks 0.33.19 a task's status can be **Inbox**.
   back to v1, with Backlog, only on that error for that contract and version. Any other failure
   may come after the task was written, so retrying it could make the task twice. Desk and Notes do
   this with a small `orOlderVersion` helper.
+
+### Showing a task's details in your screen
+
+Since Tasks 0.33.29, Tasks provides **Task Details v1** (`00mwx82nexo2a4jfj0holtsa2`), a
+[UI contract](./Packages/ui-contracts) with one view, `details`: the panel Tasks shows beside its
+outline, for one task. Desk's side panel uses it, so a task opened in Desk looks and works as it
+does in Tasks.
+
+- **Add it** with `peers contracts add 00mwx82nexo2a4jfj0holtsa2@1`, and consume it as optional:
+  `pkg.consumes(TaskDetailsUI, { optional: true })`.
+- **Make the client in the task's group:**
+  `hostUIContract<typeof TaskDetailsUI>("00mwx82nexo2a4jfj0holtsa2", 1, { dataContextId: groupId })`.
+- **Props:** `taskId`; `comments`, which is `all` (the default), `latest` (what people wrote, the
+  latest first, with Show earlier) or `none`; `closable`, for a close button; and
+  `focusDescription`, to put the keyboard in the description when it shows.
+- **Events:** `moved` (`{ taskId, groupId }`) when the task turns up in another group, so you can
+  follow it; `closed` from its close button; and `open` for a task in its path, a subtask or a
+  mention. Return `true` from `open` to show it yourself, or `false` to let Peers open it as usual.
+- **Edits are Tasks' own.** Status, title, description, subtasks and comments are saved by Tasks,
+  as Tasks, in the task's group. Your screen doesn't need Tasks' API contracts for them, and the
+  view never changes what the Tasks screen has selected.
+- **Give it a fallback.** A group whose Tasks is older than 0.33.29 has no Task Details, so show
+  something useful there, such as the task's title and a button that opens it in Tasks.

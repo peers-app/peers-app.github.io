@@ -82,6 +82,16 @@ A [UI contract's piece](./ui-contracts) runs in a frame of its own too, acting a
 When your screen embeds one, Peers draws the provider's frame over the piece's box in your screen
 and hands its emits back to your `<Piece>`. Nothing changes in how you embed or implement a piece.
 
+The frame follows the box as your screen's layout moves. A mouse wheel or trackpad over a piece
+scrolls the piece if it can scroll that way when the gesture starts, and your screen if it can't.
+The whole gesture scrolls the same one: at the end of a list in a piece, pause, then scroll again
+to move your screen. Dragging with a finger over a piece doesn't scroll your screen yet.
+
+If your package provides pieces, give a scrolling area in one `overscroll-behavior: contain` to
+keep the wheel inside it even at its end. Leave your piece's `html` at the default
+`overscroll-behavior` (`auto`): `contain` or `none` there keeps the wheel over the piece from ever
+reaching the screen around it.
+
 ## Packages that still run in the Peers window
 
 Tasks, Operator, Voice Hub and Family Hub still run in the Peers window, for things isolated

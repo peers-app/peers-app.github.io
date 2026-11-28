@@ -222,6 +222,11 @@ depends on the latest error:
   (see [Groups](./Groups.md#who-can-change-what)). Ask the founder or an Admin to review the
   affected change and save an authorized update. Your existing roles, settings and running
   package version remain in effect until an authorized update is available.
+
+  When two devices clean up the same unused package bundle, Peers 0.34.0 and earlier
+  can show a parked `Files` entry (`a file can't be deleted`) for a bundle already gone
+  from this device. Use **Ignore on this device** to clear that harmless entry.
+  Newer versions skip the recovery entry for this repeat cleanup.
 - **Missing history** (`No full write found`, `Last full write has no value`, and
   similar) and **transient** errors (locks, closed connections, anything unrecognized)
   keep asking peers. The delay starts at one minute and doubles after each unresolved
